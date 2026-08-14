@@ -107,7 +107,7 @@
       font-size: 11px; font-weight: 500; color: var(--text-secondary);
       cursor: pointer; display: flex; flex-direction: column; gap: 3px;
     }
-    .sidebar-file-label input { font-size: 11px; width: 100%; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border); background: var(--border); color: var(--text); padding: 3px 6px; }
+    .sidebar-file-label input, .sidebar-file-label select { font-size: 11px; width: 100%; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border); background: var(--border); color: var(--text); padding: 3px 6px; }
     .sidebar-sample-btn {
       padding: 8px 14px; font-size: 12px; font-weight: 600;
       border: none; border-radius: var(--radius-xs);
@@ -508,6 +508,7 @@
         KRI 监控面板
       </div>
       <div class="sidebar-tools">
+        <label class="sidebar-file-label">项目 <select id="projectSelect"></select></label>
         <label class="sidebar-file-label">加载中心层 <input type="file" id="fileInputMain" accept=".json" /></label>
         <label class="sidebar-file-label">加载受试者 <input type="file" id="fileInputDetailPanels" accept=".json" /></label>
         <button id="btnSample" class="sidebar-sample-btn">使用内置示例</button>
@@ -8091,8 +8092,16 @@
         });
       }, 350);
     });
-    function autoLoadFromRepo() {
-      fetch('./kri_export.json')
+    var currentProject = 'A';
+
+    function getProjectFromUrl() {
+      var m = location.search.match(/[?&]project=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function loadProject(project) {
+      currentProject = project;
+      fetch('./data/' + project + '/kri_export.json')
         .then(function (resp) {
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
           return resp.text();
@@ -8100,7 +8109,7 @@
         .then(function (text) {
           var mainData = parseJsonUtf8(text);
           loadDataAndRender(mainData, { stripDetailPanels: true });
-          return fetch('./kri_detail_panels.json').then(function (resp2) {
+          return fetch('./data/' + project + '/kri_detail_panels.json').then(function (resp2) {
             if (!resp2.ok) throw new Error('详情 HTTP ' + resp2.status);
             return resp2.text();
           }).then(function (text2) {
@@ -8111,13 +8120,39 @@
           });
         })
         .catch(function (err) {
-          console.warn('仓库数据自动加载失败，回退到内置示例：', err);
+          console.warn('项目 ' + project + ' 数据加载失败，回退到内置示例：', err);
           loadDataAndRender(sampleData);
         });
     }
 
+    function initProjectSelector() {
+      var sel = document.getElementById('projectSelect');
+      if (!sel) return;
+      fetch('./data/projects.json')
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          if (!Array.isArray(list) || !list.length) return;
+          list.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            sel.appendChild(opt);
+          });
+          var fromUrl = getProjectFromUrl();
+          var init = (fromUrl && list.indexOf(fromUrl) >= 0) ? fromUrl : list[0];
+          sel.value = init;
+          loadProject(init);
+        })
+        .catch(function () {
+          var p = getProjectFromUrl() || 'A';
+          loadProject(p);
+        });
+    }
+
     window.onload = function() {
-      autoLoadFromRepo();
+      var sel = document.getElementById('projectSelect');
+      if (sel) sel.addEventListener('change', function () { loadProject(sel.value); });
+      initProjectSelector();
     };
   </script>
 </body>

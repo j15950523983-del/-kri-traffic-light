@@ -1,0 +1,3049 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMART 多维度数据异常监测</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SMART RBQM — Clinical Precision Dashboard
+   Dark-first design system with full light theme support
+   ============================================================ */
+
+/* -------- DESIGN TOKENS -------- */
+:root {
+  --bg-root: #080c14;
+  --bg-surface: #0f1520;
+  --bg-elevated: #161e2c;
+  --bg-overlay: #1c2538;
+  --bg-inset: #0a0f1a;
+
+  --text-primary: #e4e9f2;
+  --text-secondary: #8899b4;
+  --text-tertiary: #556680;
+  --text-inverse: #0a0f1a;
+
+  --accent: #0ea5e9;
+  --accent-strong: #38bdf8;
+  --accent-muted: rgba(14,165,233,0.12);
+  --accent-border: rgba(14,165,233,0.28);
+
+  --risk-high: #f43f5e;
+  --risk-high-muted: rgba(244,63,94,0.12);
+  --risk-medium: #f59e0b;
+  --risk-medium-muted: rgba(245,158,11,0.12);
+  --risk-low: #10b981;
+  --risk-low-muted: rgba(16,185,129,0.12);
+  --risk-normal: #6366f1;
+
+  --border: #1a2335;
+  --border-light: #222d42;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 20px rgba(14,165,233,0.08);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --sidebar-w: 224px;
+  --topbar-h: 50px;
+
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-data: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+
+  --ease-out: 0.2s cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out: 0.3s cubic-bezier(0.65,0,0.35,1);
+}
+
+/* -------- LIGHT THEME -------- */
+[data-theme="light"] {
+  --bg-root: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f8fafb;
+  --bg-overlay: #f1f4f8;
+  --bg-inset: #e8ecf1;
+
+  --text-primary: #0d1b2a;
+  --text-secondary: #526477;
+  --text-tertiary: #8b9cb5;
+  --text-inverse: #ffffff;
+
+  --accent: #0369a1;
+  --accent-strong: #0284c7;
+  --accent-muted: rgba(3,105,161,0.06);
+  --accent-border: rgba(3,105,161,0.18);
+
+  --risk-high: #e11d48;
+  --risk-high-muted: rgba(225,29,72,0.06);
+  --risk-medium: #d97706;
+  --risk-medium-muted: rgba(217,119,6,0.06);
+  --risk-low: #059669;
+  --risk-low-muted: rgba(5,150,105,0.06);
+
+  --border: #dde3ea;
+  --border-light: #edf0f4;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
+  --shadow-glow: 0 0 20px rgba(3,105,161,0.04);
+}
+
+/* -------- RESET & BASE -------- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  font-family:var(--font-ui);background:var(--bg-root);color:var(--text-primary);
+  display:flex;height:100vh;overflow:hidden;line-height:1.5;
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--text-tertiary);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-secondary)}
+
+/* Plotly: override crosshair cursor on hover */
+.js-plotly-plot .plotly .draglayer,
+.js-plotly-plot .plotly .nsewdrag,
+.js-plotly-plot .plotly .cursor-crosshair,
+.plot-container .draglayer,
+.plot-container .nsewdrag,
+.plot-container .cursor-crosshair{cursor:default !important}
+.js-plotly-plot .plotly .scatterlayer .trace .points path,
+.js-plotly-plot .plotly .scatterlayer .trace .points .point{cursor:pointer !important}
+
+/* -------- SIDEBAR -------- */
+.sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--bg-surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;user-select:none;z-index:20;
+}
+.sidebar-brand{
+  padding:16px 18px 14px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-brand-mark{
+  width:28px;height:28px;border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.7em;font-weight:700;color:#fff;flex-shrink:0;
+}
+.sidebar-brand-text{font-size:0.82em;font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;line-height:1.2}
+.sidebar-brand-text small{display:block;font-weight:400;color:var(--text-tertiary);font-size:0.75em}
+.sidebar-nav{flex:1;overflow-y:auto;padding:6px 0;display:flex;flex-direction:column}
+.sidebar-section-label{
+  font-size:0.64em;font-weight:600;color:var(--text-tertiary);
+  text-transform:uppercase;letter-spacing:0.08em;
+  padding:12px 18px 4px;
+}
+.sidebar-btn{
+  display:flex;align-items:center;gap:10px;width:calc(100% - 16px);margin:0 8px;
+  padding:9px 12px;border:none;border-radius:var(--radius-md);cursor:pointer;
+  background:transparent;color:var(--text-secondary);font-size:0.82em;
+  text-align:left;position:relative;transition:all var(--ease-out);
+  font-family:var(--font-ui);font-weight:500;
+}
+.sidebar-btn:hover{background:var(--bg-elevated);color:var(--text-primary)}
+.sidebar-btn.active{
+  background:var(--accent-muted);color:var(--accent-strong);font-weight:600;
+}
+.sidebar-btn.active::before{
+  content:'';position:absolute;left:0;top:6px;bottom:6px;
+  width:3px;background:var(--accent);border-radius:0 2px 2px 0;
+}
+.sidebar-btn svg{width:16px;height:16px;flex-shrink:0;opacity:0.5}
+.sidebar-btn.active svg{opacity:1;color:var(--accent)}
+.sidebar-btn:disabled{opacity:0.25;cursor:not-allowed;pointer-events:none}
+
+.sidebar-parent-btn{
+  display:flex;align-items:center;gap:6px;width:calc(100% - 16px);margin:8px 8px 0;
+  padding:9px 12px;border:none;border-radius:var(--radius-md);cursor:pointer;
+  background:transparent;color:var(--text-secondary);font-size:0.82em;
+  text-align:left;font-weight:600;font-family:var(--font-ui);
+  border-top:1px solid var(--border-light);transition:all var(--ease-out);
+}
+.sidebar-parent-btn:hover{background:var(--bg-elevated);color:var(--text-primary)}
+.sidebar-parent-btn.active{
+  background:var(--accent-muted);color:var(--accent-strong);
+}
+.sidebar-parent-btn.active::before{
+  content:'';position:absolute;left:0;top:6px;bottom:6px;
+  width:3px;background:var(--accent);border-radius:0 2px 2px 0;
+}
+.sidebar-parent-btn .arrow{font-size:0.55em;transition:transform 0.2s ease;display:inline-block;flex-shrink:0}
+.sidebar-parent-btn.collapsed .arrow{transform:rotate(-90deg)}
+.sidebar-var-items{display:flex;flex-direction:column}
+.sidebar-var-items.collapsed{display:none}
+.sidebar-nav>*{flex-shrink:0}
+.sidebar-var-items .sidebar-var-btn{flex-shrink:0}
+.sidebar-var-btn{padding-left:28px;font-size:0.78em}
+
+/* Variable search */
+.sidebar-var-search{padding:0 12px 6px}
+.sidebar-var-search-input{
+  width:100%;padding:5px 9px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--bg-inset);
+  color:var(--text-primary);font-size:0.72em;font-family:var(--font-ui);
+  transition:border-color var(--ease-out);
+}
+.sidebar-var-search-input:focus{border-color:var(--accent-border);outline:none}
+.sidebar-var-search-input::placeholder{color:var(--text-tertiary)}
+
+/* Badges in sidebar variable buttons */
+.sidebar-var-btn .badge-count{
+  margin-left:auto;font-size:0.7em;background:var(--risk-high);
+  color:#fff;padding:1px 6px;border-radius:3px;
+  font-weight:600;white-space:nowrap;min-width:18px;text-align:center;
+}
+.sidebar-var-btn .badge-count.warn{background:var(--risk-medium);color:#000}
+.sidebar-var-btn .badge-count.ok{background:var(--risk-low);color:#fff}
+
+/* 审核标记（侧边栏检查项左侧） */
+.sidebar-var-btn .review-mark{
+  flex-shrink:0;font-size:0.9em;line-height:1;
+  color:var(--text-tertiary);cursor:pointer;margin-right:-4px;
+  transition:color var(--ease-out);user-select:none;
+}
+.sidebar-var-btn .review-mark:hover{color:var(--accent)}
+.sidebar-var-btn .review-mark.done{color:var(--risk-low)}
+
+/* Data status card */
+.sidebar-status{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;margin:4px 10px;border-radius:var(--radius-md);
+  background:var(--bg-inset);border:1px solid var(--border);
+}
+.sidebar-status-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+  background:var(--text-tertiary);transition:background 0.3s;
+}
+.sidebar-status-dot.loaded{background:var(--risk-low)}
+.sidebar-status-dot.running{background:var(--accent);animation:pulse-dot 1.2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+.sidebar-status-body{min-width:0}
+.sidebar-status-label{font-size:0.7em;font-weight:600;color:var(--text-primary);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-status-detail{font-size:0.64em;color:var(--text-tertiary);font-family:var(--font-data)}
+
+/* Risk summary in footer */
+.sidebar-footer-risk{line-height:1.8}
+.sidebar-footer-cite{line-height:1.6}
+.sidebar-risk-row{
+  display:flex;align-items:center;gap:6px;font-size:0.72em;
+  font-weight:600;font-family:var(--font-ui);
+}
+.sidebar-risk-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sidebar-risk-dot.high{background:var(--risk-high)}
+.sidebar-risk-dot.medium{background:var(--risk-medium)}
+.sidebar-risk-dot.low{background:var(--risk-low)}
+.sidebar-risk-val{margin-left:auto;font-family:var(--font-data);font-weight:700}
+
+/* -------- MAIN -------- */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:10;min-width:0}
+
+/* -------- TOPBAR -------- */
+.topbar{
+  height:var(--topbar-h);min-height:var(--topbar-h);
+  padding:0 24px;display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg-surface);border-bottom:1px solid var(--border);
+  z-index:15;
+}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-title{font-weight:700;font-size:0.92em;color:var(--text-primary);letter-spacing:-0.01em}
+.topbar-meta{font-size:0.72em;color:var(--text-tertiary);font-family:var(--font-data)}
+.topbar-back{
+  font-size:0.78em;font-weight:600;color:var(--accent);cursor:pointer;
+  padding:2px 6px;border-radius:var(--radius-sm);transition:all var(--ease-out);
+  text-decoration:none;user-select:none;
+}
+.topbar-back:hover{background:var(--accent-muted);color:var(--accent-strong)}
+.topbar-sep{color:var(--text-tertiary);font-size:0.75em;margin:0 2px}
+.topbar-right{display:flex;align-items:center;gap:14px}
+
+/* Theme toggle pill */
+.theme-toggle{
+  display:flex;align-items:center;gap:6px;background:var(--bg-inset);
+  border-radius:20px;padding:3px;border:1px solid var(--border);
+  cursor:pointer;transition:all var(--ease-out);
+}
+.theme-toggle:hover{border-color:var(--accent-border)}
+.theme-toggle-opt{
+  padding:4px 10px;border-radius:16px;font-size:0.7em;font-weight:600;
+  transition:all var(--ease-out);color:var(--text-tertiary);
+  font-family:var(--font-ui);border:none;background:none;cursor:pointer;
+}
+.theme-toggle-opt.active{background:var(--accent);color:#fff}
+
+/* -------- CONTENT -------- */
+.content{flex:1;padding:20px 24px;overflow-y:auto}
+
+/* -------- PANELS -------- */
+.panel{display:none}
+.panel.active{display:block;animation:panelIn 0.25s var(--ease-out)}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* -------- SECTION HEADERS -------- */
+.section-title{
+  font-size:0.68em;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;
+  letter-spacing:0.07em;margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;
+}
+.section-header-left{font-size:0.82em;font-weight:700;color:var(--text-primary)}
+
+/* -------- CARDS -------- */
+.card{
+  background:var(--bg-surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);margin-bottom:16px;
+  transition:all var(--ease-out);overflow:hidden;
+}
+.card-header{
+  padding:11px 16px;background:var(--bg-elevated);border-bottom:1px solid var(--border);
+  font-weight:650;font-size:0.82em;color:var(--text-primary);
+  display:flex;align-items:center;gap:8px;
+}
+.card-body{padding:16px}
+.card-body-sm{padding:10px}
+.card-body-xs{padding:6px}
+.card-header-toggle{
+  margin-left:auto;cursor:pointer;font-size:0.78em;opacity:0.4;
+  padding:2px 6px;border-radius:var(--radius-sm);transition:all var(--ease-out);
+  user-select:none;
+}
+.card-header-toggle:hover{opacity:0.85;background:var(--bg-overlay)}
+
+/* -------- DROP ZONE -------- */
+.drop-zone{
+  border:2px dashed var(--border);border-radius:var(--radius-lg);
+  padding:28px 20px;text-align:center;cursor:pointer;
+  transition:all var(--ease-out);background:var(--bg-inset);
+}
+.drop-zone:hover,.drop-zone.drag-over{
+  border-color:var(--accent);background:var(--accent-muted);
+}
+.drop-zone-icon{font-size:28px;margin-bottom:6px;opacity:0.5}
+.drop-zone-title{font-weight:600;font-size:0.88em;color:var(--text-primary)}
+.drop-zone-hint{font-size:0.76em;color:var(--text-tertiary);margin-top:2px}
+
+/* Welcome guide (empty state) */
+.welcome-guide{
+  background:var(--bg-surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;
+}
+.welcome-title{font-size:0.9em;font-weight:700;color:var(--accent-strong);margin-bottom:6px}
+.welcome-desc{font-size:0.76em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+.welcome-cols{display:flex;gap:16px}
+.welcome-col{flex:1;background:var(--bg-inset);border-radius:var(--radius-md);padding:14px 16px}
+.welcome-col-title{font-size:0.74em;font-weight:700;color:var(--text-primary);margin-bottom:8px}
+.welcome-col-body{font-size:0.72em;color:var(--text-secondary);line-height:1.8}
+.welcome-col-body code{
+  background:var(--bg-surface);padding:1px 5px;border-radius:3px;
+  font-family:var(--font-data);font-size:0.92em;color:var(--accent-strong);
+  border:1px solid var(--border-light);
+}
+
+/* -------- STATS ROW -------- */
+.stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.stat-pill{
+  display:flex;flex-direction:column;padding:10px 16px;
+  background:var(--bg-inset);border-radius:var(--radius-md);
+  border:1px solid var(--border-light);min-width:72px;
+}
+.stat-pill-val{font-size:1.3em;font-weight:700;color:var(--accent-strong);font-family:var(--font-data)}
+.stat-pill-lbl{font-size:0.7em;color:var(--text-tertiary);margin-top:1px}
+
+/* -------- FORM CONTROLS -------- */
+.form-label-sm{font-size:0.74em;font-weight:600;margin-bottom:4px;color:var(--text-secondary)}
+.form-select-sm,.form-control-sm{
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-size:0.82em;padding:7px 10px;transition:all var(--ease-out);
+  background:var(--bg-inset);color:var(--text-primary);
+  font-family:var(--font-ui);width:100%;
+}
+.form-select-sm:focus,.form-control-sm:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-muted);outline:none;
+}
+.form-select-sm{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238899b4' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+
+.form-check-input:checked{background-color:var(--accent);border-color:var(--accent)}
+.form-check-label-sm{font-size:0.74em;color:var(--text-secondary)}
+.form-check-input{background-color:var(--bg-inset);border-color:var(--border)}
+
+/* Config row */
+.config-row{
+  padding:10px 12px;border-radius:var(--radius-md);
+  background:var(--bg-inset);margin-bottom:8px;
+  border:1px solid var(--border-light);
+}
+.config-row:last-of-type{margin-bottom:0}
+.config-label{font-size:0.74em;font-weight:600;color:var(--text-primary);margin-bottom:6px}
+
+/* Core config — prominent */
+.config-core{
+  padding:12px 14px;border-radius:var(--radius-md);
+  border-left:3px solid var(--accent);
+  background:var(--accent-muted);margin-bottom:10px;
+}
+.config-core-label{
+  font-size:0.64em;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.06em;color:var(--accent-strong);margin-bottom:8px;
+}
+/* Advanced config — subdued, collapsible */
+.config-advanced{margin-bottom:4px}
+.config-advanced-label{
+  font-size:0.72em;font-weight:650;color:var(--text-tertiary);
+  cursor:pointer;user-select:none;padding:4px 0;
+  transition:color var(--ease-out);
+}
+.config-advanced-label:hover{color:var(--text-secondary)}
+.config-advanced-arrow{
+  display:inline-block;font-size:0.7em;transition:transform 0.2s ease;
+  margin-right:4px;
+}
+.config-advanced-body.collapsed{display:none}
+.config-advanced-body{margin-top:4px}
+
+/* -------- BUTTONS -------- */
+.btn{
+  border-radius:var(--radius-md);font-weight:600;transition:all var(--ease-out);
+  font-family:var(--font-ui);cursor:pointer;border:none;display:inline-flex;
+  align-items:center;gap:6px;
+}
+.btn-sm{padding:6px 14px;font-size:0.78em}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-strong);box-shadow:var(--shadow-glow)}
+.btn-outline{
+  background:transparent;border:1px solid var(--border);color:var(--text-secondary);
+}
+.btn-outline:hover{background:var(--bg-elevated);color:var(--text-primary);border-color:var(--text-tertiary)}
+
+.btn-run{
+  background:var(--accent);color:#fff;border:none;border-radius:var(--radius-md);
+  font-weight:700;padding:9px 24px;font-size:0.86em;
+  transition:all var(--ease-out);letter-spacing:0.02em;
+  cursor:pointer;font-family:var(--font-ui);
+  box-shadow:0 2px 8px rgba(14,165,233,0.25);
+}
+.btn-run:hover{background:var(--accent-strong);box-shadow:0 4px 16px rgba(14,165,233,0.35);transform:translateY(-1px)}
+.btn-run:active{transform:translateY(0)}
+.btn-run:disabled{background:var(--bg-overlay);color:var(--text-tertiary);box-shadow:none;cursor:not-allowed;transform:none}
+
+/* -------- DIM TABS -------- */
+.dim-tabs{
+  display:flex;gap:2px;margin-bottom:16px;flex-wrap:wrap;
+  background:var(--bg-inset);padding:3px;border-radius:var(--radius-md);
+}
+.dim-tab{
+  padding:7px 18px;border:none;border-radius:var(--radius-sm);
+  cursor:pointer;font-size:0.82em;background:transparent;
+  transition:all var(--ease-out);color:var(--text-secondary);font-weight:500;
+  font-family:var(--font-ui);
+}
+.dim-tab:hover{color:var(--text-primary)}
+.dim-tab.active{background:var(--bg-surface);color:var(--accent-strong);font-weight:650;box-shadow:var(--shadow-sm)}
+
+/* 审核切换按钮（结果页 dim-tabs 内） */
+.review-toggle{margin-left:auto}
+.review-toggle .review-btn-mark{font-weight:700}
+.review-toggle .review-btn-mark.done{color:var(--risk-low)}
+.review-toggle.reviewed{border-color:var(--risk-low);color:var(--risk-low)}
+
+.dim-pane{display:none}
+.dim-pane.active{display:block;animation:panelIn 0.2s var(--ease-out)}
+
+/* -------- CONTROL BARS -------- */
+.control-bar{
+  padding:8px 14px;background:var(--bg-inset);border-radius:var(--radius-md);
+  margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font-size:0.82em;border:1px solid var(--border);
+}
+.control-bar .control-label{font-weight:650;color:var(--text-primary)}
+.control-bar .control-sub-label{font-size:0.76em;color:var(--text-tertiary)}
+.control-bar .control-sep{color:var(--text-tertiary)}
+.control-bar .control-summary{font-weight:600;font-size:0.82em;font-family:var(--font-data)}
+.control-bar input[type=number]{width:62px;border:1px solid var(--border);background:var(--bg-root);color:var(--text-primary);border-radius:var(--radius-sm);padding:4px 6px;font-size:0.82em;font-family:var(--font-data);text-align:center}
+.control-bar input[type=number]:focus{border-color:var(--accent);outline:none}
+
+.volcano-bar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  font-size:0.76em;margin-bottom:8px;padding-bottom:8px;
+  border-bottom:1px solid var(--border-light);
+}
+.volcano-bar .control-label{font-weight:650;color:var(--text-primary)}
+.volcano-bar .control-sub-label{font-size:0.74em;color:var(--text-tertiary)}
+.volcano-bar .control-summary{font-weight:600;font-size:0.8em;font-family:var(--font-data)}
+.volcano-bar input[type=number]{width:58px;border:1px solid var(--border);background:var(--bg-root);color:var(--text-primary);border-radius:var(--radius-sm);padding:4px 6px;font-size:0.78em;font-family:var(--font-data);text-align:center}
+.volcano-bar input[type=number]:focus{border-color:var(--accent);outline:none}
+.volcano-bar .btn{padding:4px 10px;font-size:0.74em}
+.volcano-bar.collapsed{display:none}
+
+/* -------- PLOT CONTAINERS -------- */
+.plot-box{width:100%;height:500px}
+.plot-box .js-plotly-plot,.plot-box .plotly{border-radius:var(--radius-sm)}
+.plot-drill{width:100%;height:340px}
+
+/* Dimension analysis cards: equalize height, plot fills remaining space */
+.dim-cards-row{display:flex;flex-wrap:wrap}
+.dim-cards-row>.col-lg-4{display:flex}
+.dim-cards-row>.col-lg-4>.card{flex:1;display:flex;flex-direction:column}
+.dim-cards-row .card-body-sm{flex:1;display:flex;flex-direction:column}
+.dim-cards-row .volcano-bar{flex-shrink:0;min-height:32px}
+.dim-cards-row .plot-box{flex:1;height:auto;min-height:340px}
+
+/* -------- TABLES -------- */
+.table-scroll{max-height:500px;overflow-y:auto;border-radius:var(--radius-sm)}
+.table-scroll-lg{max-height:460px}
+.table-scroll thead{position:sticky;top:0;z-index:2}
+.table-scroll thead::after{
+  content:'';position:absolute;left:0;right:0;bottom:-4px;height:4px;
+  background:linear-gradient(to bottom,var(--bg-surface),transparent);pointer-events:none;
+}
+.table-scroll th{
+  background:var(--bg-elevated);font-size:0.74em;font-weight:650;
+  color:var(--text-secondary);border-bottom:2px solid var(--border);
+}
+.table-sm{font-size:0.8em}
+.table-sm td,.table-sm th{padding:8px 12px}
+.table-hover tbody tr:hover{background:var(--accent-muted) !important}
+.table-hover tbody tr:nth-child(even){background:var(--bg-inset)}
+.anomaly-center-name{color:var(--risk-high);font-family:var(--font-data);font-weight:600}
+.table-reason{font-size:0.78em;color:var(--text-secondary);max-width:260px}
+
+/* Lab report table — clinical reference style */
+.report-table-wrap{max-height:55vh;overflow-y:auto}
+.report-table{width:100%;border-collapse:collapse;font-size:0.82em}
+.report-table thead{position:sticky;top:0;z-index:2}
+.report-table th{
+  font-size:0.72em;font-weight:600;color:var(--text-tertiary);
+  text-transform:uppercase;letter-spacing:0.05em;
+  padding:6px 10px;text-align:left;border-bottom:2px solid var(--border);
+  background:var(--bg-surface);
+}
+.report-table tbody tr{
+  cursor:pointer;transition:background 0.12s ease;
+  border-bottom:1px solid var(--border-light);
+}
+.report-table tbody tr:hover{background:var(--accent-muted)}
+.report-table tbody tr.report-high{border-left:3px solid var(--risk-high)}
+.report-table tbody tr.report-medium{border-left:3px solid var(--risk-medium)}
+.report-table td{padding:7px 10px;vertical-align:middle}
+.report-var{
+  font-family:var(--font-data);font-weight:600;color:var(--text-primary);
+  font-size:0.88em;white-space:nowrap;
+}
+.report-high .report-var{color:var(--risk-high)}
+.report-dis{position:relative;min-width:100px}
+.report-dis-bar{
+  display:block;height:3px;border-radius:0 2px 2px 0;
+  background:var(--text-tertiary);opacity:0.18;
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+}
+.report-high .report-dis-bar{background:var(--risk-high);opacity:0.28}
+.report-medium .report-dis-bar{background:var(--risk-medium);opacity:0.22}
+.report-dis-val{
+  position:relative;z-index:1;font-family:var(--font-data);
+  font-weight:700;font-size:0.9em;color:var(--text-primary);
+}
+.report-count{
+  font-family:var(--font-data);font-weight:600;
+  font-size:0.84em;text-align:center;width:48px;
+}
+.report-count:empty::after,.report-count:not(:empty){color:var(--text-primary)}
+.report-centers{
+  font-family:var(--font-data);font-size:0.76em;
+  color:var(--text-secondary);max-width:320px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+/* -------- DRILLDOWN -------- */
+#drilldownSection{margin-top:16px}
+.drilldown-bar{
+  padding:10px 16px;background:var(--accent-muted);border:1px solid var(--accent-border);
+  border-radius:var(--radius-md);margin-bottom:12px;font-size:0.84em;
+  display:flex;align-items:center;gap:10px;
+}
+.drilldown-label{color:var(--text-secondary)}
+.drilldown-center-name{color:var(--accent-strong);font-family:var(--font-data);font-weight:700}
+.drilldown-close{color:var(--text-tertiary);margin-left:auto;font-size:0.72em;cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm);transition:all var(--ease-out)}
+.drilldown-close:hover{color:var(--risk-high);background:var(--risk-high-muted)}
+.drilldown-flash{
+  animation:drilldownPulse 0.6s ease 2;
+}
+@keyframes drilldownPulse{
+  0%,100%{box-shadow:0 0 0 rgba(14,165,233,0)}
+  30%,70%{box-shadow:0 0 0 8px var(--accent-muted),0 0 24px rgba(14,165,233,0.18)}
+}
+/* -------- DETAIL VIEW -------- */
+.detail-selector{padding:10px 14px;background:var(--bg-inset);border-radius:var(--radius-md);margin-bottom:12px;border:1px solid var(--border)}
+.detail-selector label{display:block;font-weight:650;font-size:0.76em;color:var(--text-secondary);margin-bottom:6px}
+.detail-selector-row{display:flex;align-items:center;gap:10px}
+.detail-center-input{flex:1;max-width:320px !important;border:1px solid var(--border) !important;background:var(--bg-root) !important;color:var(--text-primary) !important;border-radius:var(--radius-sm) !important;padding:7px 10px !important;font-size:0.84em !important;font-family:var(--font-data) !important}
+.detail-center-input:focus{border-color:var(--accent) !important;outline:none}
+.detail-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.detail-subject-card{
+  background:var(--bg-surface);border-radius:var(--radius-md);
+  border:1px solid var(--border);overflow:hidden;
+  transition:all var(--ease-out);
+}
+.detail-subject-card:hover{border-color:var(--accent-border);box-shadow:var(--shadow-glow)}
+.detail-subject-title{
+  font-size:0.62em;font-weight:700;text-align:center;
+  color:var(--text-primary);padding:4px 4px 2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:var(--font-data);background:var(--bg-elevated);
+}
+.detail-cell{width:100%;min-width:100px}
+.detail-sub-count{font-size:0.76em;color:var(--text-tertiary);font-family:var(--font-data)}
+
+/* -------- DETAIL PAGINATION -------- */
+.detail-pagination{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0 4px}
+.detail-page-btn{
+  padding:4px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;
+  font-size:0.72em;font-weight:600;font-family:var(--font-ui);
+  transition:all var(--ease-out);
+}
+.detail-page-btn:hover:not(:disabled){background:var(--accent-muted);color:var(--accent-strong);border-color:var(--accent-border)}
+.detail-page-btn:disabled{opacity:0.3;cursor:not-allowed}
+.detail-page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.detail-page-info{font-size:0.72em;color:var(--text-tertiary);padding:0 6px;font-family:var(--font-data)}
+
+/* -------- BADGES -------- */
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:3px;
+  font-size:0.72em;font-weight:650;font-family:var(--font-ui);
+}
+.badge-risk-HIGH{background:var(--risk-high);color:#fff}
+.badge-risk-MEDIUM{background:var(--risk-medium);color:#000}
+.badge-risk-LOW{background:var(--risk-low);color:#fff}
+.var-has-anomaly{color:var(--risk-high) !important;font-weight:650}
+.reason-tag{
+  display:inline-block;padding:1px 6px;border-radius:3px;
+  font-size:0.76em;font-weight:600;font-family:var(--font-ui);
+  white-space:nowrap;line-height:1.6;
+}
+.reason-tag.reason-mean{background:rgba(99,102,241,0.12);color:#6366f1}
+.reason-tag.reason-between{background:rgba(249,115,22,0.12);color:#f97316}
+.reason-tag.reason-within{background:rgba(14,165,233,0.12);color:#0ea5e9}
+/* -------- COLLAPSIBLE -------- */
+/* -------- VARIABLE SUMMARY CARDS -------- */
+.varsummary-strip{
+  display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;
+}
+.varsummary-strip-item{
+  flex:1;min-width:110px;padding:10px 14px;border-radius:var(--radius-md);
+  background:var(--bg-surface);border:1px solid var(--border);
+  text-align:center;
+}
+.varsummary-strip-val{
+  font-size:1.6em;font-weight:700;font-family:var(--font-data);line-height:1.2;
+}
+.varsummary-strip-lbl{font-size:0.68em;color:var(--text-tertiary);margin-top:2px}
+.varsummary-strip-item.high{border-left:3px solid var(--risk-high)}
+.varsummary-strip-item.high .varsummary-strip-val{color:var(--risk-high)}
+.varsummary-strip-item.medium{border-left:3px solid var(--risk-medium)}
+.varsummary-strip-item.medium .varsummary-strip-val{color:var(--risk-medium)}
+.varsummary-strip-item.total{border-left:3px solid var(--accent)}
+.varsummary-strip-item.total .varsummary-strip-val{color:var(--accent)}
+
+/* Dimension breakdown tables — collapsed by default */
+.dim-summary-toggle{user-select:none;cursor:pointer;margin-top:14px}
+.dim-summary-toggle:hover{color:var(--accent-strong)}
+.dim-summary-toggle .dim-summary-arrow{display:inline-block;transition:transform 0.2s ease}
+.dim-summary-toggle.collapsed .dim-summary-arrow{transform:rotate(-90deg)}
+.dim-summary-pane.collapsed{display:none}
+.dim-summary-pane{display:block}
+.dim-summary-pane.collapsed{display:none}
+.dim-summary-arrow{display:inline-block;transition:transform 0.15s ease;font-size:0.8em}
+
+/* -------- LOADING OVERLAY -------- */
+#loadingOverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(8,12,20,0.7);backdrop-filter:blur(4px);
+  z-index:9999;justify-content:center;align-items:center;
+}
+#loadingOverlay.show{display:flex}
+.loading-box{
+  background:var(--bg-surface);border-radius:var(--radius-xl);padding:36px 48px;
+  text-align:center;border:1px solid var(--border);box-shadow:var(--shadow-lg);
+}
+.loading-spinner{
+  width:36px;height:36px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin 0.8s linear infinite;margin:0 auto 12px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:0.9em;font-weight:600;color:var(--text-primary);margin-bottom:2px}
+.loading-step{font-size:0.76em;color:var(--text-tertiary)}
+
+/* -------- UTILITIES -------- */
+.text-muted{color:var(--text-tertiary) !important}
+.text-danger{color:var(--risk-high) !important}
+.fw-semibold{font-weight:600}
+.small{font-size:0.82em}
+.gap-1{gap:4px}.gap-2{gap:8px}.gap-3{gap:12px}
+.d-flex{display:flex}.align-items-center{align-items:center}.justify-content-between{justify-content:space-between}
+.mb-0{margin-bottom:0}.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}
+.mt-2{margin-top:8px}.mt-3{margin-top:12px}
+.w-100{width:100%}
+.rounded{border-radius:var(--radius-sm)}
+.row{display:flex;flex-wrap:wrap;margin:0 -6px}
+.col-sm-3{width:25%;padding:0 6px}
+.col-sm-4{width:33.333%;padding:0 6px}
+.col-sm-6{width:50%;padding:0 6px}
+.col-lg-4{width:33.333%;padding:0 8px}
+.col-lg-6{width:50%;padding:0 8px}
+</style>
+</head>
+<body>
+
+<!-- ======== SIDEBAR ======== -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-mark">S</div>
+    <div class="sidebar-brand-text">SMART<small>异常监测系统</small></div>
+  </div>
+  <!-- Data status card -->
+  <div class="sidebar-status" id="sidebarStatus">
+    <div class="sidebar-status-dot"></div>
+    <div class="sidebar-status-body">
+      <span class="sidebar-status-label" id="sidebarStatusLabel">未加载数据</span>
+      <span class="sidebar-status-detail" id="sidebarStatusDetail"></span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">导航</div>
+    <button class="sidebar-btn active" data-panel="prepare" id="btnPrepare">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      数据准备
+    </button>
+    <div class="sidebar-section-label">分析变量</div>
+    <div class="sidebar-var-search" id="sidebarVarSearchWrap" style="display:none">
+      <input type="text" id="sidebarVarSearch" class="sidebar-var-search-input" placeholder="搜索变量..." autocomplete="off">
+    </div>
+    <div id="sidebarVarItems"></div>
+  </nav>
+  <div class="sidebar-footer" id="sidebarFooter">
+    <div class="sidebar-footer-cite">de Viron et al. (2022)<br>SMART Statistical Monitoring</div>
+    <div class="sidebar-footer-risk" id="sidebarRiskSummary" style="display:none"></div>
+  </div>
+</aside>
+
+<!-- ======== MAIN ======== -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title" id="topbarTitle">数据准备</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-meta" id="topbarMeta">未加载数据</span>
+      <div class="theme-toggle" id="themeToggle" title="切换主题">
+        <button class="theme-toggle-opt" data-theme-val="dark">暗</button>
+        <button class="theme-toggle-opt active" data-theme-val="light">亮</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay">
+    <div class="loading-box">
+      <div class="loading-spinner"></div>
+      <div class="loading-msg" id="loadingMsg">计算中...</div>
+      <div class="loading-step" id="loadingStep"></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ===== PANEL: 数据准备 ===== -->
+    <div id="panel-prepare" class="panel active">
+      <div class="section-title">上传数据</div>
+      <div class="card">
+        <div class="card-body">
+          <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-icon">&#128194;</div>
+            <p class="drop-zone-title">拖拽 .json 文件到此处，或点击选择</p>
+            <p class="drop-zone-hint">数组格式 [{...}, {...}]，每条记录为一个对象</p>
+            <input type="file" id="fileInput" accept=".json" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div id="welcomeGuide" class="welcome-guide">
+        <div class="welcome-title">欢迎使用 SMART 异常监测</div>
+        <p class="welcome-desc">基于 SMART 统计方法的临床试验数据欺诈检测工具。上传数据后，系统将自动进行多维度异常分析（均值差异、受试者间变异、访视间变异），并通过 Z-Score 动态阈值标记潜在问题中心。</p>
+        <div class="welcome-cols">
+          <div class="welcome-col">
+            <div class="welcome-col-title">数据格式要求</div>
+            <div class="welcome-col-body">
+              每条记录为 JSON 对象，至少包含以下字段：<br>
+              <code>SITEID</code> — 中心编号（分组列）<br>
+              <code>CHG</code> — 相对基线的变化值（度量列）<br>
+              <code>USUBJID</code> — 受试者唯一标识<br>
+              <code>AVISIT</code> — 访视名称<br>
+              <code>PARAM</code> — 检验指标名称
+            </div>
+          </div>
+          <div class="welcome-col">
+            <div class="welcome-col-title">快速开始</div>
+            <div class="welcome-col-body">
+              1. 上传 .json 数据文件<br>
+              2. 确认自动匹配的列配置<br>
+              3. 点击「运行分析」开始批量检测<br>
+              4. 在变量汇总面板查看各指标风险排序<br>
+              5. 点击变量卡片深入分析单个指标
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">数据预览</div>
+      <div class="card" id="previewCard" style="display:none">
+        <div class="card-body card-body-sm">
+          <div class="stats-row mb-2" id="previewStats"></div>
+          <div class="table-scroll rounded">
+            <table class="table-sm table-hover mb-0" id="previewTable" style="width:100%"><thead></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">分析配置</div>
+      <div class="card" id="configCard">
+        <div class="card-body">
+          <!-- Core config: highlighted -->
+          <div class="config-core">
+            <div class="config-core-label">核心配置</div>
+            <div class="row">
+              <div class="col-sm-4">
+                <div class="form-label-sm">分组列 <span class="text-danger">*</span></div>
+                <select id="selGroupCol" class="form-select-sm"><option value="">-- 选择 --</option></select>
+              </div>
+              <div class="col-sm-4">
+                <div class="form-label-sm">度量列 <span class="text-danger">*</span></div>
+                <select id="selMeasureCol" class="form-select-sm"><option value="">-- 选择 --</option></select>
+              </div>
+              <div class="col-sm-4">
+                <div class="form-label-sm">子组列 <span class="text-muted">(可选)</span></div>
+                <select id="selSubGroupCol" class="form-select-sm"><option value="">-- 无 --</option></select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="col-sm-4">
+                <div class="form-label-sm">变量列 <span class="text-muted">(批量分析)</span></div>
+                <select id="selVarCol" class="form-select-sm"><option value="">-- 无 --</option></select>
+              </div>
+              <div class="col-sm-4">
+                <div class="form-label-sm">变量值</div>
+                <select id="varVal" class="form-select-sm"><option value="">-- 选择 --</option></select>
+              </div>
+            </div>
+          </div>
+          <!-- Advanced config: subdued -->
+          <div class="config-advanced">
+            <div class="config-advanced-label" id="toggleAdvanced">
+              <span class="config-advanced-arrow">▶</span> 高级设置
+            </div>
+            <div class="config-advanced-body collapsed" id="advancedBody">
+              <div class="row" style="margin-top:8px">
+                <div class="col-sm-3">
+                  <div class="form-label-sm">FDR 阈值</div>
+                  <input type="number" id="fdrThreshold" class="form-control-sm" value="0.05" min="0.01" max="0.5" step="0.01">
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-label-sm">每组最少观测</div>
+                  <input type="number" id="minObs" class="form-control-sm" value="3" min="2" max="50" step="1">
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-label-sm">筛选列</div>
+                  <select id="selFilterCol" class="form-select-sm"><option value="">-- 无 --</option></select>
+                </div>
+                <div class="col-sm-3">
+                  <div class="form-label-sm">排除值</div>
+                  <div class="d-flex gap-2 align-items-center" style="gap:8px">
+                    <input type="text" id="filterExcludeVal" class="form-control-sm" value="筛选期" placeholder="筛选期" style="flex:1">
+                    <div class="form-check mb-0" style="white-space:nowrap">
+                      <input class="form-check-input" type="checkbox" id="chkFilterEnabled" checked>
+                      <label class="form-check-label form-check-label-sm" for="chkFilterEnabled">启用</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Run button: prominent -->
+          <button id="btnRun" class="btn-run" style="width:100%;margin-top:12px" disabled>运行分析</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PANEL: 分析变量汇总 ===== -->
+    <div id="panel-varsummary" class="panel">
+      <!-- Top summary strip -->
+      <div class="varsummary-strip" id="varSummaryStrip"></div>
+      <!-- Variable card grid — sorted by severity -->
+      <div id="varSummaryGrid"></div>
+
+      <div class="section-title dim-summary-toggle collapsed" id="toggleMeanSummary">
+        <span class="dim-summary-arrow">▶</span> 均值差异汇总 <span id="meanSummaryBadge" style="font-weight:400;font-size:0.85em"></span>
+      </div>
+      <div class="card dim-summary-pane collapsed" id="paneMeanSummary">
+        <div class="card-body card-body-xs">
+          <div class="table-scroll" style="max-height:40vh">
+            <table class="table-sm table-hover mb-0" id="tableMeanSummary" style="width:100%">
+              <thead><tr><th>变量</th><th>异常中心数</th><th>异常中心</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title dim-summary-toggle collapsed" id="toggleBetweenSummary">
+        <span class="dim-summary-arrow">▶</span> 受试者变异汇总 <span id="betweenSummaryBadge" style="font-weight:400;font-size:0.85em"></span>
+      </div>
+      <div class="card dim-summary-pane collapsed" id="paneBetweenSummary">
+        <div class="card-body card-body-xs">
+          <div class="table-scroll" style="max-height:40vh">
+            <table class="table-sm table-hover mb-0" id="tableBetweenSummary" style="width:100%">
+              <thead><tr><th>变量</th><th>异常中心数</th><th>异常中心</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title dim-summary-toggle collapsed" id="toggleWithinSummary">
+        <span class="dim-summary-arrow">▶</span> 访视间变异汇总 <span id="withinSummaryBadge" style="font-weight:400;font-size:0.85em"></span>
+      </div>
+      <div class="card dim-summary-pane collapsed" id="paneWithinSummary">
+        <div class="card-body card-body-xs">
+          <div class="table-scroll" style="max-height:40vh">
+            <table class="table-sm table-hover mb-0" id="tableWithinSummary" style="width:100%">
+              <thead><tr><th>变量</th><th>异常中心数</th><th>异常中心</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PANEL: 分析维度（结果） ===== -->
+    <div id="panel-results" class="panel">
+      <div class="dim-tabs">
+        <span class="dim-tab active" data-dimtab="overall">综合分析</span>
+        <span class="dim-tab" data-dimtab="detail">细节展示</span>
+        <button id="btnReview" class="btn btn-outline btn-sm review-toggle" onclick="UIController.toggleCurrentReview()" title="标记/取消标记当前检查项为已审核">
+          <span class="review-btn-mark" id="btnReviewMark">○</span><span id="btnReviewText">标记已审核</span>
+        </button>
+      </div>
+
+      <div id="dim-overall" class="dim-pane active">
+        <div class="control-bar">
+          <span class="control-label">DIS Z-Score 阈值</span>
+          <label class="control-sub-label">警戒 Z:</label>
+          <input type="number" id="thrWarningZ" value="1.5" min="0.1" max="10" step="0.1">
+          <label class="control-sub-label">风险 Z:</label>
+          <input type="number" id="thrRiskZ" value="3" min="0.1" max="10" step="0.1">
+          <button id="btnUpdateOverall" class="btn btn-outline btn-sm">更新</button>
+        </div>
+        <div class="row">
+          <div class="col-lg-6">
+            <div class="card"><div class="card-body card-body-xs"><div id="plotDisBubble" class="plot-box"></div></div></div>
+          </div>
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header">异常中心列表 (DIS ≥ 风险阈值)</div>
+              <div class="card-body card-body-xs">
+                <div class="table-scroll table-scroll-lg">
+                  <table class="table-sm table-hover mb-0" id="tableAnomaly" style="width:100%"><thead></thead><tbody></tbody></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">维度分析</div>
+        <div class="row dim-cards-row">
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header">
+                均值差异
+                <span class="card-header-toggle" onclick="UIController.toggleVolcanoBar(this)" title="阈值设置">⚙</span>
+              </div>
+              <div class="card-body card-body-sm">
+                <div class="volcano-bar collapsed">
+                  <span class="control-label">效应量参考线: &plusmn;</span>
+                  <input type="number" id="refThreshold" value="1.5" min="0.1" max="20" step="0.1">
+                  <button id="btnUpdateRef" class="btn btn-outline btn-sm">更新</button>
+                  <span id="anomalySummary" class="control-summary"></span>
+                </div>
+                <div id="plotMeanVolcano" class="plot-box"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header">
+                受试者变异
+                <span class="card-header-toggle" onclick="UIController.toggleVolcanoBar(this)" title="阈值设置">⚙</span>
+              </div>
+              <div class="card-body card-body-sm">
+                <div class="volcano-bar collapsed">
+                  <label class="control-sub-label">下限:</label>
+                  <input type="number" id="refThrBetweenLow" value="1" min="0.01" max="50" step="0.1">
+                  <label class="control-sub-label">上限:</label>
+                  <input type="number" id="refThrBetweenHigh" value="10" min="0.1" max="50" step="0.1">
+                  <button id="btnUpdateRefBetween" class="btn btn-outline btn-sm">更新</button>
+                  <span id="anomalySummaryBetween" class="control-summary"></span>
+                </div>
+                <div id="plotBetweenVolcano" class="plot-box"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header">
+                访视间变异
+                <span class="card-header-toggle" onclick="UIController.toggleVolcanoBar(this)" title="阈值设置">⚙</span>
+              </div>
+              <div class="card-body card-body-sm">
+                <div class="volcano-bar collapsed">
+                  <label class="control-sub-label">下限:</label>
+                  <input type="number" id="refThrWithinLow" value="1" min="0.01" max="50" step="0.1">
+                  <label class="control-sub-label">上限:</label>
+                  <input type="number" id="refThrWithinHigh" value="10" min="0.1" max="50" step="0.1">
+                  <button id="btnUpdateRefWithin" class="btn btn-outline btn-sm">更新</button>
+                  <span id="anomalySummaryWithin" class="control-summary"></span>
+                </div>
+                <div id="plotWithinVolcano" class="plot-box"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drill-down -->
+        <div id="drilldownSection" style="display:none">
+          <div class="drilldown-bar">
+            <span class="drilldown-label">选中中心:</span>
+            <b id="drilldownCenter" class="drilldown-center-name">-</b>
+            <span class="drilldown-close" onclick="UIController.closeDrilldown()" title="关闭">&#x2715;</span>
+          </div>
+          <div class="section-title">维度交叉散点图</div>
+          <div class="row">
+            <div class="col-lg-4">
+              <div class="card"><div class="card-body card-body-xs"><div id="plotDrillScatter1" class="plot-drill"></div></div></div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card"><div class="card-body card-body-xs"><div id="plotDrillScatter2" class="plot-drill"></div></div></div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card"><div class="card-body card-body-xs"><div id="plotDrillScatter3" class="plot-drill"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dim-detail" class="dim-pane">
+        <div class="detail-selector">
+          <label>选择中心</label>
+          <div class="detail-selector-row">
+            <input id="detailCenterSelect" class="detail-center-input" list="detailCenterList" placeholder="输入或选择中心..." autocomplete="off">
+            <datalist id="detailCenterList"></datalist>
+            <span id="detailSubCount" class="detail-sub-count"></span>
+          </div>
+        </div>
+        <div class="detail-grid" id="detailGrid"></div>
+        <div class="detail-pagination" id="detailPagination"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ======== SCRIPTS ======== -->
+<script>
+(function loadScripts(){
+  const SCRIPT_TIMEOUT=8000;
+  function injectTry(urls,id){
+    let i=0;
+    return new Promise((resolve,reject)=>{
+      function tryNext(){
+        if(i>=urls.length)return reject(new Error(id+' load failed'));
+        const s=document.createElement('script');
+        s.src=urls[i];s.id=id;
+        const timer=setTimeout(()=>{
+          if(s.parentNode)s.parentNode.removeChild(s);
+          i++;tryNext();
+        },SCRIPT_TIMEOUT);
+        s.onload=()=>{clearTimeout(timer);console.log(id+' OK: '+urls[i]);resolve();};
+        s.onerror=()=>{clearTimeout(timer);i++;if(s.parentNode)s.parentNode.removeChild(s);tryNext();};
+        document.head.appendChild(s);
+      }
+      tryNext();
+    });
+  }
+  const jstatCDN=['lib/jstat.min.js'];
+  injectTry(jstatCDN,'jstat-cdn').catch(()=>console.warn('jStat CDN 不可用，使用纯 JS F 分布回退'));
+  window._plotlyReady=null;
+  window._loadPlotly=function(){
+    if(window._plotlyReady)return window._plotlyReady;
+    const plotlyCDN=['lib/plotly.min.js'];
+    window._plotlyReady=injectTry(plotlyCDN,'plotly-js').then(()=>{
+      console.log('Plotly loaded on demand');
+    }).catch(err=>{
+      console.warn('Plotly 加载失败: '+err.message);
+      throw err;
+    });
+    return window._plotlyReady;
+  };
+})();
+</script>
+
+<!-- ======== THEME SWITCHER ======== -->
+<script>
+(function(){
+  let currentTheme='light';
+  const html=document.documentElement;
+  const opts=document.querySelectorAll('.theme-toggle-opt');
+  opts.forEach(function(btn){
+    btn.addEventListener('click',function(){
+      const v=this.getAttribute('data-theme-val');
+      if(v===currentTheme)return;
+      currentTheme=v;
+      html.setAttribute('data-theme',v);
+      opts.forEach(function(b){b.classList.remove('active')});
+      this.classList.add('active');
+    });
+  });
+})();
+</script>
+
+<!-- ======== APP SCRIPTS (preserved logic) ======== -->
+<script>
+'use strict';
+
+// ============================================================================
+// F-DISTRIBUTION FALLBACK (pure JS)
+// ============================================================================
+const FDistFallback=(function(){
+  const EPS=2.22e-16,MAX_ITER=200;
+  function lgamma(x){
+    if(x<=0)return NaN;
+    if(x<12){let s=0,z=x;while(z<12){s+=Math.log(z);z++}return lgamma(z)-s}
+    const x2=x*x;
+    return(x-0.5)*Math.log(x)-x+0.9189385332046728
+      +1/(12*x)-1/(360*x*x2)+1/(1260*x2*x2*x)-1/(1680*x2*x2*x2*x);
+  }
+  function betaln(a,b){return lgamma(a)+lgamma(b)-lgamma(a+b)}
+  function contFrac(a,b,x){
+    const fpmin=1e-30;
+    let qab=a+b,qap=a+1,qam=a-1;
+    let c=1,d=1-qab*x/qap;
+    if(Math.abs(d)<fpmin)d=fpmin;
+    d=1/d;let f=d;
+    for(let m=1;m<=MAX_ITER;m++){
+      let m2=2*m;
+      let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+      d=1+aa*d;if(Math.abs(d)<fpmin)d=fpmin;
+      c=1+aa/c;if(Math.abs(c)<fpmin)c=fpmin;
+      d=1/d;f*=d*c;
+      aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+      d=1+aa*d;if(Math.abs(d)<fpmin)d=fpmin;
+      c=1+aa/c;if(Math.abs(c)<fpmin)c=fpmin;
+      d=1/d;let del=d*c;f*=del;
+      if(Math.abs(del-1)<EPS)break;
+    }
+    return f;
+  }
+  function incBeta(a,b,x){
+    if(x<=0)return 0;
+    if(x>=1)return 1;
+    if(x<(a+1)/(a+b+2)){
+      const bt=Math.exp(a*Math.log(x)+b*Math.log(1-x)-betaln(a,b));
+      return bt*contFrac(a,b,x)/a;
+    }else{
+      const bt=Math.exp(b*Math.log(1-x)+a*Math.log(x)-betaln(a,b));
+      return 1-bt*contFrac(b,a,1-x)/b;
+    }
+  }
+  return{
+    cdf(x,df1,df2){
+      if(x<=0)return 0;
+      const a=df1/2,b=df2/2;
+      const y=(df1*x)/(df1*x+df2);
+      return incBeta(a,b,y);
+    },
+    tail(x,df1,df2){
+      if(x<=0)return 1;
+      const a=df1/2,b=df2/2;
+      const y=(df1*x)/(df1*x+df2);
+      return incBeta(b,a,1-y);
+    },
+    incBeta
+  };
+})();
+
+// ============================================================================
+// STATS ENGINE
+// ============================================================================
+const StatsEngine=(function(){
+  let _fCdf=null;
+  function getFCdf(){
+    if(_fCdf)return _fCdf;
+    if(typeof jstat!=='undefined'&&jstat.centralF&&typeof jstat.centralF.cdf==='function')
+      _fCdf=(x,d1,d2)=>jstat.centralF.cdf(x,d1,d2);
+    else _fCdf=FDistFallback.cdf;
+    return _fCdf;
+  }
+  return{
+    mean:arr=>arr.reduce((s,v)=>s+v,0)/arr.length,
+    variance(arr,mu){
+      if(mu===undefined)mu=this.mean(arr);
+      const n=arr.length;if(n<=1)return 0;
+      return arr.reduce((s,v)=>s+(v-mu)**2,0)/(n-1);
+    },
+    sd(arr,mu){return Math.sqrt(this.variance(arr,mu))},
+    fCdf(x,df1,df2){return getFCdf()(x,df1,df2)},
+    fTail(x,df1,df2){return FDistFallback.tail(x,df1,df2)},
+
+    fTestMeanComparison(perGroupData,globalMean,globalN){
+      const grpStats=[];
+      let SS_within=0,SS_between=0;
+      for(const[grp,vals]of Object.entries(perGroupData)){
+        const n=vals.length,m=this.mean(vals);
+        const ss=vals.reduce((s,v)=>s+(v-m)**2,0);
+        grpStats.push({group:String(grp),n,mean:m,ss});
+        SS_within+=ss;
+        SS_between+=n*(m-globalMean)**2;
+      }
+      const SST=SS_within+SS_between;
+      const results=[];
+      for(const g of grpStats){
+        const n_i=g.n,mean_i=g.mean;
+        const n_others=globalN-n_i;
+        if(n_others<2)continue;
+        const mean_others=(globalMean*globalN-mean_i*n_i)/n_others;
+        const SS_model=n_i*(mean_i-globalMean)**2+n_others*(mean_others-globalMean)**2;
+        const MS_error=(SST-SS_model)/(globalN-2);
+        if(MS_error<=0)continue;
+        const F_val=(mean_i-mean_others)**2/(MS_error*(1/n_i+1/n_others));
+        const p_val=this.fTail(F_val,1,globalN-2);
+        results.push({group:g.group,n_i,n_others,mean_i,mean_others,F_val,p_val,
+                       effSize:mean_i-mean_others,effLabel:'均值差异'});
+      }
+      return results;
+    },
+
+    fTestVarianceComparison(subStats,varLabel){
+      let globalN_sub=0,SS_within_total=0,K=0;
+      const all=[];
+      for(const[grp,st]of Object.entries(subStats)){
+        const n_sub=st.values.length;if(n_sub<2)continue;
+        K++;globalN_sub+=n_sub;
+        const v=st.sd**2;SS_within_total+=v*(n_sub-1);
+        all.push({group:grp,n:n_sub,sd:st.sd,var:v,totalObs:st.totalObs||0});
+      }
+      if(K<2||globalN_sub<=K)return[];
+      const results=[];
+      for(const g of all){
+        const n_i=g.n,var_i=g.var,df_i=n_i-1;
+        const df_others=globalN_sub-K-n_i+1;
+        if(df_others<1)continue;
+        const SS_others=SS_within_total-var_i*(n_i-1);
+        const var_pooled=SS_others/df_others;
+        if(var_pooled<=0)continue;
+        const F_val=var_i/var_pooled;
+        const p_val=F_val<1?this.fCdf(F_val,df_i,df_others)
+                          :this.fTail(F_val,df_i,df_others);
+        results.push({group:g.group,n_i,n_others:globalN_sub-n_i,
+                       sd_i:g.sd,sd_pooled:Math.sqrt(var_pooled),totalObs:g.totalObs,
+                       F_val,p_val,effSize:g.sd-Math.sqrt(var_pooled),
+                       effLabel:varLabel+'差异',direction:F_val<1?'smaller':'larger'});
+      }
+      return results;
+    },
+
+    benjaminiHochberg(items){
+      const sorted=items.map((it,i)=>({...it,_oi:i}));
+      sorted.sort((a,b)=>a.p_val-b.p_val);
+      const M=sorted.length;
+      for(let i=0;i<M;i++)sorted[i].p_bh=Math.min(1,sorted[i].p_val*M/(i+1));
+      for(let i=M-2;i>=0;i--)sorted[i].p_bh=Math.min(sorted[i].p_bh,sorted[i+1].p_bh);
+      const out=new Array(M);
+      for(const it of sorted){it.p_adj=it.p_bh;out[it._oi]=it}
+      return out;
+    },
+
+    computeDIS(pAdjArray){
+      const v=pAdjArray.filter(p=>p>0&&p<=1);
+      if(v.length===0)return 0;
+      return v.reduce((s,p)=>s-Math.log10(p),0)/v.length;
+    },
+
+    classifyRisk(dis){return dis>=2.0?'HIGH':dis>=1.3?'MEDIUM':'LOW'}
+  };
+})();
+
+// ============================================================================
+// DATA MANAGER
+// ============================================================================
+const DataManager=(function(){
+  let _rows=[],_cols=[];
+  return{
+    getRows(){return _rows},
+    getCols(){return _cols},
+
+    parseJSON(file){
+      return new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=e=>{
+          try{
+            const data=JSON.parse(e.target.result);
+            if(!Array.isArray(data)||data.length===0)return reject(new Error('JSON 必须是对象数组 [{...}, ...]'));
+            _rows=data.map(row=>{const r={};for(const[k,v]of Object.entries(row))r[k]=(v===null||v===undefined)?'':v;return r});
+            _cols=Object.keys(_rows[0]||{});
+            resolve({rows:_rows.length,cols:_cols.length});
+          }catch(err){reject(new Error('JSON 解析失败: '+err.message))}
+        };
+        reader.onerror=()=>reject(new Error('文件读取失败'));
+        reader.readAsText(file);
+      });
+    },
+
+    getFilteredRows(filterCol,excludeVal,varCol,varVal){
+      var rows=_rows;
+      if(varCol&&varVal){
+        var vv=String(varVal).trim();
+        rows=rows.filter(function(r){return String(r[varCol]??'').trim()===vv});
+      }
+      if(filterCol&&excludeVal){
+        var ev=String(excludeVal).trim();
+        rows=rows.filter(function(r){return String(r[filterCol]??'').trim()!==ev});
+      }
+      return rows;
+    },
+
+    groupBy(groupCol,measureCol,filterCol,excludeVal,varCol,varVal){
+      const rows=this.getFilteredRows(filterCol,excludeVal,varCol,varVal);
+      const groups={};
+      for(const row of rows){
+        const g=String(row[groupCol]??'');if(!g)continue;
+        const raw=row[measureCol];
+        if(raw===''||raw===null||raw===undefined)continue;
+        const v=Number(raw);if(isNaN(v))continue;
+        if(!groups[g])groups[g]=[];groups[g].push(v);
+      }
+      return groups;
+    },
+
+    subGroupAggregate(groupCol,subGroupCol,measureCol,func,filterCol,excludeVal,varCol,varVal){
+      const rows=this.getFilteredRows(filterCol,excludeVal,varCol,varVal);
+      const tree={};
+      for(const row of rows){
+        const g=String(row[groupCol]??''),sg=String(row[subGroupCol]??'');
+        if(!g||!sg)continue;
+        const v=Number(row[measureCol]);if(isNaN(v))continue;
+        if(!tree[g])tree[g]={};if(!tree[g][sg])tree[g][sg]=[];tree[g][sg].push(v);
+      }
+      const result={};
+      for(const[g,sgMap]of Object.entries(tree)){
+        const stats=[];
+        let totalObs=0;
+        for(const[,vals]of Object.entries(sgMap)){
+          totalObs+=vals.length;
+          if(func==='mean')stats.push(StatsEngine.mean(vals));
+          else if(func==='sd'){if(vals.length<2)continue;stats.push(StatsEngine.sd(vals))}
+        }
+        if(stats.length<2)continue;
+        const mu=StatsEngine.mean(stats);
+        result[g]={values:stats,mean:mu,sd:StatsEngine.sd(stats,mu),n:stats.length,totalObs};
+      }
+      return result;
+    }
+  };
+})();
+
+// ============================================================================
+// VISUALIZATION — Academic journal quality (Nature / Science / NEJM standard)
+// ============================================================================
+const Visualization=(function(){
+  const CFG={responsive:true,displayModeBar:false};
+  const TH=-Math.log10(0.05);
+  const FONT='Georgia, Times New Roman, STSong, SimSun, serif';
+
+  // Journal-quality palette — dark theme
+  const COLORS={
+    nonsig:'rgba(165,175,190,0.38)',
+    sig:'rgba(68,130,185,0.62)',
+    hit:'rgba(205,78,72,0.80)',
+    highlight:'#E6A830',
+    grid:'rgba(255,255,255,0.04)',
+    axisLine:'rgba(255,255,255,0.22)',
+    tick:'#99A9BA',
+    title:'#C0CAD4',
+    refLine:'rgba(255,255,255,0.10)',
+    dangerZone:'rgba(205,78,72,0.045)',
+    bubbleGreen:'#5CAD90',
+    bubbleYellow:'#D9A840',
+    bubbleRed:'#E07570',
+    scatterDefault:'rgba(145,165,188,0.55)',
+    plotBg:'rgba(0,0,0,0)',
+    paperBg:'rgba(0,0,0,0)'
+  };
+
+  // Journal-quality palette — light theme (publication ready)
+  const LIGHT_COLORS={
+    nonsig:'rgba(175,182,190,0.50)',
+    sig:'rgba(45,100,160,0.62)',
+    hit:'rgba(188,52,48,0.78)',
+    highlight:'#B86E10',
+    grid:'rgba(0,0,0,0.048)',
+    axisLine:'rgba(0,0,0,0.48)',
+    tick:'#4A4A4C',
+    title:'#2A2A2C',
+    refLine:'rgba(0,0,0,0.16)',
+    dangerZone:'rgba(188,52,48,0.028)',
+    bubbleGreen:'#39856C',
+    bubbleYellow:'#C48928',
+    bubbleRed:'#B8403C',
+    scatterDefault:'rgba(80,105,135,0.52)',
+    plotBg:'#FFFFFF',
+    paperBg:'#FFFFFF'
+  };
+
+  function getColors(){
+    return document.documentElement.getAttribute('data-theme')==='light'?LIGHT_COLORS:COLORS;
+  }
+
+  function noPlotly(divId){
+    document.getElementById(divId).innerHTML=
+      '<div style="text-align:center;color:var(--text-tertiary);padding:60px 20px">'+
+      '<p style="font-weight:600;margin-bottom:4px">Plotly.js 未加载</p>'+
+      '<p style="font-size:0.82em">请检查网络连接后刷新页面</p></div>';
+  }
+
+  function baseLayout(title,xLabel,extra){
+    var C=getColors();
+    return Object.assign({
+      title:{text:''},
+      margin:{t:28,r:12,b:42,l:52},
+      xaxis:{
+        title:{text:xLabel||'',font:{size:11,color:C.title,family:FONT},standoff:6},
+        zeroline:false,gridcolor:C.grid,gridwidth:0.6,
+        showline:true,linecolor:C.axisLine,linewidth:0.8,
+        tickfont:{size:10,color:C.tick,family:FONT},
+        ticks:'inside',ticklen:3,tickwidth:0.6
+      },
+      yaxis:{
+        title:{text:'−log<sub>10</sub>(p<sub>FDR</sub>)',font:{size:11,color:C.title,family:FONT},standoff:4},
+        zeroline:false,gridcolor:C.grid,gridwidth:0.6,
+        showline:true,linecolor:C.axisLine,linewidth:0.8,
+        tickfont:{size:10,color:C.tick,family:FONT},
+        ticks:'inside',ticklen:3,tickwidth:0.6
+      },
+      plot_bgcolor:C.plotBg,
+      paper_bgcolor:C.paperBg,
+      font:{family:FONT},
+      hovermode:'closest',dragmode:false
+    },extra||{});
+  }
+
+  return{
+    drawVolcano(results,divId,xLabel,title,refThreshold,xMin,refThreshold2,hovTemplate,highlightGroup){
+      if(typeof Plotly==='undefined'){noPlotly(divId);return[]}
+      var C=getColors();
+      const v=results.filter(r=>r.p_adj>0&&isFinite(r.effSize));
+      if(!v.length){Plotly.newPlot(divId,[],{title:'无数据'},CFG);return[]}
+
+      const dual=refThreshold2!==undefined;
+      const thr=refThreshold||1.5;
+      const thr2=refThreshold2||10;
+      const xMax=Math.max(...v.map(r=>Math.abs(r.effSize)))*1.25;
+      const xLow=xMin!==undefined?xMin:-xMax;
+      const yMax=Math.max(...v.map(r=>-Math.log10(r.p_adj)))*1.12;
+
+      const layers={nonsig:[],sig:[],hit:[]};
+      for(const r of v){
+        const logp=-Math.log10(r.p_adj);
+        const beyond=dual?(r.effSize<thr||r.effSize>thr2)
+                          :Math.abs(r.effSize)>thr;
+        const sig=logp>=TH;
+        const pt={x:r.effSize,y:logp,...r};
+        if(sig&&beyond)layers.hit.push(pt);
+        else if(sig)layers.sig.push(pt);
+        else layers.nonsig.push(pt);
+      }
+
+      const cd=r=>[r.n_i,r.n_others||0,r.F_val,r.p_val,r.p_adj,
+                   r.sd_i!==undefined?r.sd_i:(r.mean_i||0),
+                   r.sd_pooled!==undefined?r.sd_pooled:(r.mean_others||0),
+                   r.totalObs||0];
+
+      const defaultHov='<b>%{text}</b><br>效应量: %{x:.3f}<br>−log₁₀(p<sub>FDR</sub>): %{y:.3f}<br>N=%{customdata[0]}  F=%{customdata[4]:.2f}<extra></extra>';
+      const hov=hovTemplate||defaultHov;
+      const traces=[];
+
+      // Non-significant: faint small open circles
+      if(layers.nonsig.length)traces.push({
+        x:layers.nonsig.map(p=>p.x),y:layers.nonsig.map(p=>p.y),
+        text:layers.nonsig.map(p=>p.group||p.g),
+        customdata:layers.nonsig.map(cd),
+        type:'scatter',mode:'markers',name:'不显著',
+        marker:{size:4.5,color:'transparent',
+                line:{width:0.6,color:C.nonsig}},
+        hovertemplate:hov
+      });
+
+      // Significant: filled semi-transparent, slightly larger
+      if(layers.sig.length)traces.push({
+        x:layers.sig.map(p=>p.x),y:layers.sig.map(p=>p.y),
+        text:layers.sig.map(p=>p.group||p.g),
+        customdata:layers.sig.map(cd),
+        type:'scatter',mode:'markers',name:'显著',
+        marker:{size:7,color:C.sig,
+                line:{width:0.6,color:'rgba(255,255,255,0.25)'}},
+        hovertemplate:hov
+      });
+
+      // Hits: prominent filled circles with subtle outline
+      if(layers.hit.length)traces.push({
+        x:layers.hit.map(p=>p.x),y:layers.hit.map(p=>p.y),
+        text:layers.hit.map(p=>p.group||p.g),
+        customdata:layers.hit.map(cd),
+        type:'scatter',mode:highlightGroup?'markers':'markers+text',name:'异常',
+        textposition:'top center',
+        textfont:{size:9,color:C.hit,family:FONT},
+        marker:{size:9.5,color:C.hit,
+                line:{width:0.8,color:'rgba(255,255,255,0.35)'}},
+        hovertemplate:hov
+      });
+
+      // Highlighted center marker
+      if(highlightGroup){
+        const hp=v.find(r=>(r.group||r.g)===highlightGroup);
+        if(hp){
+          const hpLogp=-Math.log10(hp.p_adj);
+          traces.push({
+            x:[hp.effSize],y:[hpLogp],
+            text:[highlightGroup],customdata:[cd(hp)],
+            type:'scatter',mode:'markers+text',name:highlightGroup,
+            textposition:'top center',
+            textfont:{size:10,color:C.highlight,family:FONT},
+            marker:{size:14,color:C.highlight,symbol:'diamond',opacity:0.92,
+                    line:{width:1.6,color:'#fff'}},
+            showlegend:false,hovertemplate:hov
+          });
+        }
+      }
+
+      // Only Y-axis significance threshold — color coding already marks anomalous points
+      const shapes=[
+        {type:'line',x0:0,x1:1,xref:'paper',y0:TH,y1:TH,
+         line:{dash:'dot',color:C.refLine,width:0.8}}
+      ];
+
+      var annotations=[{
+        x:xMax*0.94,y:TH,xref:'x',yref:'y',
+        text:'<i>p</i><sub>FDR</sub> = 0.05',showarrow:false,
+        font:{size:8,color:C.tick,family:FONT},xanchor:'right',yanchor:'bottom'
+      }];
+
+      const layout=baseLayout(title,xLabel,{
+        xaxis:{
+          title:{text:xLabel,font:{size:11,color:C.title,family:FONT},standoff:6},
+          range:[xLow,xMax],zeroline:false,
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:10,color:C.tick,family:FONT}
+        },
+        yaxis:{
+          title:{text:'−log<sub>10</sub>(p<sub>FDR</sub>)',font:{size:11,color:C.title,family:FONT},standoff:4},
+          range:[0,yMax],
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:10,color:C.tick,family:FONT},zeroline:false
+        },
+        shapes,annotations,
+        legend:{
+          x:0.5,y:1.05,xanchor:'center',yanchor:'bottom',orientation:'h',
+          bgcolor:'rgba(0,0,0,0)',font:{size:10,color:C.title,family:FONT},
+          itemclick:false,itemdoubleclick:false
+        }
+      });
+
+      const existingPlot=document.getElementById(divId).querySelector('.js-plotly-plot,.plotly');
+      if(!existingPlot){Plotly.newPlot(divId,traces,layout,CFG)}
+      else{Plotly.react(divId,traces,layout,CFG)}
+
+      return layers.hit.map(p=>p.group||p.g);
+    },
+
+    drawDrillScatter(merged,divId,xKey,yKey,xLabel,yLabel,highlightGroup){
+      if(typeof Plotly==='undefined'){noPlotly(divId);return}
+      var C=getColors();
+      const d=merged.filter(r=>{
+        const xv=r[xKey],yv=r[yKey];
+        return xv!==undefined&&xv!==null&&!isNaN(xv)
+            && yv!==undefined&&yv!==null&&!isNaN(yv);
+      });
+      if(!d.length){Plotly.newPlot(divId,[],{title:'无数据'},CFG);return}
+
+      const xs=d.map(r=>r[xKey]),ys=d.map(r=>r[yKey]);
+      const groups=d.map(r=>r.group);
+
+      const traces=[{
+        x:xs,y:ys,text:groups,
+        customdata:d.map(r=>[(r.dis||0).toFixed(3)]),
+        type:'scatter',mode:'markers',name:'中心',
+        marker:{size:8,color:C.scatterDefault,opacity:0.58,
+                line:{width:0.5,color:'rgba(255,255,255,0.12)'}},
+        hovertemplate:'<b>%{text}</b><br>'+xLabel+': %{x:.3f}<br>'+yLabel+': %{y:.3f}<br>DIS: %{customdata[0]}<extra></extra>',
+        showlegend:false
+      }];
+
+      if(highlightGroup){
+        const hp=d.find(r=>r.group===highlightGroup);
+        if(hp){
+          traces.push({
+            x:[hp[xKey]],y:[hp[yKey]],text:[highlightGroup],
+            customdata:[[(hp.dis||0).toFixed(3)]],
+            type:'scatter',mode:'markers+text',name:highlightGroup,
+            textposition:'top center',
+            textfont:{size:10,color:C.highlight,family:FONT},
+            marker:{size:14,color:C.highlight,symbol:'diamond',opacity:0.92,
+                    line:{width:1.6,color:'#fff'}},
+            showlegend:false,
+            hovertemplate:'<b>%{text}</b><br>'+xLabel+': %{x:.3f}<br>'+yLabel+': %{y:.3f}<br>DIS: %{customdata[0]}<extra></extra>'
+          });
+        }
+      }
+
+      Plotly.newPlot(divId,traces,baseLayout('',xLabel,{
+        margin:{t:20,r:8,b:38,l:48},
+        xaxis:{
+          title:{text:xLabel,font:{size:11,color:C.title,family:FONT},standoff:4},
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:9,color:C.tick,family:FONT},zeroline:false
+        },
+        yaxis:{
+          title:{text:yLabel,font:{size:11,color:C.title,family:FONT},standoff:4},
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:9,color:C.tick,family:FONT},zeroline:false
+        }
+      }),CFG);
+    },
+
+    drawDisBar(merged,divId){
+      if(typeof Plotly==='undefined'){noPlotly(divId);return}
+      var C=getColors();
+      const s=[...merged].sort((a,b)=>(b.dis||0)-(a.dis||0));
+      if(!s.length){Plotly.newPlot(divId,[],{title:'无数据'},CFG);return}
+      const N=s.length;
+      const rc=dis=>dis>=2.0?C.bubbleRed:dis>=1.3?C.bubbleYellow:C.bubbleGreen;
+      Plotly.newPlot(divId,[{
+        x:s.map(r=>r.dis||0),y:s.map(r=>r.group),type:'bar',orientation:'h',
+        marker:{color:s.map(r=>rc(r.dis||0)),opacity:0.85,
+                line:{width:0.4,color:'rgba(0,0,0,0.08)'}},
+        hovertemplate:'%{y}<br>DIS = %{x:.3f}<extra></extra>'
+      }],Object.assign(baseLayout('','DIS'),{
+        xaxis:{title:{text:'DIS',font:{size:11,color:C.title,family:FONT}}},
+        yaxis:{autorange:'reversed'},
+        shapes:[
+          {type:'line',x0:2.0,x1:2.0,y0:-0.5,y1:N-0.5,line:{dash:'dash',color:C.bubbleRed,width:1.0}},
+          {type:'line',x0:1.3,x1:1.3,y0:-0.5,y1:N-0.5,line:{dash:'dash',color:C.bubbleYellow,width:0.8}}
+        ],
+        margin:{t:32,r:14,b:44,l:84},height:Math.max(380,N*22+70)
+      }),CFG);
+    },
+
+    drawDisBubble(merged,divId,thrWarn,thrRisk,zWarn,zRisk){
+      if(typeof Plotly==='undefined'){noPlotly(divId);return null}
+      var C=getColors();
+      const d=merged.filter(r=>{const n=r.between_n||r.within_n||0;return n>=2&&(r.dis||0)>0});
+      if(!d.length){Plotly.newPlot(divId,[],{title:'无数据'},CFG);return{nTotal:0}}
+
+      const nSubj=d.map(r=>r.between_n||r.within_n||0);
+      const disVals=d.map(r=>r.dis);
+      const groups=d.map(r=>r.group);
+      const minN=Math.min(...nSubj),maxN=Math.max(...nSubj);
+      const sz=nSubj.map(n=>7+(n-minN)/Math.max(1,maxN-minN)*28);
+
+      const tw=thrWarn||1.3,tr=thrRisk||2.0;
+      const getColor=dis=>dis>=tr?C.bubbleRed:dis>=tw?C.bubbleYellow:C.bubbleGreen;
+      const getLevel=dis=>dis>=tr?'风险':dis>=tw?'警戒':'正常';
+      const colors=d.map(r=>getColor(r.dis||0));
+      const anomalous=d.filter(r=>r.dis>=tr).map(r=>r.group);
+
+      Plotly.newPlot(divId,[{
+        x:nSubj,y:disVals,text:groups,
+        customdata:d.map(r=>[r.dis.toFixed(3),getLevel(r.dis)]),
+        type:'scatter',mode:'markers+text',
+        textposition:'top center',
+        textfont:{size:9,color:C.tick,family:FONT},
+        marker:{size:sz,color:colors,opacity:0.80,line:{width:0.5,color:'rgba(255,255,255,0.25)'},
+                sizemode:'area',sizeref:0.04},
+        hovertemplate:'<b>%{text}</b><br>入组受试者数: %{x}<br>DIS: %{customdata[0]}<br>等级: %{customdata[1]}<extra></extra>'
+      }],Object.assign(baseLayout('','入组受试者数',{
+        xaxis:{
+          title:{text:'入组受试者数',font:{size:11,color:C.title,family:FONT},standoff:6},
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:10,color:C.tick,family:FONT},zeroline:false
+        },
+        yaxis:{
+          title:{text:'DIS 分数',font:{size:11,color:C.title,family:FONT},standoff:4},
+          gridcolor:C.grid,gridwidth:0.6,
+          showline:true,linecolor:C.axisLine,linewidth:0.8,
+          tickfont:{size:10,color:C.tick,family:FONT},zeroline:false
+        },
+        shapes:[
+          {type:'line',x0:0,x1:1,xref:'paper',y0:tw,y1:tw,
+           line:{dash:'dash',color:C.bubbleYellow,width:0.8}},
+          {type:'line',x0:0,x1:1,xref:'paper',y0:tr,y1:tr,
+           line:{dash:'dash',color:C.bubbleRed,width:1.0}}
+        ],
+        annotations:[
+          {x:1,y:tw,xref:'paper',yref:'y',xanchor:'right',
+           text:'警戒 Z='+zWarn+' (DIS='+tw.toFixed(2)+')',showarrow:false,
+           font:{size:8,color:C.bubbleYellow,family:FONT}},
+          {x:1,y:tr,xref:'paper',yref:'y',xanchor:'right',
+           text:'风险 Z='+zRisk+' (DIS='+tr.toFixed(2)+')',showarrow:false,
+           font:{size:8,color:C.bubbleRed,family:FONT}}
+        ]
+      })),CFG);
+
+      return{anomalous,thrWarn:tw,thrRisk:tr,nTotal:d.length};
+    }
+  };
+})();
+
+// ============================================================================
+// UI CONTROLLER (preserved exactly)
+// ============================================================================
+const UIController=(function(){
+  let _state={loaded:false,results:null,merged:null,plotsRendered:{},perVarResults:{},activeVar:null};
+  let _reviewedSet=new Set();
+
+  function loadReviewedVars(){
+    try{
+      var raw=localStorage.getItem('reviewedVars');
+      var arr=raw?JSON.parse(raw):[];
+      _reviewedSet=new Set(Array.isArray(arr)?arr:[]);
+    }catch(e){_reviewedSet=new Set();}
+  }
+  function isReviewed(v){return _reviewedSet.has(v)}
+  function persistReviewed(){
+    try{localStorage.setItem('reviewedVars',JSON.stringify(Array.from(_reviewedSet)));}catch(e){}
+  }
+  function refreshReviewMarks(){
+    document.querySelectorAll('.sidebar-var-btn').forEach(function(btn){
+      var v=btn.getAttribute('data-var');
+      var mark=btn.querySelector('.review-mark');
+      if(!mark)return;
+      var done=isReviewed(v);
+      mark.textContent=done?'✓':'○';
+      mark.classList.toggle('done',done);
+    });
+    updateReviewButton();
+  }
+  function updateReviewButton(){
+    var btn=document.getElementById('btnReview');
+    if(!btn)return;
+    var v=_state.activeVar;
+    if(!v){btn.style.display='none';return}
+    btn.style.display='';
+    var done=isReviewed(v);
+    var mark=document.getElementById('btnReviewMark');
+    var txt=document.getElementById('btnReviewText');
+    if(mark){mark.textContent=done?'✓':'○';mark.classList.toggle('done',done);}
+    if(txt){txt.textContent=done?'已审核':'标记已审核';}
+    btn.classList.toggle('reviewed',done);
+  }
+  function toggleReviewed(v){
+    if(!v)return;
+    if(isReviewed(v))_reviewedSet.delete(v);
+    else _reviewedSet.add(v);
+    persistReviewed();
+    refreshReviewMarks();
+  }
+  function toggleCurrentReview(){
+    toggleReviewed(_state.activeVar);
+  }
+
+  function switchPanel(name){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    var targetPanel;
+    if(name==='prepare')targetPanel='panel-prepare';
+    else if(name==='varsummary')targetPanel='panel-varsummary';
+    else targetPanel='panel-results';
+    var p=document.getElementById(targetPanel);
+    if(p)p.classList.add('active');
+    document.querySelectorAll('.sidebar-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.sidebar-parent-btn').forEach(b=>b.classList.remove('active'));
+    if(name==='prepare'){
+      var btn=document.getElementById('btnPrepare');
+      if(btn)btn.classList.add('active');
+      document.getElementById('topbarTitle').textContent='数据准备';
+    }else if(name==='varsummary'){
+      var parentBtn=document.getElementById('sidebarParentBtn');
+      if(parentBtn)parentBtn.classList.add('active');
+      document.getElementById('topbarTitle').textContent='分析变量汇总';
+      renderVarSummary();
+    }else{
+      var varBtn=document.querySelector('.sidebar-var-btn[data-var="'+name.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]');
+      if(varBtn)varBtn.classList.add('active');
+      document.getElementById('topbarTitle').innerHTML='<span class="topbar-back" onclick="UIController.switchPanel(\'varsummary\')">← 返回汇总</span> <span class="topbar-sep">|</span> '+name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      _state.activeVar=name;
+      document.getElementById('drilldownSection').style.display='none';
+      document.querySelectorAll('.dim-tab').forEach(function(t){t.classList.remove('active')});
+      var overallTab=document.querySelector('.dim-tab[data-dimtab="overall"]');
+      if(overallTab)overallTab.classList.add('active');
+      document.querySelectorAll('.dim-pane').forEach(function(p){p.classList.remove('active')});
+      var overallPane=document.getElementById('dim-overall');
+      if(overallPane)overallPane.classList.add('active');
+      if(_state.perVarResults[name]){
+        _state.results=_state.perVarResults[name].results;
+        _state.merged=_state.perVarResults[name].merged;
+        _state.config=_state.perVarResults[name].config;
+        _state.zThresholds=_state.perVarResults[name].zThresholds||null;
+        _state.plotsRendered={};
+        _state._volcanoClicksBound=false;
+        _detailCenters=null;
+        _detailSelInited=false;
+        _detailProgrammatic=false;
+        updateSidebarRiskSummary(_state.merged);
+        renderActivePlot();
+      }
+    }
+    // 切换面板后回到内容区顶部，避免停留在上一面板的滚动位置（如点侧栏下方检查项后看不到气泡图）
+    var content=document.querySelector('.content');
+    if(content)content.scrollTop=0;
+    updateReviewButton();
+  }
+
+  function showLoading(msg,step){
+    document.getElementById('loadingMsg').textContent=msg||'计算中...';
+    document.getElementById('loadingStep').textContent=step||'';
+    document.getElementById('loadingOverlay').classList.add('show');
+    updateSidebarStatus('running', step||msg||'');
+  }
+  function hideLoading(){
+    document.getElementById('loadingOverlay').classList.remove('show');
+    if(_state.loaded){
+      var rows=DataManager.getRows(),cols=DataManager.getCols();
+      updateSidebarStatus('loaded', rows.length+' 行 × '+cols.length+' 列');
+    }
+  }
+
+  function renderPreview(){
+    const rows=DataManager.getRows(),cols=DataManager.getCols();
+    document.getElementById('previewCard').style.display='block';
+    document.getElementById('previewStats').innerHTML=
+      '<div class="stat-pill"><span class="stat-pill-val">'+rows.length+'</span><span class="stat-pill-lbl">行数</span></div>'+
+      '<div class="stat-pill"><span class="stat-pill-val">'+cols.length+'</span><span class="stat-pill-lbl">列数</span></div>';
+    const thead=document.querySelector('#previewTable thead');
+    thead.innerHTML='<tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+    const tbody=document.querySelector('#previewTable tbody');
+    tbody.innerHTML=rows.slice(0,10).map(r=>'<tr>'+cols.map(c=>{
+      var v=r[c]??'';
+      if(c.toUpperCase()==='ADT')v=String(v).substring(0,10);
+      return '<td>'+v+'</td>';
+    }).join('')+'</tr>').join('');
+    if(rows.length>10)
+      tbody.innerHTML+='<tr><td colspan="'+cols.length+'" style="color:var(--text-tertiary);text-align:center">... 仅显示前 10 行</td></tr>';
+    document.getElementById('topbarMeta').textContent='已加载: '+rows.length+' 行 × '+cols.length+' 列';
+    updateSidebarStatus('loaded', rows.length+' 行 × '+cols.length+' 列');
+  }
+
+  function updateSidebarStatus(state, detail){
+    var dot=document.querySelector('.sidebar-status-dot');
+    var label=document.getElementById('sidebarStatusLabel');
+    var detailEl=document.getElementById('sidebarStatusDetail');
+    dot.className='sidebar-status-dot';
+    if(state==='loaded'){dot.classList.add('loaded');label.textContent='数据已就绪'}
+    else if(state==='running'){dot.classList.add('running');label.textContent='分析中...'}
+    else{label.textContent='未加载数据'}
+    detailEl.textContent=detail||'';
+  }
+
+  function updateSidebarRiskSummary(merged){
+    var el=document.getElementById('sidebarRiskSummary');
+    var cite=document.querySelector('.sidebar-footer-cite');
+    if(!el)return;
+    if(!merged||!merged.length){
+      el.style.display='none';
+      if(cite)cite.style.display='block';
+      return;
+    }
+    var counts={HIGH:0,MEDIUM:0,LOW:0};
+    for(var i=0;i<merged.length;i++){
+      var g=merged[i];
+      // Match bubble chart filter: exclude centers with <2 subjects
+      if((g.between_n||g.within_n||0)<2)continue;
+      if(g.risk==='HIGH')counts.HIGH++;
+      else if(g.risk==='MEDIUM')counts.MEDIUM++;
+      else if(g.risk==='LOW')counts.LOW++;
+    }
+    if(cite)cite.style.display='none';
+    el.style.display='block';
+    el.innerHTML=
+      '<div class="sidebar-risk-row"><span class="sidebar-risk-dot high"></span> 高危<span class="sidebar-risk-val">'+counts.HIGH+'</span></div>'+
+      '<div class="sidebar-risk-row"><span class="sidebar-risk-dot medium"></span> 中危<span class="sidebar-risk-val">'+counts.MEDIUM+'</span></div>'+
+      '<div class="sidebar-risk-row"><span class="sidebar-risk-dot low"></span> 低危<span class="sidebar-risk-val">'+counts.LOW+'</span></div>';
+  }
+
+  function updateVariableBadges(){
+    var btns=document.querySelectorAll('.sidebar-var-btn');
+    btns.forEach(function(btn){
+      var varName=btn.getAttribute('data-var');
+      var badge=btn.querySelector('.badge-count');
+      if(!badge)return;
+      var pr=_state.perVarResults[varName];
+      if(!pr||!pr.merged){badge.style.display='none';return}
+      var highCount=0;
+      for(var i=0;i<pr.merged.length;i++){
+        var g=pr.merged[i];
+        if((g.between_n||g.within_n||0)<2)continue;
+        if(g.risk==='HIGH')highCount++;
+      }
+      if(highCount>0){
+        badge.textContent=highCount;
+        badge.className='badge-count';
+        badge.style.display='';
+      }else{
+        var warnCount=0;
+        for(var j=0;j<pr.merged.length;j++){
+          var g2=pr.merged[j];
+          if((g2.between_n||g2.within_n||0)<2)continue;
+          if(g2.risk==='MEDIUM')warnCount++;
+        }
+        if(warnCount>0){
+          badge.textContent=warnCount;
+          badge.className='badge-count warn';
+          badge.style.display='';
+        }else{
+          badge.style.display='none';
+        }
+      }
+    });
+  }
+
+  async function handleFile(file){
+    if(!file)return;
+    if(!file.name.endsWith('.json')){alert('请选择 .json 文件');return}
+    showLoading('解析中...',file.name);
+    try{
+      await DataManager.parseJSON(file);
+      hideLoading();_state.loaded=true;
+      var guide=document.getElementById('welcomeGuide');
+      if(guide)guide.style.display='none';
+      renderPreview();
+      setupColumnSelects();
+      document.getElementById('btnRun').disabled=false;
+    }catch(err){hideLoading();alert(err.message)}
+  }
+
+  function setupColumnSelects(){
+    const cols=DataManager.getCols();
+    const opts=cols.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+    document.getElementById('selSubGroupCol').innerHTML='<option value="">-- 无 --</option>'+opts;
+    document.getElementById('selFilterCol').innerHTML='<option value="">-- 无 --</option>'+opts;
+    document.getElementById('selVarCol').innerHTML='<option value="">-- 无 --</option>'+opts;
+    ['selGroupCol','selMeasureCol'].forEach(id=>{
+      document.getElementById(id).innerHTML='<option value="">-- 选择 --</option>'+opts;
+    });
+    // Case-insensitive column matching helper
+    var findCI=function(target){
+      var t=target.toUpperCase();
+      for(var i=0;i<cols.length;i++){
+        if(String(cols[i]).toUpperCase()===t)return cols[i];
+      }
+      return null;
+    };
+    var siteCol=findCI('SITEID');if(siteCol)document.getElementById('selGroupCol').value=siteCol;
+    var chgCol=findCI('CHG');if(chgCol)document.getElementById('selMeasureCol').value=chgCol;
+    var subCol=findCI('USUBJID');if(subCol)document.getElementById('selSubGroupCol').value=subCol;
+    var visitCol=findCI('AVISIT');if(visitCol)document.getElementById('selFilterCol').value=visitCol;
+    var paramCol=findCI('PARAM');if(paramCol)document.getElementById('selVarCol').value=paramCol;
+    populateVarValues();
+  }
+
+  function populateVarValues(){
+    var varCol=document.getElementById('selVarCol').value;
+    var sel=document.getElementById('varVal');
+    var sidebarDiv=document.getElementById('sidebarVarItems');
+    if(!varCol){
+      sel.innerHTML='<option value="">-- 选择 --</option>';
+      sidebarDiv.innerHTML='';
+      return;
+    }
+    var rows=DataManager.getRows();
+    var seen={};
+    var vals=[];
+    for(var i=0;i<rows.length;i++){
+      var v=String(rows[i][varCol]??'').trim();
+      if(v&&!seen[v]){seen[v]=true;vals.push(v)}
+    }
+    vals.sort();
+    sel.innerHTML='<option value="">-- 选择 --</option>'+vals.map(function(v){
+      return '<option value="'+v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')+'">'+v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</option>';
+    }).join('');
+    if(vals.indexOf('体重 (VS)')>=0)sel.value='体重 (VS)';
+    else if(vals.indexOf('体重( VS )')>=0)sel.value='体重( VS )';
+
+    var esc=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+    sidebarDiv.innerHTML=
+      '<div class="sidebar-parent-btn" id="sidebarParentBtn">'+
+        '<span class="arrow" id="sidebarParentArrow">▼</span>'+
+        '<span>分析变量 ('+vals.length+')</span>'+
+      '</div>'+
+      '<div class="sidebar-var-items" id="sidebarVarList">'+
+        vals.map(function(v){
+          return '<button class="sidebar-btn sidebar-var-btn" data-var="'+esc(v)+'">'+
+            '<span class="review-mark" title="点击标记已审核">'+(isReviewed(v)?'✓':'○')+'</span>'+
+            esc(v)+
+            '<span class="badge-count" style="display:none"></span></button>';
+        }).join('')+
+      '</div>';
+
+    // Show search input
+    var searchWrap=document.getElementById('sidebarVarSearchWrap');
+    if(searchWrap)searchWrap.style.display=vals.length>10?'block':'none';
+
+    // Search filter
+    var searchInput=document.getElementById('sidebarVarSearch');
+    searchInput.value='';
+    searchInput.oninput=function(){
+      var q=(searchInput.value||'').toLowerCase();
+      var btns=document.querySelectorAll('.sidebar-var-btn');
+      btns.forEach(function(b){
+        var txt=(b.getAttribute('data-var')||'').toLowerCase();
+        b.style.display=(!q||txt.indexOf(q)>=0)?'':'none';
+      });
+    };
+
+    document.getElementById('sidebarParentBtn').addEventListener('click',async function(e){
+      if(e.target.id==='sidebarParentArrow')return;
+      if(_state.loaded&&!Object.keys(_state.perVarResults).length){
+        var varCol=document.getElementById('selVarCol').value;
+        var groupCol=document.getElementById('selGroupCol').value;
+        var measureCol=document.getElementById('selMeasureCol').value;
+        if(varCol&&groupCol&&measureCol){
+          await runAnalysis();
+          return;
+        }
+        switchPanel('prepare');
+        return;
+      }
+      switchPanel('varsummary');
+    });
+
+    document.getElementById('sidebarParentArrow').addEventListener('click',function(e){
+      e.stopPropagation();
+      var parent=document.getElementById('sidebarParentBtn');
+      parent.classList.toggle('collapsed');
+      document.getElementById('sidebarVarList').classList.toggle('collapsed');
+    });
+
+    var btns=sidebarDiv.querySelectorAll('.sidebar-var-btn');
+    for(var j=0;j<btns.length;j++){
+      btns[j].addEventListener('click',async function(e){
+        if(e.target&&e.target.classList&&e.target.classList.contains('review-mark')){
+          e.stopPropagation();
+          toggleReviewed(this.getAttribute('data-var'));
+          return;
+        }
+        var varVal=this.getAttribute('data-var');
+        if(_state.perVarResults[varVal]){
+          switchPanel(varVal);
+        }else{
+          await runAnalysis(varVal);
+          switchPanel(varVal);
+        }
+      });
+    }
+  }
+
+  async function runAnalysis(varValOverride){
+    if(typeof Plotly==='undefined'){
+      showLoading('加载图表库...','首次运行需下载 Plotly.js (~3.5MB)，请稍候');
+      try{
+        await window._loadPlotly();
+        hideLoading();
+        await new Promise(r=>setTimeout(r,100));
+      }catch(e){
+        hideLoading();
+        alert('Plotly.js 图表库加载失败。请检查网络连接后刷新页面重试。');
+        return;
+      }
+    }
+    const groupCol=document.getElementById('selGroupCol').value;
+    const measureCol=document.getElementById('selMeasureCol').value;
+    const subGroupCol=document.getElementById('selSubGroupCol').value;
+    const fdrTh=parseFloat(document.getElementById('fdrThreshold').value)||0.05;
+    const minObs=parseInt(document.getElementById('minObs').value)||3;
+    const filterEnabled=document.getElementById('chkFilterEnabled').checked;
+    const filterCol=filterEnabled?document.getElementById('selFilterCol').value:'';
+    const excludeVal=filterEnabled?(document.getElementById('filterExcludeVal').value||'筛选期'):'';
+    const varCol=document.getElementById('selVarCol').value;
+    const varVal=varValOverride!==undefined?varValOverride:(varCol?(document.getElementById('varVal').value||''):'');
+
+    if(!groupCol||!measureCol){alert('请选择分组列和度量列');return}
+
+    if(varValOverride===undefined&&varCol){
+      var allVals=[];
+      var rows=DataManager.getRows();
+      var seenV={};
+      for(var ri=0;ri<rows.length;ri++){
+        var rv=String(rows[ri][varCol]??'').trim();
+        if(rv&&!seenV[rv]){seenV[rv]=true;allVals.push(rv)}
+      }
+      allVals.sort();
+      var batchErrors=[];
+      for(var vi=0;vi<allVals.length;vi++){
+        showLoading('批量分析中... ('+(vi+1)+'/'+allVals.length+')',allVals[vi]);
+        try{await runAnalysis(allVals[vi])}
+        catch(e){batchErrors.push(allVals[vi]+': '+e.message);console.error('Variable '+allVals[vi]+' failed:',e)}
+      }
+      hideLoading();
+      if(batchErrors.length){alert('部分变量分析失败:\n'+batchErrors.join('\n'))}
+      switchPanel('varsummary');
+      return;
+    }
+
+    const effectiveFilterCol=(filterEnabled&&filterCol)?filterCol:'';
+    const effectiveExcludeVal=(filterEnabled&&filterCol)?(excludeVal||'筛选期'):'';
+    const effectiveVarCol=varCol||'';
+    const effectiveVarVal=varCol?varVal:'';
+
+    var loadingMsg='分组聚合';
+    if(effectiveVarCol)loadingMsg+='（变量: '+effectiveVarCol+'="'+effectiveVarVal+'"）';
+    if(effectiveFilterCol)loadingMsg+='（筛选: '+effectiveFilterCol+'!="'+effectiveExcludeVal+'"）';
+    if(varValOverride===undefined)showLoading('运行分析...',loadingMsg);
+    await new Promise(r=>setTimeout(r,60));
+
+    try{
+      const perGroupAll=DataManager.groupBy(groupCol,measureCol,effectiveFilterCol,effectiveExcludeVal,effectiveVarCol,effectiveVarVal);
+      const groupListAll=Object.keys(perGroupAll).sort();
+      const allValsAll=Object.values(perGroupAll).flat();
+      const globalN=allValsAll.length;
+      const globalMean=StatsEngine.mean(allValsAll);
+      const allDimResults={};
+
+      document.getElementById('loadingStep').textContent='均值差异 F 检验...';
+      await new Promise(r=>setTimeout(r,20));
+      let res=StatsEngine.fTestMeanComparison(perGroupAll,globalMean,globalN);
+      res=res.filter(r=>r.n_i>=minObs);
+      res=StatsEngine.benjaminiHochberg(res);
+      res.sort((a,b)=>a.p_adj-b.p_adj);
+      allDimResults.mean=res;
+
+      if(subGroupCol){
+        document.getElementById('loadingStep').textContent='受试者间变异 F 检验...';
+        await new Promise(r=>setTimeout(r,20));
+        const subStats=DataManager.subGroupAggregate(groupCol,subGroupCol,measureCol,'mean',effectiveFilterCol,effectiveExcludeVal,effectiveVarCol,effectiveVarVal);
+        let resBetween=StatsEngine.fTestVarianceComparison(subStats,'受试者间SD');
+        resBetween=resBetween.filter(r=>r.n_i>=minObs);
+        resBetween=StatsEngine.benjaminiHochberg(resBetween);
+        resBetween.sort((a,b)=>a.p_adj-b.p_adj);
+        allDimResults.between=resBetween;
+      }
+
+      if(subGroupCol){
+        document.getElementById('loadingStep').textContent='访视间变异 F 检验...';
+        await new Promise(r=>setTimeout(r,20));
+        const withinSubStats=DataManager.subGroupAggregate(groupCol,subGroupCol,measureCol,'sd',effectiveFilterCol,effectiveExcludeVal,effectiveVarCol,effectiveVarVal);
+        let resWithin=StatsEngine.fTestVarianceComparison(withinSubStats,'访视内SD');
+        resWithin=resWithin.filter(r=>r.n_i>=minObs);
+        resWithin=StatsEngine.benjaminiHochberg(resWithin);
+        resWithin.sort((a,b)=>a.p_adj-b.p_adj);
+        allDimResults.within=resWithin;
+      }
+
+      const gMap={};
+      for(const g of groupListAll){
+        gMap[g]={group:g,mean_i:StatsEngine.mean(perGroupAll[g])};
+      }
+      for(const[dimId,results]of Object.entries(allDimResults)){
+        for(const r of results){
+          if(!gMap[r.group])gMap[r.group]={group:r.group};
+          gMap[r.group][dimId+'_p_adj']=r.p_adj;
+          gMap[r.group][dimId+'_effSize']=r.effSize;
+          gMap[r.group][dimId+'_p_raw']=r.p_val;
+          gMap[r.group][dimId+'_F_val']=r.F_val;
+          gMap[r.group][dimId+'_n']=r.n_i;
+          if(dimId==='mean'){
+            if(r.mean_i!==undefined)gMap[r.group].mean_i=r.mean_i;
+            gMap[r.group].mean_others=r.mean_others;
+            gMap[r.group].n_obs=r.n_i;
+          }
+          if(dimId==='between'){
+            gMap[r.group].between_sd_i=r.sd_i;
+            gMap[r.group].between_sd_pooled=r.sd_pooled;
+            gMap[r.group].between_n=r.n_i;
+            gMap[r.group].between_direction=r.direction;
+          }
+          if(dimId==='within'){
+            gMap[r.group].within_sd_i=r.sd_i;
+            gMap[r.group].within_sd_pooled=r.sd_pooled;
+            gMap[r.group].within_n=r.n_i;
+            gMap[r.group].within_direction=r.direction;
+          }
+        }
+      }
+
+      const merged=Object.values(gMap);
+      const dimIds=Object.keys(allDimResults);
+      for(const g of merged){
+        const pAdjs=dimIds.map(d=>g[d+'_p_adj']).filter(p=>p>0&&p<=1);
+        g.dis=StatsEngine.computeDIS(pAdjs);
+      }
+
+      // Z-score dynamic thresholds (replaces hardcoded DIS 2.0/1.3)
+      const disVals=merged.map(r=>r.dis||0).filter(d=>d>0);
+      const disMean=StatsEngine.mean(disVals);
+      const disSd=disVals.length>1?Math.sqrt(StatsEngine.variance(disVals,disMean)):0;
+      const zWarn=parseFloat(document.getElementById('thrWarningZ').value)||1.5;
+      const zRisk=parseFloat(document.getElementById('thrRiskZ').value)||3;
+      const thrWarn=disMean+zWarn*Math.max(disSd,1e-6);
+      const thrRisk=disMean+zRisk*Math.max(disSd,1e-6);
+
+      for(const g of merged){
+        g.risk=g.dis>=thrRisk?'HIGH':g.dis>=thrWarn?'MEDIUM':'LOW';
+      }
+      merged.sort((a,b)=>(b.dis||0)-(a.dis||0));
+
+      _state.results={dimResults:allDimResults,dimIds};
+      _state.merged=merged;
+      _state.zThresholds={disMean,zWarn,zRisk,thrWarn,thrRisk};
+      _state.config={
+        groupCol,measureCol,subGroupCol,
+        filterCol:effectiveFilterCol,excludeVal:effectiveExcludeVal,
+        varCol:effectiveVarCol,varVal:effectiveVarVal
+      };
+      _state.plotsRendered={};
+      _state._volcanoClicksBound=false;
+      _detailCenters=null;
+      _detailSelInited=false;
+      _detailProgrammatic=false;
+
+      if(effectiveVarVal){
+        _state.perVarResults[effectiveVarVal]={
+          results:{dimResults:allDimResults,dimIds},
+          merged:merged,
+          config:_state.config,
+          zThresholds:{..._state.zThresholds}
+        };
+        updateVariableBadges();
+        updateSidebarRiskSummary(merged);
+      }
+
+      if(varValOverride===undefined){
+        hideLoading();
+        if(effectiveVarVal){switchPanel(effectiveVarVal)}
+        else{switchPanel('prepare')}
+      }
+    }catch(err){hideLoading();console.error(err);
+      if(varValOverride===undefined){alert('分析失败: '+err.message)}
+      else{throw err}
+    }
+  }
+
+  function renderAllDimVolcanoes(highlightCenter){
+    if(!_state.results)return;
+    var dimResults=_state.results.dimResults;
+
+    if(dimResults.mean){
+      var thr=parseFloat(document.getElementById('refThreshold').value)||1.5;
+      var hovMean='<b>中心: %{text}</b><br>检查次数: %{customdata[0]}<br>中心均值: %{customdata[5]:.4f}<br>其他中心均值: %{customdata[6]:.4f}<extra></extra>';
+      var anomalous=Visualization.drawVolcano(dimResults.mean,'plotMeanVolcano','均值差异','',thr,undefined,undefined,hovMean,highlightCenter);
+      var el2=document.getElementById('anomalySummary');
+      if(anomalous&&anomalous.length>0){
+        el2.textContent='异常中心: '+anomalous.join(', ');
+        el2.style.color='var(--risk-high)';
+      }else{
+        el2.textContent='无效应量超阈值中心';
+        el2.style.color='var(--text-primary)';
+      }
+    }
+
+    if(dimResults.between){
+      var thrBLo=parseFloat(document.getElementById('refThrBetweenLow').value)||1;
+      var thrBHi=parseFloat(document.getElementById('refThrBetweenHigh').value)||10;
+      var plotDataB=dimResults.between.map(function(r){return Object.assign({},r,{effSize:r.sd_i})});
+      var hovBetween='<b>中心: %{text}</b><br>入组受试者数: %{customdata[0]}<br>检查次数: %{customdata[7]}<br>中心标准差: %{customdata[5]:.4f}<br>其他中心标准差: %{customdata[6]:.4f}<extra></extra>';
+      var anomalousB=Visualization.drawVolcano(plotDataB,'plotBetweenVolcano','变异程度','',thrBLo,0,thrBHi,hovBetween,highlightCenter);
+      var elB=document.getElementById('anomalySummaryBetween');
+      if(anomalousB&&anomalousB.length>0){
+        elB.textContent='异常中心: '+anomalousB.join(', ');
+        elB.style.color='var(--risk-high)';
+      }else{
+        elB.textContent='无STD_i超阈值中心';
+        elB.style.color='var(--text-primary)';
+      }
+    }
+
+    if(dimResults.within){
+      var thrWLo=parseFloat(document.getElementById('refThrWithinLow').value)||1;
+      var thrWHi=parseFloat(document.getElementById('refThrWithinHigh').value)||10;
+      var plotDataW=dimResults.within.map(function(r){return Object.assign({},r,{effSize:r.sd_i})});
+      var hovWithin='<b>中心: %{text}</b><br>入组受试者数: %{customdata[0]}<br>检查次数: %{customdata[7]}<br>中心标准差: %{customdata[5]:.4f}<br>其他中心标准差: %{customdata[6]:.4f}<extra></extra>';
+      var anomalousW=Visualization.drawVolcano(plotDataW,'plotWithinVolcano','变异程度','',thrWLo,0,thrWHi,hovWithin,highlightCenter);
+      var elW=document.getElementById('anomalySummaryWithin');
+      if(anomalousW&&anomalousW.length>0){
+        elW.textContent='异常中心: '+anomalousW.join(', ');
+        elW.style.color='var(--risk-high)';
+      }else{
+        elW.textContent='无STD_i超阈值中心';
+        elW.style.color='var(--text-primary)';
+      }
+    }
+
+    if(!_state._volcanoClicksBound&&typeof Plotly!=='undefined'){
+      _state._volcanoClicksBound=true;
+      ['plotMeanVolcano','plotBetweenVolcano','plotWithinVolcano'].forEach(function(divId){
+        var el=document.getElementById(divId);
+        if(!el)return;
+        el.removeAllListeners('plotly_click');
+        el.on('plotly_click',function(data){
+          if(!data.points.length)return;
+          var center=data.points[0].text||data.points[0].x;
+          if(!center)return;
+          // Activate detail tab button and pane
+          document.querySelectorAll('.dim-tab').forEach(function(t){t.classList.remove('active')});
+          var detailTab=document.querySelector('.dim-tab[data-dimtab="detail"]');
+          if(detailTab)detailTab.classList.add('active');
+          document.querySelectorAll('.dim-pane').forEach(function(p){p.classList.remove('active')});
+          var detailPane=document.getElementById('dim-detail');
+          if(detailPane)detailPane.classList.add('active');
+          _detailPage=0;
+          renderDetail(String(center));
+          _state.plotsRendered['detail']=true;
+          var contentEl=document.querySelector('.content');
+          if(contentEl)contentEl.scrollTop=0;
+        });
+      });
+    }
+  }
+
+  function renderPlot(dimName){
+    if(!_state.merged||!_state.results)return;
+    if(dimName==='overall'){
+      renderOverall();
+      renderAllDimVolcanoes();
+    }
+    _state.plotsRendered[dimName]=true;
+  }
+
+  function renderActivePlot(){
+    const activeTab=document.querySelector('.dim-tab.active');
+    if(activeTab)renderPlot(activeTab.dataset.dimtab);
+  }
+
+  function renderOverall(){
+    if(!_state.merged)return;
+    const merged=_state.merged;
+    // Use stored Z-score thresholds if available, else compute
+    var zWarn,zRisk,thrWarn,thrRisk;
+    if(_state.zThresholds){
+      zWarn=_state.zThresholds.zWarn;
+      zRisk=_state.zThresholds.zRisk;
+      thrWarn=_state.zThresholds.thrWarn;
+      thrRisk=_state.zThresholds.thrRisk;
+    }else{
+      const disVals=merged.map(r=>r.dis||0).filter(d=>d>0);
+      const disMean=StatsEngine.mean(disVals);
+      const disSd=disVals.length>1?Math.sqrt(StatsEngine.variance(disVals)):0;
+      zWarn=parseFloat(document.getElementById('thrWarningZ').value)||1.5;
+      zRisk=parseFloat(document.getElementById('thrRiskZ').value)||3;
+      thrWarn=disMean+zWarn*Math.max(disSd,1e-6);
+      thrRisk=disMean+zRisk*Math.max(disSd,1e-6);
+    }
+
+    const result=Visualization.drawDisBubble(merged,'plotDisBubble',thrWarn,thrRisk,zWarn,zRisk);
+    if(!result||!result.nTotal)return;
+    const{anomalous,nTotal}=result;
+    const rcol=dis=>dis>=thrRisk?'var(--risk-high)':dis>=thrWarn?'var(--risk-medium)':'var(--risk-low)';
+    const riskLabel=dis=>dis>=thrRisk?'风险':dis>=thrWarn?'警戒':'正常';
+
+    const tbody=document.querySelector('#tableAnomaly tbody');
+    const thead=document.querySelector('#tableAnomaly thead');
+    thead.innerHTML='<tr><th>中心</th><th>入组受试者</th><th>DIS</th><th>等级</th><th>异常原因</th></tr>';
+
+    const thrMean=parseFloat(document.getElementById('refThreshold').value)||1.5;
+    const getReasons=r=>{
+      var parts=[];
+      if(r.mean_p_adj!==undefined&&r.mean_p_adj<0.05&&Math.abs(r.mean_effSize||0)>thrMean)
+        parts.push('<span class="reason-tag reason-mean">均值 δ='+(r.mean_effSize||0).toFixed(2)+'</span>');
+      if(r.between_p_adj!==undefined&&r.between_p_adj<0.05){
+        var dirB=r.between_direction==='larger'?'↑':'↓';
+        parts.push('<span class="reason-tag reason-between">受试者变异'+dirB+' σ='+(r.between_sd_i||0).toFixed(2)+'</span>');
+      }
+      if(r.within_p_adj!==undefined&&r.within_p_adj<0.05){
+        var dirW=r.within_direction==='larger'?'↑':'↓';
+        parts.push('<span class="reason-tag reason-within">访视间变异'+dirW+' σ='+(r.within_sd_i||0).toFixed(2)+'</span>');
+      }
+      return parts.length?parts.join(' '):'—';
+    };
+
+    const anomData=merged.filter(r=>r.dis>=thrRisk&&(r.between_n||r.within_n||0)>=2).sort((a,b)=>(b.dis||0)-(a.dis||0));
+    tbody.innerHTML=anomData.length?anomData.map(r=>
+      '<tr><td class="fw-semibold anomaly-center-name">'+r.group+'</td>'+
+      '<td>'+ (r.between_n||r.within_n||'-') +'</td>'+
+      '<td>'+ (r.dis||0).toFixed(3) +'</td>'+
+      '<td><span class="badge" style="background:'+ rcol(r.dis) +'">'+ riskLabel(r.dis) +'</span></td>'+
+      '<td class="table-reason">'+ getReasons(r) +'</td></tr>'
+    ).join(''):'<tr><td colspan="5" style="color:var(--text-tertiary);text-align:center">无风险中心</td></tr>';
+
+    const plotEl=document.getElementById('plotDisBubble');
+    if(plotEl&&typeof Plotly!=='undefined'){
+      plotEl.removeAllListeners('plotly_click');
+      plotEl.on('plotly_click',data=>{
+        if(!data.points.length)return;
+        var center=data.points[0].text||data.points[0].x;
+        if(!center)return;
+        // Highlight center in volcano plots & scroll to volcano section
+        renderAllDimVolcanoes(String(center));
+        // Scroll volcano plots into view
+        var volcanoAnchor=document.getElementById('plotMeanVolcano');
+        if(volcanoAnchor)volcanoAnchor.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+    }
+  }
+
+  function renderDrilldown(centerId){
+    if(!_state.results)return;
+    var section=document.getElementById('drilldownSection');
+    section.style.display='block';
+    document.getElementById('drilldownCenter').textContent=centerId;
+    renderAllDimVolcanoes(centerId);
+    var merged=_state.merged;
+    if(merged){
+      Visualization.drawDrillScatter(merged,'plotDrillScatter1','mean_i','between_sd_i','中心均值','受试者间 STD',centerId);
+      Visualization.drawDrillScatter(merged,'plotDrillScatter2','mean_i','within_sd_i','中心均值','访视内 STD',centerId);
+      Visualization.drawDrillScatter(merged,'plotDrillScatter3','between_sd_i','within_sd_i','受试者间 STD','访视内 STD',centerId);
+    }
+    // Auto-scroll to drilldown + brief highlight
+    section.scrollIntoView({behavior:'smooth',block:'center'});
+    section.classList.add('drilldown-flash');
+    setTimeout(function(){section.classList.remove('drilldown-flash')},1200);
+  }
+
+  function closeDrilldown(){
+    document.getElementById('drilldownSection').style.display='none';
+    renderAllDimVolcanoes();
+  }
+
+  function refreshSidebarSort(items){
+    var list=document.getElementById('sidebarVarList');
+    if(!list)return;
+    var btns=list.querySelectorAll('.sidebar-var-btn');
+    if(!btns.length)return;
+
+    // Build rank map from items (sorted by maxDIS desc)
+    var rankMap={};
+    for(var i=0;i<items.length;i++){
+      rankMap[items[i].v]=items[i];
+    }
+
+    var sorted=[];
+    for(var j=0;j<btns.length;j++){
+      var btn=btns[j];
+      var v=btn.getAttribute('data-var');
+      var it=rankMap[v];
+      sorted.push({el:btn,maxDIS:it?it.maxDIS:0,name:v});
+    }
+    sorted.sort(function(a,b){
+      if(a.maxDIS!==b.maxDIS)return b.maxDIS-a.maxDIS;
+      return a.name.localeCompare(b.name);
+    });
+    for(var k=0;k<sorted.length;k++){list.appendChild(sorted[k].el)}
+  }
+
+  function renderVarSummary(){
+    var varVals=Object.keys(_state.perVarResults);
+    var strip=document.getElementById('varSummaryStrip');
+    var grid=document.getElementById('varSummaryGrid');
+
+    if(!varVals.length){
+      strip.innerHTML='';
+      grid.innerHTML='<div style="color:var(--text-tertiary);text-align:center;padding:40px 0;grid-column:1/-1">尚未分析任何变量，请在侧边栏选择变量后点击"分析变量"开始</div>';
+      document.querySelector('#tableMeanSummary tbody').innerHTML='';
+      document.querySelector('#tableBetweenSummary tbody').innerHTML='';
+      document.querySelector('#tableWithinSummary tbody').innerHTML='';
+      document.getElementById('meanSummaryBadge').textContent='';
+      document.getElementById('betweenSummaryBadge').textContent='';
+      document.getElementById('withinSummaryBadge').textContent='';
+      return;
+    }
+
+    // Per-variable stats using Z-score risk + n>=2 filter
+    var items=[];
+    for(var i=0;i<varVals.length;i++){
+      var v=varVals[i];
+      var merged=_state.perVarResults[v].merged||[];
+      var counts={HIGH:0,MEDIUM:0,LOW:0};
+      var highNames=[],mediumNames=[],maxDIS=0;
+      for(var j=0;j<merged.length;j++){
+        var g=merged[j];
+        if((g.between_n||g.within_n||0)<2)continue;
+        maxDIS=Math.max(maxDIS,g.dis||0);
+        if(g.risk==='HIGH'){counts.HIGH++;highNames.push(g.group)}
+        else if(g.risk==='MEDIUM'){counts.MEDIUM++;mediumNames.push(g.group)}
+        else{counts.LOW++}
+      }
+      items.push({
+        v:v,
+        maxDIS:maxDIS,
+        highCount:counts.HIGH,highNames:highNames,
+        mediumCount:counts.MEDIUM,mediumNames:mediumNames,
+        lowCount:counts.LOW
+      });
+    }
+
+    // Sort: by max DIS desc
+    items.sort(function(a,b){return b.maxDIS-a.maxDIS});
+
+    // --- Summary strip ---
+    var totalVars=items.length;
+    var varsWithHigh=items.filter(function(it){return it.highCount>0}).length;
+    var varsWithMedium=items.filter(function(it){return it.mediumCount>0||it.highCount>0}).length;
+    strip.innerHTML=
+      '<div class="varsummary-strip-item total"><div class="varsummary-strip-val">'+totalVars+'</div><div class="varsummary-strip-lbl">分析变量总数</div></div>'+
+      '<div class="varsummary-strip-item high"><div class="varsummary-strip-val">'+varsWithHigh+'</div><div class="varsummary-strip-lbl">含高危中心</div></div>'+
+      '<div class="varsummary-strip-item medium"><div class="varsummary-strip-val">'+varsWithMedium+'</div><div class="varsummary-strip-lbl">含异常中心</div></div>';
+
+    // --- Lab report table ---
+    var escH=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+    var rows='';
+    var maxDISAll=items.length?items[0].maxDIS:1;
+    for(var k=0;k<items.length;k++){
+      var it=items[k];
+      var riskClass=it.highCount>0?'report-high':it.mediumCount>0?'report-medium':'';
+      var barW=Math.max(1,Math.round((it.maxDIS/Math.max(maxDISAll,1e-6))*100));
+      var anomCenters=(it.highNames.concat(it.mediumNames)).join(', ')||'—';
+      rows+='<tr class="'+riskClass+'" onclick="UIController.jumpToVar(\''+it.v.replace(/\\/g,'\\\\').replace(/'/g,'\\\'')+'\')">'+
+        '<td class="report-var">'+escH(it.v)+'</td>'+
+        '<td class="report-dis"><span class="report-dis-bar" style="width:'+barW+'%"></span><span class="report-dis-val">'+it.maxDIS.toFixed(2)+'</span></td>'+
+        '<td class="report-count">'+(it.highCount||'—')+'</td>'+
+        '<td class="report-count">'+(it.mediumCount||'—')+'</td>'+
+        '<td class="report-centers">'+escH(anomCenters)+'</td>'+
+      '</tr>';
+    }
+    grid.innerHTML='<div class="card"><div class="card-body card-body-xs"><div class="report-table-wrap"><table class="report-table"><thead><tr><th>变量</th><th>最高 DIS</th><th>高危</th><th>中危</th><th>异常中心</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+
+    // --- Dimension breakdown tables (collapsed by default) ---
+    var esc=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+    var thrMean=parseFloat(document.getElementById('refThreshold').value)||1.5;
+    var thrBLo=parseFloat(document.getElementById('refThrBetweenLow').value)||1;
+    var thrBHi=parseFloat(document.getElementById('refThrBetweenHigh').value)||10;
+    var thrWLo=parseFloat(document.getElementById('refThrWithinLow').value)||1;
+    var thrWHi=parseFloat(document.getElementById('refThrWithinHigh').value)||10;
+    function getDimAnomalous(merged,dimPrefix){
+      return merged.filter(function(m){
+        var padj=m[dimPrefix+'_p_adj'];
+        if(padj===undefined||padj>=0.05)return false;
+        if(dimPrefix==='mean')return Math.abs(m.mean_effSize||0)>thrMean;
+        if(dimPrefix==='between'){var sd=m.between_sd_i;return sd!==undefined&&(sd>thrBHi||sd<thrBLo)}
+        if(dimPrefix==='within'){var sd=m.within_sd_i;return sd!==undefined&&(sd>thrWHi||sd<thrWLo)}
+        return true;
+      });
+    }
+
+    function renderDimTable(tbodyId,labelFn){
+      var tbody=document.getElementById(tbodyId);
+      if(!tbody)return;
+      var rows='';
+      var total=0;
+      for(var t=0;t<items.length;t++){
+        var itv=items[t].v;
+        var m=_state.perVarResults[itv].merged||[];
+        var anoms=labelFn(m);
+        total+=anoms.length;
+        if(anoms.length>0){
+          var names=anoms.join(', ');
+          rows+='<tr><td class="fw-semibold var-has-anomaly">'+esc(itv)+'</td><td><span class="badge" style="background:var(--risk-high)">'+anoms.length+'</span></td><td style="font-size:0.82em;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+names.replace(/"/g,'&quot;')+'">'+names+'</td></tr>';
+        }
+      }
+      tbody.innerHTML=rows||'<tr><td colspan="3" style="color:var(--text-tertiary);text-align:center;padding:16px 0">无异常</td></tr>';
+      return total;
+    }
+
+    var totalMean=renderDimTable('tableMeanSummary',function(merged){
+      return getDimAnomalous(merged,'mean').map(function(m){return m.group});
+    });
+    var totalBetween=renderDimTable('tableBetweenSummary',function(merged){
+      return getDimAnomalous(merged,'between').map(function(m){return m.group});
+    });
+    var totalWithin=renderDimTable('tableWithinSummary',function(merged){
+      return getDimAnomalous(merged,'within').map(function(m){return m.group});
+    });
+    document.getElementById('meanSummaryBadge').textContent='(共 '+totalMean+' 中心)';
+    document.getElementById('betweenSummaryBadge').textContent='(共 '+totalBetween+' 中心)';
+    document.getElementById('withinSummaryBadge').textContent='(共 '+totalWithin+' 中心)';
+
+    // Toggle bindings (once)
+    if(!_state._summaryTogglesBound){
+      _state._summaryTogglesBound=true;
+      ['Mean','Between','Within'].forEach(function(dim){
+        document.getElementById('toggle'+dim+'Summary').addEventListener('click',function(){
+          this.classList.toggle('collapsed');
+          document.getElementById('pane'+dim+'Summary').classList.toggle('collapsed');
+          var arrow=this.querySelector('.dim-summary-arrow');
+          if(arrow)arrow.textContent=this.classList.contains('collapsed')?'▶':'▼';
+        });
+      });
+    }
+
+    refreshSidebarSort(items);
+  }
+
+  function jumpToVar(varVal){switchPanel(varVal)}
+
+  var _detailCenters=null;
+
+  function initDetailCenters(){
+    if(_detailCenters)return _detailCenters;
+    if(!_state.merged||!_state.config)return null;
+    var cfg=_state.config;
+    var rows=DataManager.getFilteredRows(cfg.filterCol,cfg.excludeVal,cfg.varCol,cfg.varVal);
+    var cols=DataManager.getCols();
+    var adyCol=cols.find(function(c){return c.toUpperCase()==='ADY'})
+              ||cols.find(function(c){return c.toUpperCase().indexOf('ADY')>=0});
+    if(!adyCol)return null;
+    var subCol=cfg.subGroupCol||null;
+    var findCol=function(name){return cols.find(function(c){return c.toUpperCase()===name.toUpperCase()})};
+    var avisitCol=findCol('AVISIT');
+    var adtCol=findCol('ADT');
+    var avalCol=findCol('AVAL');
+    var baseCol=findCol('BASE');
+
+    var centers={};
+    for(var i=0;i<rows.length;i++){
+      var row=rows[i];
+      var center=String(row[cfg.groupCol]||'');
+      var sub=subCol?String(row[subCol]||'?'):'_';
+      var ady=parseFloat(row[adyCol]);
+      var chg=parseFloat(row[cfg.measureCol]);
+      if(!center||isNaN(ady)||isNaN(chg))continue;
+      if(!centers[center])centers[center]={};
+      if(!centers[center][sub])centers[center][sub]=[];
+      centers[center][sub].push({
+        ady:ady,chg:chg,
+        avisit:avisitCol?(row[avisitCol]||''):'',
+        adt:adtCol?String(row[adtCol]||'').substring(0,10):'',
+        aval:avalCol?(row[avalCol]||''):'',
+        base:baseCol?(row[baseCol]||''):''
+      });
+    }
+    _detailCenters={centers:centers,adyCol:adyCol,subCol:subCol,cfg:cfg};
+    return _detailCenters;
+  }
+
+  var _detailSelInited=false;
+  var _detailPage=0;
+  var _detailPageSize=25;
+  var _detailCenter='';
+  var _detailProgrammatic=false; // guard against change event during programmatic render
+
+  function renderDetail(centerId){
+    var container=document.getElementById('dim-detail');
+    if(!container)return;
+    var cached=initDetailCenters();
+    if(!cached){
+      document.getElementById('detailGrid').innerHTML='<div style="color:var(--text-tertiary);text-align:center;padding:32px 0">未找到 ADY 列</div>';
+      return;
+    }
+
+    var centers=cached.centers;
+    var centerList=Object.keys(centers).sort(function(a,b){
+      return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});
+    });
+
+    if(!centerList.length){
+      document.getElementById('detailGrid').innerHTML='<div style="color:var(--text-tertiary);text-align:center;padding:32px 0">无中心数据</div>';
+      return;
+    }
+
+    var sel=document.getElementById('detailCenterSelect');
+    var dl=document.getElementById('detailCenterList');
+
+    if(!_detailSelInited){
+      _detailSelInited=true;
+      var opts='';
+      for(var i=0;i<centerList.length;i++){
+        var c=centerList[i];
+        opts+='<option value="'+c+'">';
+      }
+      dl.innerHTML=opts;
+
+      sel.addEventListener('change',function(){
+        if(_detailProgrammatic)return; // skip programmatic triggers
+        var v=sel.value.trim();
+        if(v&&centers[v]&&v!==_detailCenter){
+          _detailPage=0;
+          document.getElementById('detailGrid').innerHTML='';
+          document.getElementById('detailSubCount').textContent='';
+          document.getElementById('detailPagination').innerHTML='';
+          renderSubjects(v,0);
+        }
+      });
+    }
+
+    // Determine which center to use
+    var targetCenter=centerId||sel.value||'';
+    if(!targetCenter||!centers[targetCenter]){
+      // Auto-select first center if none or invalid
+      targetCenter=centerList[0];
+    }
+
+    _detailProgrammatic=true;
+    if(centerId||!sel.value||!centers[sel.value]){
+      sel.value=targetCenter;
+      _detailPage=0;
+    }
+    _detailProgrammatic=false;
+
+    if(sel.value&&centers[sel.value])renderSubjects(sel.value,centerId?0:_detailPage);
+  }
+
+  function renderSubjects(center,page){
+    var cached=_detailCenters;
+    if(!cached)return;
+    var centers=cached.centers;
+    var cfg=cached.cfg;
+    var subMap=centers[center];
+    if(!subMap)return;
+
+    if(typeof page==='number')_detailPage=page;
+    else page=_detailPage;
+
+    var allSubs=Object.keys(subMap).sort();
+    var totalN=allSubs.length;
+
+    // Fixed 25 cells per page, adaptive columns for narrow screens
+    var pageSize=_detailPageSize; // 25
+    // Get grid element early for content-width detection
+    var grid=document.getElementById('detailGrid');
+    var nCols2=5;
+    var contentW2=grid&&grid.parentElement?grid.parentElement.clientWidth:1100;
+    if(contentW2<550)nCols2=2;
+    else if(contentW2<750)nCols2=3;
+    else if(contentW2<950)nCols2=4;
+    // Ensure 25 cells fits nicely: prefer 5 cols (5 rows) over fewer cols (more rows → smaller cells)
+    // On very narrow screens (<750px), reduce to 3 cols × ~8 rows — still usable
+
+    var totalPages=Math.ceil(totalN/pageSize);
+    if(page<0)page=0;
+    if(page>=totalPages)page=totalPages-1;
+    _detailPage=page;
+    _detailCenter=center;
+
+    var startIdx=page*pageSize;
+    var subs=allSubs.slice(startIdx,startIdx+pageSize);
+    var n=subs.length;
+
+    document.getElementById('detailSubCount').textContent='共 '+totalN+' 个受试者（第'+(page+1)+'/'+totalPages+'页）';
+
+    if(typeof Plotly==='undefined'){
+      grid.innerHTML='<div style="color:var(--text-tertiary);text-align:center;padding:32px 0">Plotly 未加载</div>';
+      return;
+    }
+
+    // Use full data for shared axis range (sample every 5th subject if >100 for perf)
+    var gXMin=Infinity,gXMax=-Infinity,gYMin=Infinity,gYMax=-Infinity;
+    var rangeStep=totalN>100?Math.ceil(totalN/80):1;
+    for(var si=0;si<totalN;si+=rangeStep){
+      var allPts=subMap[allSubs[si]];
+      for(var pi=0;pi<allPts.length;pi++){
+        var a=allPts[pi].ady,c=allPts[pi].chg;
+        if(a<gXMin)gXMin=a;if(a>gXMax)gXMax=a;
+        if(c<gYMin)gYMin=c;if(c>gYMax)gYMax=c;
+      }
+    }
+    var xPad=(gXMax-gXMin)*0.06||1;
+    var yPad=(gYMax-gYMin)*0.08||0.5;
+    var sharedXRange=[gXMin-xPad,gXMax+xPad];
+    var sharedYRange=[gYMin-yPad,gYMax+yPad];
+
+    // Use adaptive cols from pagination, compute cell dimensions
+    var nCols=nCols2;
+    var nRows=Math.ceil(n/nCols);
+    var cellH=Math.floor((window.innerHeight-260)/nRows)-6;
+    if(cellH<100)cellH=100; // Min 100px for reliable Plotly rendering
+    if(cellH>200)cellH=200;
+
+    grid.style.gridTemplateColumns='repeat('+nCols+', 1fr)';
+
+    var pltMargin=cellH<120
+      ?{l:22,r:2,t:2,b:12}
+      :{l:28,r:4,t:2,b:18};
+
+    var cells=[];
+    for(var i=0;i<n;i++){
+      var sub=subs[i];
+      var id='ds_'+center.replace(/[^a-zA-Z0-9一-鿿]/g,'_')+'_'+sub.replace(/[^a-zA-Z0-9一-鿿]/g,'_');
+      cells.push('<div class="detail-subject-card"><div class="card-body" style="padding:0">'+
+        '<div class="detail-subject-title">'+sub+'</div>'+
+        '<div class="detail-cell" style="height:'+cellH+'px" id="'+id+'"></div>'+
+        '</div></div>');
+    }
+    grid.innerHTML=cells.join('');
+
+    // Render pagination controls
+    renderDetailPagination(center,totalPages,page);
+
+    var tickFont=cellH<110?7:cellH<140?8:9;
+    var showTicks=cellH>=100;
+    var isLight=document.documentElement.getAttribute('data-theme')==='light';
+    var dFont='Georgia, Times New Roman, serif';
+
+    var subColLabel=cached.subCol||'';
+
+    // Wait for panel animation (200ms) + layout to settle before rendering
+    setTimeout(function(){
+      var batchSize=6;
+      var rendered=0;
+      var tinyCell=cellH<120; // use automargin:false for small cells
+
+      function renderNext(){
+        var batchEnd=Math.min(rendered+batchSize,n);
+        for(var k=rendered;k<batchEnd;k++){
+          var sub2=subs[k];
+          var id2='ds_'+center.replace(/[^a-zA-Z0-9一-鿿]/g,'_')+'_'+sub2.replace(/[^a-zA-Z0-9一-鿿]/g,'_');
+          var el2=document.getElementById(id2);
+          if(!el2)continue;
+
+          var pts=subMap[sub2].slice().sort(function(a,b){return a.ady-b.ady});
+          var nPts=pts.length;
+          var mode=tinyCell||nPts>30?'lines':'lines+markers';
+          var lineColor=isLight?'#2E75B6':'#6CB4EE';
+          var axisColor=isLight?'rgba(0,0,0,0.35)':'rgba(255,255,255,0.20)';
+          var gridColor=isLight?'rgba(0,0,0,0.04)':'rgba(255,255,255,0.035)';
+
+          var hov=(subColLabel?subColLabel+': '+sub2+'<br>':'')
+            +'AVISIT: %{customdata[0]}<br>ADT: %{customdata[1]}<br>ADY: %{x}<br>'
+            +cfg.measureCol+': %{customdata[2]}<br>'
+            +'AVAL: %{customdata[3]}<br>'
+            +'BASE: %{customdata[4]}<br>'
+            +'<extra></extra>';
+
+          // Deep-clone ranges to prevent Plotly from mutating shared arrays
+          var xRange=sharedXRange.slice();
+          var yRange=sharedYRange.slice();
+
+          var layout={
+            height:cellH,
+            margin:pltMargin,
+            showlegend:false,
+            hovermode:'closest',
+            hoverdistance:200,
+            hoverlabel:{bgcolor:'rgba(0,0,0,0.72)',bordercolor:'transparent',font:{color:'#fff',size:9,family:dFont}},
+            xaxis:{
+              range:xRange,
+              tickfont:{size:tickFont,family:dFont},
+              showticklabels:showTicks,
+              showgrid:true,gridcolor:gridColor,gridwidth:0.5,
+              showline:true,linecolor:axisColor,linewidth:0.5,
+              zeroline:false,ticks:'inside',ticklen:2,tickwidth:0.5
+            },
+            yaxis:{
+              range:yRange,
+              tickfont:{size:tickFont,family:dFont},
+              showticklabels:showTicks,
+              showgrid:true,gridcolor:gridColor,gridwidth:0.5,
+              showline:true,linecolor:axisColor,linewidth:0.5,
+              zeroline:false,ticks:'inside',ticklen:2,tickwidth:0.5
+            },
+            plot_bgcolor:isLight?'#FFFFFF':'rgba(0,0,0,0)',
+            paper_bgcolor:isLight?'#FFFFFF':'rgba(0,0,0,0)'
+          };
+
+          try{Plotly.purge(id2)}catch(e){/* ignore */}
+
+          try{
+            var trace={
+              x:pts.map(function(p){return p.ady}),
+              y:pts.map(function(p){return p.chg}),
+              customdata:pts.map(function(p){return[p.avisit,p.adt,p.chg,p.aval,p.base]}),
+              type:'scatter',mode:mode,
+              name:sub2,
+              line:{color:lineColor,width:tinyCell?0.8:1.1},
+              hovertemplate:hov,
+              showlegend:false
+            };
+            // Only add marker when mode includes markers — undefined crashes Plotly
+            if(mode!=='lines'){
+              trace.marker={size:3,color:lineColor};
+            }
+            Plotly.newPlot(id2,[trace],layout,{responsive:false,displayModeBar:false});
+          }catch(e){
+            el2.innerHTML='<div style="color:var(--risk-high);font-size:0.5em;text-align:center;padding:2px;word-break:break-all">错误:'+(e.message||e).toString().substring(0,80)+'</div>';
+          }
+        }
+        rendered=batchEnd;
+        if(rendered<n){
+          setTimeout(renderNext,40);
+        }
+      }
+      renderNext();
+    },250); // 250ms > panel animation 200ms
+  }
+
+  function renderDetailPagination(center,totalPages,curPage){
+    var pg=document.getElementById('detailPagination');
+    if(!pg||totalPages<=1){if(pg)pg.innerHTML='';return;}
+
+    var html='';
+    // Prev button
+    html+='<button class="detail-page-btn" data-pg="prev" '+(curPage<=0?'disabled':'')+'>◀ 上一页</button>';
+
+    // Page number buttons (show max 9 pages around current)
+    var maxBtns=9;
+    var pStart=Math.max(0,curPage-Math.floor(maxBtns/2));
+    var pEnd=Math.min(totalPages,pStart+maxBtns);
+    if(pEnd-pStart<maxBtns)pStart=Math.max(0,pEnd-maxBtns);
+
+    if(pStart>0){
+      html+='<button class="detail-page-btn" data-pg="0">1</button>';
+      if(pStart>1)html+='<span class="detail-page-info">…</span>';
+    }
+    for(var p=pStart;p<pEnd;p++){
+      html+='<button class="detail-page-btn'+(p===curPage?' active':'')+'" data-pg="'+p+'">'+(p+1)+'</button>';
+    }
+    if(pEnd<totalPages){
+      if(pEnd<totalPages-1)html+='<span class="detail-page-info">…</span>';
+      html+='<button class="detail-page-btn" data-pg="'+(totalPages-1)+'">'+totalPages+'</button>';
+    }
+
+    // Next button
+    html+='<button class="detail-page-btn" data-pg="next" '+(curPage>=totalPages-1?'disabled':'')+'>下一页 ▶</button>';
+
+    pg.innerHTML=html;
+
+    // Bind click events
+    pg.querySelectorAll('.detail-page-btn').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var v=btn.getAttribute('data-pg');
+        var newPage;
+        if(v==='prev')newPage=curPage-1;
+        else if(v==='next')newPage=curPage+1;
+        else newPage=parseInt(v);
+        if(newPage>=0&&newPage<totalPages){
+          renderSubjects(center,newPage);
+        }
+      });
+    });
+  }
+
+  function bindEvents(){
+    loadReviewedVars();
+    document.getElementById('btnPrepare').addEventListener('click',()=>switchPanel('prepare'));
+
+    const dz=document.getElementById('dropZone'),fi=document.getElementById('fileInput');
+    dz.addEventListener('click',()=>fi.click());
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0])});
+    fi.addEventListener('change',()=>handleFile(fi.files[0]));
+
+    ['selGroupCol','selMeasureCol'].forEach(id=>{
+      document.getElementById(id).addEventListener('change',()=>{
+        document.getElementById('btnRun').disabled=!_state.loaded||!document.getElementById('selGroupCol').value||!document.getElementById('selMeasureCol').value;
+      });
+    });
+
+    document.getElementById('selVarCol').addEventListener('change',populateVarValues);
+
+    document.getElementById('btnRun').addEventListener('click',function(){runAnalysis()});
+
+    document.getElementById('toggleAdvanced').addEventListener('click',function(){
+      var body=document.getElementById('advancedBody');
+      var arrow=this.querySelector('.config-advanced-arrow');
+      body.classList.toggle('collapsed');
+      arrow.textContent=body.classList.contains('collapsed')?'▶':'▼';
+    });
+
+    document.getElementById('btnUpdateRef').addEventListener('click',()=>{
+      if(_state.merged&&_state.plotsRendered['overall'])renderAllDimVolcanoes();
+    });
+
+    document.getElementById('btnUpdateRefBetween').addEventListener('click',()=>{
+      if(_state.merged&&_state.plotsRendered['overall'])renderAllDimVolcanoes();
+    });
+
+    document.getElementById('btnUpdateRefWithin').addEventListener('click',()=>{
+      if(_state.merged&&_state.plotsRendered['overall'])renderAllDimVolcanoes();
+    });
+
+    document.getElementById('btnUpdateOverall').addEventListener('click',()=>{
+      if(_state.merged&&_state.plotsRendered['overall'])renderPlot('overall');
+    });
+
+    document.querySelectorAll('.dim-tab').forEach(tab=>{
+      tab.addEventListener('click',function(){
+        document.querySelectorAll('.dim-tab').forEach(t=>t.classList.remove('active'));
+        this.classList.add('active');
+        document.querySelectorAll('.dim-pane').forEach(p=>p.classList.remove('active'));
+        const pane=document.getElementById('dim-'+this.dataset.dimtab);
+        if(pane)pane.classList.add('active');
+        var contentEl=document.querySelector('.content');
+        if(contentEl)contentEl.scrollTop=0;
+        const dimName=this.dataset.dimtab;
+        if(dimName==='detail'){
+          _detailPage=0;
+          renderDetail();
+          _state.plotsRendered['detail']=true;
+        }else if(!_state.plotsRendered[dimName]){
+          renderPlot(dimName);
+        }else{
+          setTimeout(()=>{
+            if(typeof Plotly!=='undefined'){
+              ['plotDisBubble','plotMeanVolcano','plotBetweenVolcano','plotWithinVolcano'].forEach(function(elId){
+                var el=document.getElementById(elId);
+                if(el)Plotly.Plots.resize(el);
+              });
+            }
+          },150);
+        }
+      });
+    });
+  }
+
+  function toggleVolcanoBar(el){
+    var bar=el.closest('.card').querySelector('.volcano-bar');
+    if(!bar)return;
+    bar.classList.toggle('collapsed');
+  }
+
+  return{bindEvents,handleFile,runAnalysis,jumpToVar,toggleVolcanoBar,switchPanel,closeDrilldown,toggleCurrentReview};
+})();
+
+window.UIController=UIController;
+document.addEventListener('DOMContentLoaded',()=>{
+  UIController.bindEvents();
+  if(typeof jstat==='undefined')console.warn('jStat 缺失，使用纯 JS F 分布回退');
+  window.SMART={StatsEngine,DataManager};
+});
+
+/* 自动加载项目数据（支持 ?project=A 参数） */
+(function autoLoad(){
+  var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
+  fetch('./data/' + project + '/advs.json')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(text){
+      var file = new File([text], 'advs.json', {type:'application/json'});
+      UIController.handleFile(file);
+    })
+    .catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
+})();
+</script>
+</body>
+</html>

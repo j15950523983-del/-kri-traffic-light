@@ -1,0 +1,4630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>临床试验基线特征可视化工具</title>
+<!-- 所有资源本地化，无需外网 -->
+<link href="bootstrap.min.css" rel="stylesheet">
+<link href="bootstrap-icons.min.css" rel="stylesheet">
+<script src="plotly.min.js"></script>
+<script src="html2canvas.min.js"></script>
+<style>
+/* ============================================================
+   Statistical Journal Publication Style
+   统计分析顶刊风格 — NEJM / Lancet / JAMA aesthetic
+   ============================================================ */
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --ink: #1a1a1a;
+  --ink-light: #5a5a5a;
+  --ink-muted: #8a8a8a;
+  --rule: #d0d0d0;
+  --rule-light: #e8e8e8;
+  --accent-blue: #4472C4;
+  --accent-orange: #ED7D31;
+  --accent-gray: #7F7F7F;
+  --accent-green: #4caf90;
+  --accent-red: #c0504d;
+  --shadow: none;
+  --radius: 2px;
+  --transition: 200ms ease;
+  --font-ui: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Georgia", "Times New Roman", "Songti SC", "SimSun", serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  min-height: 100vh;
+  letter-spacing: 0;
+}
+
+/* Navbar — understated academic */
+.navbar-clinical {
+  background: #fff;
+  border-bottom: 1px solid var(--rule);
+  padding: 0 1.5rem;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.navbar-clinical .brand {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-serif);
+}
+.navbar-clinical .brand i { font-size: 1.1rem; color: var(--accent-blue); }
+.navbar-clinical .nav-status {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* Layout */
+.app-wrapper {
+  display: flex;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+/* Left Panel */
+.sidebar {
+  width: 300px;
+  min-width: 300px;
+  background: #fafaf8;
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 280ms ease, min-width 280ms ease, opacity 200ms ease;
+}
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.sidebar-section {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--rule-light);
+  transition: opacity 150ms ease;
+}
+.sidebar-section:last-child { border-bottom: none; }
+.sidebar-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--ink-light);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Toggle sidebar button — 固定在侧边栏边缘 */
+.btn-toggle-sidebar-fixed {
+  position: absolute;
+  left: 296px;
+  top: 60px;
+  z-index: 1001;
+  width: 18px; height: 40px;
+  border: 1px solid var(--rule);
+  border-left: none;
+  background: var(--surface);
+  color: var(--ink-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: left 280ms ease;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.65rem;
+  padding: 0;
+}
+.btn-toggle-sidebar-fixed:hover { color: var(--ink); background: #f5f5f5; }
+.btn-toggle-sidebar-fixed.collapsed { left: 0; }
+
+/* Upload Zone */
+.upload-zone {
+  border: 1.5px dashed var(--rule);
+  border-radius: 6px;
+  padding: 0.8rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: #fdfdfc;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent-blue);
+  background: #f4f7fb;
+}
+.upload-zone i { font-size: 1.3rem; color: var(--accent-blue); }
+.upload-zone p { margin: 0.25rem 0 0; font-size: 0.72rem; color: var(--ink-muted); }
+.upload-zone .file-loaded { color: var(--accent-green); font-weight: 600; font-size: 0.72rem; }
+
+/* Variable List */
+.var-list { max-height: 200px; overflow-y: auto; }
+.var-item {
+  display: flex;
+  align-items: center;
+  padding: 0.18rem 0.25rem;
+  font-size: 0.74rem;
+  cursor: pointer;
+  transition: background var(--transition);
+  border-radius: 3px;
+}
+.var-item:hover { background: #f0f2f5; }
+.var-item input { margin-right: 0.4rem; accent-color: var(--accent-blue); }
+.var-item .var-type-badge {
+  font-size: 0.58rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-left: auto;
+  letter-spacing: 0.02em;
+}
+.type-continuous { background: #eef2f9; color: #3a5a8c; }
+.type-categorical { background: #fdf3ea; color: #b36820; }
+.type-ordinal { background: #eaf5ef; color: #3a6c52; }
+.type-binary { background: #f0ecf5; color: #5c3a8c; }
+.type-basic { background: #f0f0f0; color: #666; }
+
+/* 基础变量列表 — 只读展示 */
+.basic-var-list .var-item-basic {
+  cursor: default;
+  padding: 0.14rem 0.25rem;
+  font-size: 0.72rem;
+  border-radius: 3px;
+}
+.basic-var-list .var-item-basic:hover { background: transparent; }
+
+/* Var controls row */
+.var-controls { margin-bottom: 0.5rem; }
+.var-controls .btn-sm { font-size: 0.68rem; padding: 0.12rem 0.45rem; border-radius: 0; }
+
+/* Right Panel */
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Content Tabs */
+.content-tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  padding: 0 1.5rem;
+  gap: 0;
+  flex-shrink: 0;
+}
+.content-tab {
+  padding: 0.65rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  letter-spacing: 0.02em;
+  font-family: var(--font-ui);
+}
+.content-tab:hover { color: var(--ink); }
+.content-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+
+/* Content Area */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--bg);
+}
+
+/* Cards — minimal academic */
+.card-clinical {
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 1rem;
+}
+.card-clinical .card-header {
+  padding: 0.5rem 0;
+  border-bottom: 2px solid var(--ink);
+  font-weight: 600;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-serif);
+  min-height: 2.8rem;
+}
+
+/* ============ TABLE 1 — Journal Style (horizontal rules only) ============ */
+.table1-wrapper {
+  overflow-x: auto;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.table1 {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-family: var(--font-serif);
+}
+.table1 thead { position: sticky; top: 0; z-index: 2; }
+.table1 th {
+  background: #fff;
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--ink);
+  border-top: 2px solid var(--ink);
+  text-align: left;
+}
+.table1 td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--rule-light);
+  white-space: nowrap;
+}
+.table1 tr:last-child td { border-bottom: 2px solid var(--ink); }
+.table1 .var-row td {
+  font-weight: 700;
+  background: transparent;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.6rem;
+  color: var(--ink);
+}
+.table1 .pval-cell { color: var(--ink-light); font-style: italic; font-size: 0.73rem; }
+.table1 .missing-row td { color: var(--ink-muted); font-size: 0.72rem; font-style: italic; }
+
+/* 图表数据明细表 */
+.data-detail {
+  max-height: 35vh;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  background: #fff;
+}
+.data-detail table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+  font-family: var(--font-serif);
+}
+.data-detail thead { position: sticky; top: 0; z-index: 2; }
+.data-detail th {
+  background: #f5f5f3;
+  color: var(--ink);
+  padding: 0.35rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  border-bottom: 1.5px solid var(--rule);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-detail td {
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid var(--rule-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-detail th:first-child,
+.data-detail td:first-child {
+  width: 38px;
+  text-align: center;
+}
+.data-detail .highlight-row { background: #fef3c7; }
+
+/* 分析面板弹性布局 — 全屏时占满可用空间 */
+#panelDistribution, #panelCorrelation, #panelControlChart {
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+#panelDistribution > :first-child,
+#panelCorrelation > :first-child,
+#panelControlChart > :first-child {
+  flex-shrink: 0;
+}
+#panelDistribution .chart-container,
+#panelCorrelation .chart-container,
+#panelControlChart .chart-container {
+  flex: 1;
+  min-height: 300px;
+  overflow: hidden;
+}
+#panelDistribution .data-detail,
+#panelCorrelation .data-detail,
+#panelControlChart .data-detail {
+  flex-shrink: 0;
+  max-height: 35vh;
+}
+
+/* Chart area */
+.chart-container {
+  min-height: 450px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 0.5rem;
+}
+
+/* Control chart controls */
+.cc-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  margin-bottom: 1rem;
+}
+.cc-controls label { font-size: 0.75rem; font-weight: 600; color: var(--ink-light); margin-bottom: 0.15rem; }
+.cc-controls select { font-size: 0.8rem; border-radius: 0; }
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ink-muted);
+  text-align: center;
+  padding: 3rem;
+}
+.empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.25; }
+.empty-state h5 { font-weight: 500; margin-bottom: 0.5rem; font-family: var(--font-serif); }
+.empty-state p { font-size: 0.82rem; max-width: 360px; }
+
+/* Project tabs */
+.project-tabs {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  padding: 0 0.75rem;
+  gap: 0;
+  overflow-x: auto;
+  flex-shrink: 0;
+  min-height: 38px;
+}
+.project-tab {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-ui);
+}
+.project-tab.active {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+.project-tab:hover { color: var(--ink); }
+.project-tab .close-btn { font-size: 0.7rem; opacity: 0.35; }
+.project-tab .close-btn:hover { opacity: 1; color: var(--accent-red); }
+.project-tab .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-blue); }
+
+/* Add project button */
+.btn-add-project {
+  width: 26px; height: 26px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.btn-add-project:hover { border-color: var(--ink); color: var(--ink); }
+
+/* Plotly cursor — always default arrow */
+.js-plotly-plot .plotly * { cursor: default !important; }
+.js-plotly-plot .plotly .legendtext { cursor: pointer !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; }
+::-webkit-scrollbar-thumb:hover { background: #999; }
+
+/* Toast position */
+.toast-container { position: fixed; top: 56px; right: 1rem; z-index: 9999; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+
+/* Bootstrap overrides for academic look */
+.form-select, .btn {
+  border-radius: 0 !important;
+  border-color: var(--rule);
+  font-family: var(--font-ui);
+}
+.form-select:focus, .btn:focus {
+  border-color: var(--ink);
+  box-shadow: none;
+}
+.btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.btn-primary:hover { background: #333; border-color: #333; }
+.btn-outline-secondary {
+  color: var(--ink-light);
+  border-color: var(--rule);
+}
+.btn-outline-secondary:hover {
+  background: #f5f5f5;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app-wrapper { flex-direction: column; }
+  .sidebar { width: 100%; min-width: 100%; max-height: 40%; }
+  .main-panel { height: 60%; }
+}
+</style>
+</head>
+<body>
+
+<div id="cdnError" style="display:none;background:#c0504d;color:#fff;padding:0.5rem 1rem;text-align:center;font-size:0.85rem;">
+  CDN 资源加载失败，请检查网络连接。如在境内环境，可能需要 VPN 访问 jsDelivr CDN。
+</div>
+<!-- Navbar -->
+<nav class="navbar-clinical">
+  <div class="brand"><i class="bi bi-clipboard2-pulse"></i>临床试验基线特征可视化工具</div>
+  <div class="nav-status" id="navStatus">就绪 — 请上传 JSON 数据文件</div>
+</nav>
+
+<!-- Project Tabs -->
+<div class="project-tabs" id="projectTabs">
+  <button class="btn-add-project" id="btnAddProject" title="添加新项目"><i class="bi bi-plus"></i></button>
+</div>
+
+<!-- Sidebar toggle — 固定在侧边栏外边缘 -->
+<button class="btn-toggle-sidebar-fixed" id="btnToggleSidebar" title="收缩/展开侧边栏">
+  <i class="bi bi-chevron-double-left"></i>
+</button>
+
+<!-- Main Layout -->
+<div class="app-wrapper">
+
+  <!-- Left Sidebar -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Upload Section -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">数据上传</div>
+      <div class="upload-zone" id="uploadZone">
+        <i class="bi bi-cloud-upload"></i>
+        <p>拖拽 JSON 文件到此处<br>或点击选择文件</p>
+        <input type="file" id="fileInput" accept=".json" hidden>
+      </div>
+    </div>
+
+    <!-- Variable Selection -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">变量选择</div>
+      <!-- 基础变量 -->
+      <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.35rem;">
+        <i class="bi bi-tag" style="font-size:0.65rem;color:var(--ink-muted);"></i>
+        <span style="font-size:0.68rem;font-weight:600;color:var(--ink-light);">基础变量</span>
+        <span style="font-size:0.6rem;color:var(--ink-muted);">标识/分组</span>
+      </div>
+      <div class="var-list basic-var-list" id="basicVarList" style="max-height:110px;">
+        <div class="text-muted" style="font-size:0.78rem;padding:0.5rem 0;">暂无数据，请先上传文件</div>
+      </div>
+      <!-- 分析变量 -->
+      <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.35rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--rule-light);">
+        <i class="bi bi-bar-chart-steps" style="font-size:0.65rem;color:var(--accent-blue);"></i>
+        <span style="font-size:0.68rem;font-weight:600;color:var(--ink-light);">分析变量</span>
+        <span style="font-size:0.6rem;color:var(--ink-muted);">参与分析</span>
+      </div>
+      <div class="var-controls d-flex gap-1">
+        <button class="btn btn-outline-secondary btn-sm" id="btnSelectAll">全选</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnDeselectAll">取消</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnInvertSel">反选</button>
+      </div>
+      <div class="var-list" id="analysisVarList">
+        <div class="text-muted" style="font-size:0.78rem;padding:0.5rem 0;">暂无数据，请先上传文件</div>
+      </div>
+    </div>
+
+    <!-- Data Filter — 全局筛选，紧跟分析变量 -->
+    <div class="sidebar-section">
+      <div class="sidebar-title" style="display:flex;justify-content:space-between;align-items:center;">
+        全局数据筛选
+        <button class="btn btn-outline-secondary btn-sm" id="btnClearFilters" style="font-size:0.68rem;padding:0 0.4rem;" disabled>清除</button>
+      </div>
+      <div style="display:flex;gap:0.25rem;align-items:center;">
+        <select class="form-select form-select-sm" id="filterVar" style="width:40%;" disabled>
+          <option value="">选择变量</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterOp" style="width:25%;" disabled>
+          <option value="=">=</option>
+          <option value="!=">≠</option>
+          <option value=">">&gt;</option>
+          <option value="<">&lt;</option>
+          <option value=">=">≥</option>
+          <option value="<=">≤</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterVal" style="width:35%;" disabled>
+          <option value="">选择值</option>
+        </select>
+      </div>
+      <button class="btn btn-sm mt-1" id="btnAddFilter" style="background:var(--accent-blue);color:#fff;font-size:0.7rem;width:100%;" disabled>
+        <i class="bi bi-plus"></i> 添加筛选条件
+      </button>
+      <div id="activeFilters" style="margin-top:0.35rem;display:flex;flex-wrap:wrap;gap:0.25rem;"></div>
+    </div>
+
+    <!-- Grouping Variable -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">分组变量</div>
+      <select class="form-select form-select-sm" id="groupSelect" disabled>
+        <option value="">不分组 (Overall)</option>
+      </select>
+      <div id="refGroupPanel" style="display:none;margin-top:0.4rem;">
+        <div class="form-check form-check-inline" style="font-size:0.72rem;padding-left:0;">
+          <input class="form-check-input" type="checkbox" id="chkRefGroup" style="margin-right:0.25rem;">
+          <label class="form-check-label" for="chkRefGroup">二分类对照</label>
+        </div>
+        <div id="refLevelPanel" style="display:none;margin-top:0.2rem;max-height:180px;overflow-y:auto;border:1px solid var(--rule);padding:0.3rem 0.5rem;font-size:0.72rem;background:#fff;">
+          <!-- 多选复选框动态填充 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Info -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">项目信息</div>
+      <div id="projectInfo" style="font-size:0.8rem;color:var(--text-muted);">
+        尚未加载数据
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Panel -->
+  <main class="main-panel">
+
+    <!-- Content Tabs -->
+    <div class="content-tabs" id="contentTabs">
+      <button class="content-tab active" data-tab="enrollment">入组分析</button>
+      <button class="content-tab" data-tab="table1">Table 1</button>
+      <button class="content-tab" data-tab="distribution">特征分布</button>
+      <button class="content-tab" data-tab="controlchart">中心监测控制图</button>
+      <button class="content-tab" data-tab="correlation">相关性分析</button>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area" id="contentArea">
+      <div class="empty-state" id="emptyState">
+        <i class="bi bi-box-arrow-in-down"></i>
+        <h5>欢迎使用基线特征可视化工具</h5>
+        <p>上传 ADSL JSON 数据文件开始分析，支持自动生成 Table 1 和多种可视化图表</p>
+      </div>
+
+      <!-- Table 1 -->
+      <div id="panelTable1" style="display:none;">
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.5rem;">
+          <button class="btn btn-sm btn-outline-secondary" id="btnExportPNG"><i class="bi bi-image"></i> 导出 PNG</button>
+          <button class="btn btn-sm btn-outline-secondary" id="btnExportRTF"><i class="bi bi-file-word"></i> 导出 RTF</button>
+        </div>
+        <div class="card-clinical">
+          <div class="card-header" style="font-family:var(--font-serif);"><i class="bi bi-table"></i> 基线特征汇总表 (Table 1)</div>
+          <div class="table1-wrapper" id="table1Container"></div>
+        </div>
+      </div>
+
+      <!-- 特征分布（箱线图 / 直方图） -->
+      <div id="panelDistribution" style="display:none;">
+        <div class="mb-2" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:0.82rem;font-weight:600;">选择变量：</label>
+          <select class="form-select form-select-sm" id="distVar" style="width:220px;"></select>
+          <div class="btn-group" id="distChartToggle" style="display:flex;gap:0;">
+            <button class="btn btn-sm btn-outline-secondary active" data-dist-chart="box">箱线图</button>
+            <button class="btn btn-sm btn-outline-secondary" data-dist-chart="hist">直方图 / 条形图</button>
+            <button class="btn btn-sm btn-outline-secondary" data-dist-chart="kde">云雨图</button>
+          </div>
+          <div id="distBinControls" style="display:none;gap:0.25rem;align-items:center;">
+            <label style="font-size:0.78rem;">分箱数：</label>
+            <input type="range" id="distBins" min="5" max="60" value="20" style="width:120px;">
+            <span id="distBinsLabel" style="font-size:0.78rem;">20</span>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary ms-auto" id="btnExportDistPNG"><i class="bi bi-image"></i> 导出 PNG</button>
+        </div>
+        <div class="chart-container" id="chartDistribution"></div>
+        <div class="data-detail" id="detailDistribution" style="margin-top:1rem;"></div>
+      </div>
+
+      <!-- 相关性分析 -->
+      <div id="panelCorrelation" style="display:none;">
+        <div class="mb-2" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:0.82rem;font-weight:600;">X 变量：</label>
+          <select class="form-select form-select-sm" id="corrVarX" style="width:200px;"></select>
+          <label style="font-size:0.82rem;font-weight:600;">Y 变量：</label>
+          <select class="form-select form-select-sm" id="corrVarY" style="width:200px;"></select>
+          <label style="font-size:0.78rem;">残差阈值 |Z| &gt;</label>
+          <input type="number" class="form-control form-control-sm" id="corrThreshold" value="2.0" min="0.5" max="5" step="0.5" style="width:70px;">
+          <button class="btn btn-sm btn-primary" id="btnCorrUpdate">更新图表</button>
+        </div>
+        <div class="chart-container" id="chartCorrelationScatter" style="min-height:400px;"></div>
+        <div class="card-clinical" style="margin-top:1rem;">
+          <div class="card-header" style="font-family:var(--font-serif);"><i class="bi bi-funnel"></i> 中心异常占比 — Funnel Plot</div>
+          <div class="chart-container" id="chartCorrelationFunnel" style="min-height:350px;"></div>
+          <div id="correlationSiteSummary" style="padding:0.5rem 1rem;font-size:0.8rem;"></div>
+        </div>
+        <div class="data-detail" id="detailCorrelation" style="margin-top:1rem;"></div>
+      </div>
+
+      <!-- 入组分析 -->
+      <div id="panelEnrollment" style="display:none;">
+        <div class="card-clinical">
+          <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;cursor:pointer;" id="nodeConfigHeader">
+            <span><i class="bi bi-diagram-3"></i> 节点配置 <small style="color:var(--ink-muted);font-weight:400;" id="nodeConfigToggle">（点击收起）</small></span>
+            <button class="btn btn-sm btn-outline-secondary" id="btnExportSankeyPNG" title="导出桑基图为PNG" onclick="event.stopPropagation()"><i class="bi bi-image"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="btnAddNode" onclick="event.stopPropagation()"><i class="bi bi-plus"></i> 添加节点</button>
+          </div>
+          <div style="padding:0.5rem 0;font-size:0.78rem;" id="nodeConfigBody">
+            <div id="nodeConfigArea"></div>
+            <div style="padding:0.25rem 0;display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-primary" id="btnEnrollUpdate">更新图表</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnEnrollSave"><i class="bi bi-save"></i> 保存方案</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnSankeyAdjust" title="锁定当前自动布局位置，允许拖拽微调"><i class="bi bi-arrows-move"></i> 调整位置</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnSankeyReset" title="清除手动位置，恢复自动布局" disabled><i class="bi bi-arrow-counterclockwise"></i> 重置位置</button>
+              <span id="sankeyPosStatus" style="font-size:0.65rem;display:none;"></span>
+              <span id="enrollSaveStatus" style="font-size:0.65rem;color:var(--accent-green);display:none;">已保存</span>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container" id="chartSankey" style="min-height:350px;max-height:75vh;overflow-y:auto;"></div>
+        <!-- 桑基图节点点击明细 -->
+        <div class="data-detail" id="sankeyDetailPanel" style="margin-top:0.5rem;display:none;"></div>
+        <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;align-items:flex-start;">
+          <div class="card-clinical" style="flex:1;min-width:280px;">
+            <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;">
+              <span><i class="bi bi-graph-up"></i> 研究入组进度</span>
+              <span style="font-size:0.72rem;font-weight:400;display:flex;align-items:center;gap:0.25rem;">
+                随机日期：<select class="form-select form-select-sm" id="enrollDateVar" style="width:150px;font-size:0.7rem;" onchange="renderEnrollmentCharts()"></select>
+                <button class="btn btn-sm btn-outline-secondary" id="btnExportStudyPNG" style="font-size:0.65rem;padding:0 0.4rem;" title="导出PNG"><i class="bi bi-image"></i></button>
+              </span>
+            </div>
+            <div class="chart-container" id="chartStudyEnroll" style="height:340px;"></div>
+          </div>
+          <div class="card-clinical" style="flex:1;min-width:280px;">
+            <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;">
+              <span><i class="bi bi-funnel"></i> 筛选进度</span>
+              <span style="font-size:0.7rem;font-weight:400;display:flex;align-items:center;gap:0.2rem;">
+                状态变量：<select class="form-select form-select-sm" id="screenStatusVar" style="width:130px;font-size:0.68rem;" onchange="renderEnrollmentCharts()"></select>
+                <button class="btn btn-sm btn-outline-secondary" id="btnExportScreenPNG" style="font-size:0.65rem;padding:0 0.4rem;" title="导出PNG"><i class="bi bi-image"></i></button>
+              </span>
+            </div>
+            <div class="chart-container" id="chartScreenEnroll" style="height:340px;"></div>
+          </div>
+          <div class="card-clinical" style="flex:1;min-width:280px;">
+            <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;">
+              <span><i class="bi bi-building"></i> 中心入组进度</span>
+              <span style="font-size:0.7rem;font-weight:400;display:flex;align-items:center;gap:0.2rem;">
+                <select class="form-select form-select-sm" id="siteEnrollVar" style="width:130px;font-size:0.68rem;" onchange="renderEnrollmentCharts()"></select>
+                <select class="form-select form-select-sm" id="siteEnrollCond" style="width:65px;font-size:0.68rem;" onchange="renderEnrollmentCharts()">
+                  <option value="notnull">非空</option>
+                  <option value="isnull">为空</option>
+                  <option value="equals">等于</option>
+                  <option value="notequal">不等于</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" id="btnExportSitePNG" style="font-size:0.65rem;padding:0 0.4rem;" title="导出PNG"><i class="bi bi-image"></i></button>
+              </span>
+            </div>
+            <div class="chart-container" id="chartSiteEnroll" style="height:340px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Chart -->
+      <div id="panelControlChart" style="display:none;">
+        <div class="cc-controls">
+          <div>
+            <label>变量</label>
+            <select class="form-select form-select-sm" id="ccVar" style="width:180px;"></select>
+          </div>
+          <div>
+            <label>监控类别（阳性）</label>
+            <select class="form-select form-select-sm" id="ccLevel" style="width:160px;"></select>
+          </div>
+          <div>
+            <label>中心编号列</label>
+            <select class="form-select form-select-sm" id="ccSiteCol" style="width:140px;"></select>
+          </div>
+          <div>
+            <label>受试者编号列</label>
+            <select class="form-select form-select-sm" id="ccSubjCol" style="width:150px;"></select>
+          </div>
+          <div>
+            <label>异常中心最低入组数</label>
+            <input type="number" class="form-control form-control-sm" id="ccMinN" value="1" min="1" style="width:120px;">
+          </div>
+          <button class="btn btn-sm btn-primary" id="btnCCUpdate">更新图表</button>
+        </div>
+        <div class="chart-container" id="chartControl"></div>
+        <div id="ccSummary" style="margin-top:0.75rem;font-size:0.8rem;"></div>
+        <div class="data-detail" id="detailControl" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ======================================================================
+//  State Management
+// ======================================================================
+const state = {
+  projects: new Map(),
+  activeId: null,
+  get active() { return this.projects.get(this.activeId); }
+};
+
+function generateId() { return 'proj_' + Math.random().toString(36).slice(2, 10); }
+
+// Journal publication color palette & layout defaults
+const JR_COLORS = ['#4472C4', '#ED7D31', '#7F7F7F', '#70AD47', '#5B9BD5', '#A5A5A5'];
+const JR_FONT = { family: '"Georgia","Times New Roman","Songti SC",serif', size: 13, color: '#1a1a1a' };
+const JR_LAYOUT_BASE = {
+  paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+  font: JR_FONT, dragmode: 'pan',
+  margin: { l: 65, r: 25, t: 55, b: 65 },
+  xaxis: { gridcolor: '#e5e5e5', linecolor: '#333', zeroline: false, showline: true, ticks: 'outside' },
+  yaxis: { gridcolor: '#e5e5e5', linecolor: '#333', zeroline: false, showline: true, ticks: 'outside' }
+};
+function jLayout(titleText, xTitle, yTitle, extra={}) {
+  return Object.assign({}, JR_LAYOUT_BASE, {
+    title: { text: `<b>${titleText}</b>`, font: { family: JR_FONT.family, size: 14, color: '#1a1a1a' } },
+    xaxis: Object.assign({}, JR_LAYOUT_BASE.xaxis, { title: { text: xTitle || '', font: JR_FONT } }),
+    yaxis: Object.assign({}, JR_LAYOUT_BASE.yaxis, { title: { text: yTitle || '', font: JR_FONT } }),
+  }, extra);
+}
+
+// ======================================================================
+//  Utility Functions
+// ======================================================================
+const MISSING_VALS = new Set([null, '', '缺失', 'NA', 'N/A', 'N/A', 'n/a', 'NaN', 'nan']);
+
+function isMissing(v) {
+  if (v === null || v === undefined || v === '') return true;
+  const s = String(v).trim();
+  return MISSING_VALS.has(s) || s === 'null';
+}
+
+function cleanNum(v) {
+  if (isMissing(v)) return NaN;
+  const n = Number(v);
+  return isNaN(n) ? NaN : n;
+}
+
+// Normal approximation for CDF
+function normalCDF(x) {
+  const a1 =  0.254829592, a2 = -0.284496736, a3 =  1.421413741;
+  const a4 = -1.453152027, a5 =  1.061405429, p  =  0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return 0.5 * (1.0 + sign * y);
+}
+
+// Gamma function (log)
+function logGamma(x) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+             -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = x, tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += c[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+
+// Regularized incomplete beta (for t-dist and F-dist)
+function incBeta(x, a, b) {
+  if (x < 0 || x > 1) return NaN;
+  if (x === 0 || x === 1) return x;
+  const maxIter = 200, eps = 1e-10;
+  const lnBeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+  let front = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - lnBeta) / a;
+  let f = 1, c = 1, d = 0;
+  for (let k = 0; k < maxIter; k++) {
+    const m = k / 2;
+    let term;
+    if (k % 2 === 0) {
+      term = (b - m) * x / ((a + 2 * m) * (a + 2 * m + 1));
+    } else {
+      term = -(a + m) * (a + b + m) * x / ((a + 2 * m) * (a + 2 * m - 1));
+    }
+    d = 1 + term * d;
+    if (Math.abs(d) < eps) d = eps;
+    d = 1 / d;
+    c = 1 + term / c;
+    if (Math.abs(c) < eps) c = eps;
+    front *= (d * c);
+    f *= (d * c);
+    if (Math.abs(f - 1) < eps) break;
+  }
+  return Math.min(1, Math.max(0, front * f));
+}
+
+// t-distribution CDF
+function tCDF(t, df) {
+  if (df <= 0) return NaN;
+  const x = df / (df + t * t);
+  return 0.5 * (1 + Math.sign(t) * (1 - incBeta(x, df / 2, 0.5)));
+}
+
+// Chi-square CDF
+function chi2CDF(x, df) {
+  if (x <= 0) return 0;
+  return incBeta(x / (x + df), df / 2, 0.5) / 1;  // approximate
+}
+// Better chi2: regularized gamma
+function gammaP(a, x) {
+  if (x < 0 || a <= 0) return NaN;
+  if (x < a + 1) {
+    let sum = 1 / a, term = 1 / a;
+    for (let n = 1; n < 200; n++) {
+      term *= x / (a + n);
+      sum += term;
+      if (Math.abs(term) < 1e-12 * Math.abs(sum)) break;
+    }
+    return sum * Math.exp(-x + a * Math.log(x) - logGamma(a));
+  } else {
+    let f = 1, c = 1, d = 0;
+    for (let n = 1; n < 200; n++) {
+      const an = n - a;
+      d = x + an * d;
+      if (Math.abs(d) < 1e-30) d = 1e-30;
+      d = 1 / d;
+      c = x + an / c;
+      if (Math.abs(c) < 1e-30) c = 1e-30;
+      f *= (d * c);
+      if (Math.abs(d * c - 1) < 1e-12) break;
+    }
+    return 1 - Math.exp(-x + a * Math.log(x) - logGamma(a)) * f;
+  }
+}
+function chi2Pval(x, df) { return 1 - gammaP(df / 2, x / 2); }
+
+// F-distribution p-value
+function fPval(F, df1, df2) {
+  const x = df2 / (df2 + df1 * F);
+  return incBeta(x, df2 / 2, df1 / 2);
+}
+
+// ======================================================================
+//  Statistical Tests
+// ======================================================================
+function welchTTest(vals1, vals2) {
+  const n1 = vals1.length, n2 = vals2.length;
+  if (n1 < 2 || n2 < 2) return NaN;
+  const m1 = vals1.reduce((a,b)=>a+b,0)/n1, m2 = vals2.reduce((a,b)=>a+b,0)/n2;
+  const v1 = vals1.reduce((s,x)=>s+(x-m1)*(x-m1),0)/(n1-1);
+  const v2 = vals2.reduce((s,x)=>s+(x-m2)*(x-m2),0)/(n2-1);
+  const se = Math.sqrt(v1/n1 + v2/n2);
+  if (se === 0) return 1.0;
+  const t = (m1 - m2) / se;
+  const num = (v1/n1 + v2/n2) * (v1/n1 + v2/n2);
+  const den = (v1/n1)*(v1/n1)/(n1-1) + (v2/n2)*(v2/n2)/(n2-1);
+  const df = num / den;
+  return 2 * (1 - tCDF(Math.abs(t), df));
+}
+
+function anovaPval(groups) {
+  // groups: array of arrays of numbers
+  const allVals = groups.flat();
+  const N = allVals.length;
+  const grandMean = allVals.reduce((a,b)=>a+b,0) / N;
+  let ssb = 0, ssw = 0;
+  for (const g of groups) {
+    if (g.length === 0) return NaN;
+    const gm = g.reduce((a,b)=>a+b,0) / g.length;
+    ssb += g.length * (gm - grandMean) * (gm - grandMean);
+    for (const v of g) ssw += (v - gm) * (v - gm);
+  }
+  const dfb = groups.length - 1, dfw = N - groups.length;
+  if (dfw <= 0 || ssw === 0) return NaN;
+  const F = (ssb / dfb) / (ssw / dfw);
+  return fPval(F, dfb, dfw);
+}
+
+function chiSquarePval(observed) {
+  // observed: 2D array [rows][cols]
+  const nRows = observed.length, nCols = observed[0].length;
+  const rowSums = observed.map(r => r.reduce((a,b)=>a+b,0));
+  const colSums = [];
+  for (let j = 0; j < nCols; j++) {
+    let s = 0;
+    for (let i = 0; i < nRows; i++) s += observed[i][j];
+    colSums.push(s);
+  }
+  const N = rowSums.reduce((a,b)=>a+b,0);
+  let chi2 = 0;
+  for (let i = 0; i < nRows; i++) {
+    for (let j = 0; j < nCols; j++) {
+      const exp = rowSums[i] * colSums[j] / N;
+      if (exp > 0) chi2 += (observed[i][j] - exp) * (observed[i][j] - exp) / exp;
+    }
+  }
+  const df = (nRows - 1) * (nCols - 1);
+  if (df <= 0) return NaN;
+  return chi2Pval(chi2, df);
+}
+
+// ======================================================================
+//  DataParser
+// ======================================================================
+function normalizeValue(v) {
+  if (isMissing(v)) return null;
+  if (typeof v === 'number') return v;
+  const s = String(v).trim();
+  if (MISSING_VALS.has(s)) return null;
+  const n = Number(s);
+  // 可解析为数字时转为数值型，但拒绝前导零编码（如 "01", "001"）
+  if (!isNaN(n) && isFinite(n)) {
+    // 前导零且长度≥2 → 很可能是编码/ID（如中心编号 "01"），保留文本
+    if (/^-?0\d/.test(s)) return s;
+    return n;
+  }
+  return s;
+}
+
+function parseJSONFile(jsonText) {
+  let data;
+  try { data = JSON.parse(jsonText); } catch (e) { throw new Error('JSON 格式无效'); }
+  if (!Array.isArray(data)) throw new Error('JSON 根元素必须是数组');
+  if (data.length === 0) throw new Error('数据为空');
+  if (!data.every(r => typeof r === 'object' && r !== null)) throw new Error('每条记录必须是对象');
+  const keys = Object.keys(data[0]);
+  const records = data.map(rec => {
+    const norm = {};
+    for (const k of keys) norm[k] = normalizeValue(rec[k]);
+    return norm;
+  });
+  return { records, keys };
+}
+
+// ======================================================================
+//  VariableDetector
+// ======================================================================
+function detectOrdinal(values) {
+  // Check for patterns like ">=1", "<1", "1+", "2+"
+  let hasComp = false, hasPlus = false, allNumericLike = true;
+  for (const v of values) {
+    if (v === null) continue;
+    const s = String(v);
+    if (/[<>]=?\d/.test(s)) hasComp = true;
+    if (/^\d+\+$/.test(s)) hasPlus = true;
+    if (!/^(<|>|<=|>=)?\d+(\.\d+)?(\+)?$/.test(s.trim())) allNumericLike = false;
+  }
+  return (hasComp || hasPlus) && allNumericLike;
+}
+
+// 已知基础变量名（不区分大小写），强制归为 id 类型
+const KNOWN_BASIC_VARS = new Set(
+  ['studyid','siteid','site','usubjid','subjid','subject','study','protocol','受试者编号','中心编号','受试者','编号','中心','sitenum','研究编号','项目编号','试验编号'].map(s => s.toLowerCase())
+);
+
+function classifyColumn(name, values) {
+  const clean = values.filter(v => v !== null);
+  if (clean.length === 0) return { type: 'empty', name };
+
+  // 已知标识变量 → 强制归为基础变量
+  if (KNOWN_BASIC_VARS.has(name.toLowerCase())) {
+    const unique = [...new Set(clean)];
+    return { type: 'id', name, nUnique: unique.length, nTotal: clean.length };
+  }
+
+  const unique = [...new Set(clean)];
+  const nUnique = unique.length, nTotal = clean.length;
+
+  // ID detection: all unique, string, N > 10
+  if (nUnique === nTotal && nTotal > 10) {
+    return { type: 'id', name, nUnique, nTotal };
+  }
+
+  // Try numeric
+  const allNumeric = clean.every(v => typeof v === 'number');
+  if (allNumeric) {
+    if (nUnique <= 2) return { type: 'binary', name, nUnique, nTotal };
+    // 绝对数量 ≥10 或 唯一值占比 >5% → 连续型
+    // （防止大数据集下比值被稀释，如 43 种年龄/887 人 = 4.8% 被误判为分类）
+    if (nUnique >= 10 || nUnique / nTotal > 0.05) return { type: 'continuous', name, nUnique, nTotal };
+    return { type: 'categorical', name, nUnique, nTotal };
+  }
+
+  // Ordinal detection
+  if (detectOrdinal(clean)) {
+    return { type: 'ordinal', name, nUnique, nTotal };
+  }
+
+  // String categorical: few unique values with low proportion, OR many unique values that still repeat (low unique/total ratio)
+  if (nUnique <= 15 && nUnique / nTotal < 0.3) {
+    return { type: 'categorical', name, nUnique, nTotal };
+  }
+  // If >15 unique values but still low unique-to-total ratio, treat as categorical (e.g., 26 categories across 140 records)
+  if (nUnique > 15 && nUnique / nTotal < 0.3) {
+    return { type: 'categorical', name, nUnique, nTotal };
+  }
+  if (nUnique > 15) return { type: 'id', name, nUnique, nTotal };
+
+  return { type: 'categorical', name, nUnique, nTotal };
+}
+
+function classifyAllColumns(keys, records) {
+  const meta = {};
+  for (const key of keys) {
+    const values = records.map(r => r[key]);
+    meta[key] = classifyColumn(key, values);
+    // Store sorted unique non-missing values for ordinals / categoricals,
+    // and also for id-type variables with repeated values (e.g. SITEID with 67 centers)
+    if (meta[key].type === 'ordinal' || meta[key].type === 'categorical' || meta[key].type === 'binary' ||
+        (meta[key].type === 'id' && meta[key].nUnique < meta[key].nTotal)) {
+      const cleanVals = values.filter(v => v !== null);
+      meta[key].levels = [...new Set(cleanVals)].sort((a, b) => {
+        // Sort ordinal values naturally
+        const na = Number(String(a).replace(/[<>=+]/g, ''));
+        const nb = Number(String(b).replace(/[<>=+]/g, ''));
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b));
+      });
+    }
+  }
+  return meta;
+}
+
+// ======================================================================
+//  Table1Generator
+// ======================================================================
+function computeContinuousStats(vals) {
+  const clean = vals.filter(v => v !== null).filter(v => typeof v === 'number');
+  const n = clean.length;
+  if (n === 0) return { n: 0, mean: NaN, sd: NaN, median: NaN, q1: NaN, q3: NaN, min: NaN, max: NaN };
+  const sorted = [...clean].sort((a,b)=>a-b);
+  const mean = clean.reduce((a,b)=>a+b,0) / n;
+  const sd = Math.sqrt(clean.reduce((s,x)=>s+(x-mean)*(x-mean),0) / (n-1));
+  const median = quantile(sorted, 0.5);
+  const q1 = quantile(sorted, 0.25);
+  const q3 = quantile(sorted, 0.75);
+  return { n, mean, sd, median, q1, q3, min: sorted[0], max: sorted[sorted.length-1], values: clean };
+}
+
+function quantile(sorted, q) {
+  const pos = q * (sorted.length - 1);
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+function computeCategoricalCounts(vals, levels) {
+  const counts = {};
+  let nMissing = 0;
+  for (const v of vals) {
+    if (v === null) { nMissing++; continue; }
+    const key = String(v);
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  const n = vals.filter(v => v !== null).length;
+  return { counts, n, nMissing };
+}
+
+function generateTable1(meta, records, groupVar, selectedVars, refGroup, refLevels) {
+  const nonIdKeys = Object.keys(meta).filter(k => {
+    const t = meta[k].type;
+    return t !== 'id' && t !== 'empty' && selectedVars.has(k);
+  });
+
+  // Determine groups
+  let groups = [];
+  if (groupVar && meta[groupVar]) {
+    if (refGroup && refLevels && refLevels.length > 0) {
+      // 二分类对照: 参考组 vs 其他中心
+      const refRecs = records.filter(r => refLevels.includes(String(r[groupVar] ?? '')));
+      const otherRecs = records.filter(r => !refLevels.includes(String(r[groupVar] ?? '')) && String(r[groupVar] ?? '') !== '');
+      groups = [
+        { name: refGroupLabel(refLevels), records: refRecs },
+        { name: '其他中心', records: otherRecs }
+      ];
+    } else {
+      const groupVals = records.map(r => r[groupVar]);
+      const groupLevels = [...new Set(groupVals.filter(v => v !== null && v !== ''))].sort();
+      groups = groupLevels.map(g => ({
+        name: String(g),
+        records: records.filter(r => r[groupVar] === g || String(r[groupVar]) === String(g))
+      }));
+    }
+  }
+  const nGroups = groups.length;
+
+  const rows = [];
+
+  for (const key of nonIdKeys) {
+    const colType = meta[key].type;
+    const allVals = records.map(r => r[key]);
+
+    if (colType === 'continuous') {
+      const overall = computeContinuousStats(allVals);
+      const groupStats = groups.map(g => computeContinuousStats(g.records.map(r => r[key])));
+
+      rows.push({
+        variable: key, type: 'continuous', label: key,
+        overall,
+        groupStats,
+        pval: nGroups === 2 ? welchTTest(groupStats[0]?.values || [], groupStats[1]?.values || [])
+             : nGroups > 2 ? anovaPval(groupStats.map(g => g.values || [])) : NaN
+      });
+    } else {
+      // categorical / binary / ordinal
+      const levels = meta[key].levels || [];
+      const overall = computeCategoricalCounts(allVals, levels);
+      const groupCounts = groups.map(g => computeCategoricalCounts(g.records.map(r => r[key]), levels));
+
+      // p-value: use non-missing values contingency table
+      let pval = NaN;
+      if (nGroups === 2 && levels.length >= 2) {
+        const observed = levels.map(lvl => groupCounts.map(gc => gc.counts[String(lvl)] || 0));
+        pval = chiSquarePval(observed);
+      }
+
+      rows.push({
+        variable: key, type: colType, label: key,
+        levels,
+        overall,
+        groupCounts,
+        pval
+      });
+    }
+  }
+
+  return { rows, groups, nGroups };
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderTable1HTML(table1Data) {
+  const { rows, groups, nGroups } = table1Data;
+  let html = '<table class="table1"><thead><tr><th>Characteristic</th>';
+
+  const totalN = rows.length > 0 && rows[0].overall.n !== undefined
+    ? (rows[0].overall.n + (rows[0].overall.nMissing || 0))
+    : '';
+
+  html += `<th>Overall${totalN ? ' (N='+totalN+')' : ''}</th>`;
+  for (const g of groups) {
+    html += `<th>${escapeHtml(g.name)} (N=${g.records.length})</th>`;
+  }
+  if (nGroups >= 2) html += '<th>p-value</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const row of rows) {
+    if (row.type === 'continuous') {
+      const ost = row.overall, gs = row.groupStats;
+      const nTotal = ost.n + (ost.nMissing || 0);
+      html += `<tr class="var-row"><td><strong>${escapeHtml(row.variable)}</strong></td>`;
+      html += '<td></td>';
+      for (const g of gs) html += '<td></td>';
+      if (nGroups >= 2) html += `<td class="pval-cell">${fmtPval(row.pval)}</td>`;
+      html += '</tr>';
+      // Median (Min-Max) row
+      html += `<tr><td style="padding-left:1.2rem;">Median (Min-Max)</td>`;
+      html += `<td>${fmtNum(ost.median)} (${fmtNum(ost.min)}–${fmtNum(ost.max)})</td>`;
+      for (const g of gs) html += `<td>${fmtNum(g.median)} (${fmtNum(g.min)}–${fmtNum(g.max)})</td>`;
+      if (nGroups >= 2) html += '<td></td>';
+      html += '</tr>';
+    } else {
+      // categorical
+      html += `<tr class="var-row"><td colspan="${3 + nGroups + (nGroups>=2?1:0)}"><strong>${escapeHtml(row.variable)}</strong></td></tr>`;
+      for (const lvl of (row.levels || [])) {
+        const lvlStr = String(lvl);
+        html += `<tr><td style="padding-left:1.2rem;">${escapeHtml(lvlStr)}</td>`;
+        const oCount = row.overall.counts[lvlStr] || 0;
+        const oPct = row.overall.n > 0 ? (oCount / row.overall.n * 100) : 0;
+        html += `<td>${oCount} (${fmtNum(oPct)}%)</td>`;
+        for (const gc of (row.groupCounts || [])) {
+          const c = gc.counts[lvlStr] || 0;
+          const p = gc.n > 0 ? (c / gc.n * 100) : 0;
+          html += `<td>${c} (${fmtNum(p)}%)</td>`;
+        }
+        if (nGroups >= 2) html += '<td></td>';
+        html += '</tr>';
+      }
+      // Missing row
+      const oMiss = row.overall.nMissing || 0;
+      if (oMiss > 0) {
+        html += `<tr class="missing-row"><td style="padding-left:1.2rem;">Missing</td><td>${oMiss}</td>`;
+        for (const gc of (row.groupCounts || [])) html += `<td>${gc.nMissing || 0}</td>`;
+        if (nGroups >= 2) html += '<td></td>';
+        html += '</tr>';
+      }
+      // p-value row
+      if (nGroups >= 2) {
+        html += `<tr class="missing-row"><td style="padding-left:1.2rem;">Test</td><td></td>`;
+        for (let i = 0; i < nGroups; i++) html += '<td></td>';
+        html += `<td class="pval-cell">${fmtPval(row.pval)}</td></tr>`;
+      }
+    }
+  }
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function fmtNum(x) {
+  if (isNaN(x) || x === null || x === undefined) return '-';
+  if (Number.isInteger(x)) return String(x);
+  return x.toFixed(1);
+}
+
+function fmtPval(p) {
+  if (isNaN(p)) return '-';
+  if (p < 0.001) return '<0.001';
+  return p.toFixed(3);
+}
+
+// 对照组标签：≤3 个显示全部，>3 个显示计数
+function refGroupLabel(refLevels) {
+  if (!refLevels || refLevels.length === 0) return '(对照)';
+  if (refLevels.length <= 3) return refLevels.join(',') + ' (对照)';
+  return refLevels.length + '中心 (对照)';
+}
+
+// ======================================================================
+//  ChartRenderer
+// ======================================================================
+function getGroupedValues(records, varName, groupVar, refGroup, refLevels) {
+  if (!groupVar) {
+    const vals = records.map(r => r[varName]).filter(v => v !== null && typeof v === 'number');
+    return { Overall: vals };
+  }
+  if (refGroup && refLevels && refLevels.length > 0) {
+    // 二分类对照: 参考组 vs 其他
+    const refVals = [], otherVals = [];
+    for (const r of records) {
+      const g = String(r[groupVar] ?? '');
+      if (g === '' || g === 'null') continue;
+      const v = r[varName];
+      if (v !== null && typeof v === 'number') {
+        if (refLevels.includes(g)) refVals.push(v);
+        else otherVals.push(v);
+      }
+    }
+    const groups = {};
+    groups[refGroupLabel(refLevels)] = refVals;
+    if (otherVals.length > 0) groups['其他中心'] = otherVals;
+    return groups;
+  }
+  const groups = {};
+  for (const r of records) {
+    const g = r[groupVar];
+    if (g === null || g === '') continue;
+    const gStr = String(g);
+    if (!groups[gStr]) groups[gStr] = [];
+    const v = r[varName];
+    if (v !== null && typeof v === 'number') groups[gStr].push(v);
+  }
+  return groups;
+}
+
+function renderBoxPlot(records, varName, groupVar, divId, refGroup, refLevels) {
+  const data = getGroupedValues(records, varName, groupVar, refGroup, refLevels);
+  const traces = [];
+  let ci = 0;
+  for (const [gName, vals] of Object.entries(data)) {
+    if (vals.length === 0) continue;
+    const c = JR_COLORS[ci % JR_COLORS.length];
+    traces.push({
+      type: 'box', y: vals, name: gName + '',
+      boxpoints: 'outliers', jitter: 0,
+      marker: { color: c, size: 5, outliercolor: c },
+      line: { color: c, width: 1.5 },
+      fillcolor: 'rgba(255,255,255,0.9)',
+      hoverinfo: 'y+name'
+    });
+    ci++;
+  }
+  const layout = jLayout(varName, groupVar || '', varName);
+
+  // 自动设置 Y 轴范围：按须线范围（Q1−1.5×IQR ~ Q3+1.5×IQR）而非离群点
+  const allValsForRange = [].concat(...Object.values(data));
+  if (allValsForRange.length > 0) {
+    const sorted = [...allValsForRange].sort((a, b) => a - b);
+    const q1r = quantile(sorted, 0.25);
+    const q3r = quantile(sorted, 0.75);
+    const iqr = q3r - q1r;
+    const lowerWhisker = q1r - 1.5 * iqr;
+    const upperWhisker = q3r + 1.5 * iqr;
+    // 找到须线范围内实际数据的最小/最大值
+    const inWhisker = sorted.filter(v => v >= lowerWhisker && v <= upperWhisker);
+    if (inWhisker.length > 0) {
+      const pad = (inWhisker[inWhisker.length - 1] - inWhisker[0]) * 0.08 || iqr * 0.15;
+      layout.yaxis = Object.assign({}, layout.yaxis, {
+        range: [inWhisker[0] - pad, inWhisker[inWhisker.length - 1] + pad]
+      });
+    }
+  }
+
+  const config = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d', 'autoScale2d'] };
+  Plotly.newPlot(divId, traces, layout, config);
+
+  // 受试者层级明细表（先渲染，再绑事件）
+  const subjCols = getSubjectColumns(records);
+  let detailHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击图表元素筛选）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
+  detailHtml += '<table><thead><tr><th>#</th>' + subjCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+  if (groupVar) detailHtml += '<th>' + escapeHtml(groupVar) + '</th>';
+  detailHtml += '</tr></thead><tbody>';
+  const isRef = refGroup && refLevels && refLevels.length > 0;
+  let ridx = 0;
+  for (const r of records) {
+    ridx++;
+    const rawG = groupVar ? String(r[groupVar] ?? '') : '__overall__';
+    const gName = isRef ? (refLevels.includes(rawG) ? refGroupLabel(refLevels) : '其他中心') : rawG;
+    const gDisplay = isRef ? (refLevels.includes(rawG) ? refGroupLabel(refLevels) : '其他中心') : rawG;
+    const val = r[varName];
+    detailHtml += '<tr data-group="' + escapeHtml(gName) + '" data-val="' + escapeHtml(String(val ?? '')) + '">';
+    detailHtml += '<td>' + ridx + '</td>';
+    for (const c of subjCols) detailHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+    detailHtml += '<td>' + escapeHtml(String(val ?? '')) + '</td>';
+    if (groupVar) detailHtml += '<td>' + escapeHtml(gDisplay) + '</td>';
+    detailHtml += '</tr>';
+  }
+  detailHtml += '</tbody></table></div>';
+  document.getElementById('detailDistribution').innerHTML = detailHtml;
+
+  // 点击图表 → 筛选明细
+  const boxEl = document.getElementById(divId);
+  boxEl.removeAllListeners('plotly_click');
+  boxEl._lastClick = null;
+  boxEl.on('plotly_click', function(edata) {
+    if (!edata || !edata.points || edata.points.length === 0) return;
+    const pt = edata.points[0];
+    const traceName = String(pt.data.name || '');
+    const clickVal = pt.y;
+    const tbody = document.getElementById('detailDistribution').querySelector('tbody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+
+    if (groupVar) {
+      // 再次点击同一分组 → 恢复全部
+      if (boxEl._lastClick === traceName) {
+        rows.forEach(tr => { tr.style.display = ''; });
+        boxEl._lastClick = null;
+      } else {
+        rows.forEach(tr => {
+          tr.style.display = tr.dataset.group === traceName ? '' : 'none';
+        });
+        boxEl._lastClick = traceName;
+      }
+    } else {
+      // 无分组：按点击值筛选
+      if (clickVal === undefined) return;
+      const targetKey = String(clickVal);
+      if (boxEl._lastClick === targetKey) {
+        rows.forEach(tr => { tr.style.display = ''; });
+        boxEl._lastClick = null;
+      } else {
+        rows.forEach(tr => {
+          tr.style.display = tr.dataset.val === targetKey ? '' : 'none';
+        });
+        boxEl._lastClick = targetKey;
+      }
+    }
+  });
+}
+
+function detectStudyId(records) {
+  if (records.length === 0) return null;
+  const first = records[0];
+  const candidates = ['studyid', '研究编号', 'study', '试验编号', '项目编号', 'protocol'];
+  // 大小写不敏感匹配
+  const keys = Object.keys(first);
+  for (const c of candidates) {
+    const match = keys.find(k => k.toLowerCase() === c.toLowerCase());
+    if (match && first[match] !== null && first[match] !== '') return match;
+  }
+  return null;
+}
+
+function detectSiteCol(records) {
+  // 自动检测中心/site 列名，支持中英文
+  if (records.length === 0) return null;
+  const first = records[0];
+  const candidates = ['SITEID', '中心编号', 'SITE', '中心', 'SITENUM'];
+  for (const c of candidates) {
+    if (c in first) return c;
+  }
+  return null;
+}
+
+function detectSubjectCol(records) {
+  // 自动检测受试者编号列名，支持中英文
+  if (records.length === 0) return null;
+  const first = records[0];
+  const candidates = ['SUBJID', '受试者编号', 'USUBJID', 'SUBJECT', '受试者', '编号'];
+  for (const c of candidates) {
+    if (c in first) return c;
+  }
+  return null;
+}
+
+function getSubjectColumns(records) {
+  // 返回受试者标识列：受试者编号优先，其次中心编号
+  const cols = [];
+  if (records.length > 0) {
+    const subjCol = detectSubjectCol(records);
+    const siteCol = detectSiteCol(records);
+    if (subjCol) cols.push(subjCol);
+    if (siteCol) cols.push(siteCol);
+  }
+  return cols.length > 0 ? cols : [];
+}
+
+function renderHistogram(records, varName, groupVar, nBins, divId, refGroup, refLevels) {
+  if (!state.active) return;
+  const meta = state.active.metadata[varName];
+  const isCategorical = meta && (meta.type === 'categorical' || meta.type === 'binary' || meta.type === 'ordinal');
+
+  if (isCategorical) {
+    // Bar chart — grouped, journal style
+    // 从筛选后数据计算分类水平，而非用加载时的全量 meta.levels（避免已筛掉的值仍出现在 X 轴）
+    const rawVals = records.map(r => r[varName]).filter(v => v !== null).map(String);
+    const levels = [...new Set(rawVals)].sort((a, b) => {
+      const na = Number(a.replace(/[<>=+]/g, ''));
+      const nb = Number(b.replace(/[<>=+]/g, ''));
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+    const traces = [];
+
+    if (!groupVar) {
+      const counts = {};
+      for (const r of records) {
+        const v = r[varName];
+        if (v === null) continue;
+        counts[String(v)] = (counts[String(v)] || 0) + 1;
+      }
+      const xVals = levels.map(l => String(l));
+      const yVals = xVals.map(x => counts[x] || 0);
+      const total = yVals.reduce((a,b)=>a+b,0);
+      const textVals = yVals.map(v => total > 0 ? v + '例 (' + (v/total*100).toFixed(1) + '%)' : '0例 (0%)');
+      traces.push({
+        type: 'bar', x: xVals, y: yVals.map(v => v/total*100), name: 'Overall',
+        marker: { color: JR_COLORS[0], line: { width: 0 } },
+        text: textVals, textposition: 'outside', textfont: { family: JR_FONT.family, size: 11 }
+      });
+    } else {
+      const isRef2 = refGroup && refLevels && refLevels.length > 0;
+      let groupLevels;
+      if (isRef2) {
+        groupLevels = [refGroupLabel(refLevels), '其他中心'];
+      } else {
+        groupLevels = [...new Set(records.map(r => r[groupVar]).filter(v => v !== null && v !== ''))].sort().map(String);
+      }
+      let ci = 0;
+      for (const gl of groupLevels) {
+        const subRecs = isRef2
+          ? (gl === refGroupLabel(refLevels)
+              ? records.filter(r => refLevels.includes(String(r[groupVar] ?? '')))
+              : records.filter(r => !refLevels.includes(String(r[groupVar] ?? '')) && String(r[groupVar] ?? '') !== ''))
+          : records.filter(r => String(r[groupVar]) === gl);
+        const counts = {};
+        for (const r of subRecs) {
+          const v = r[varName];
+          if (v === null) continue;
+          counts[String(v)] = (counts[String(v)] || 0) + 1;
+        }
+        const xVals = levels.map(l => String(l));
+        const yCounts = xVals.map(x => counts[x] || 0);
+        const total = yCounts.reduce((a,b)=>a+b,0) || 1;
+        const textVals = yCounts.map(v => total > 0 ? v + '例 (' + (v/total*100).toFixed(1) + '%)' : '0例 (0%)');
+        traces.push({
+          type: 'bar', x: xVals, y: yCounts.map(v => v/total*100), name: String(gl),
+          marker: { color: JR_COLORS[ci % JR_COLORS.length], line: { width: 0 } },
+          text: textVals, textposition: 'outside', textfont: { family: JR_FONT.family, size: 10 }
+        });
+        ci++;
+      }
+    }
+
+    const layout = jLayout(varName, '', 'Percentage (%)', {
+      barmode: 'group', bargap: 0.05, bargroupgap: 0,
+      margin: { l: 65, r: 25, t: 55, b: 85 },
+      yaxis: Object.assign({}, JR_LAYOUT_BASE.yaxis, { title: { text: 'Percentage (%)', font: JR_FONT }, ticksuffix: '%' }),
+      legend: { font: JR_FONT }
+    });
+    Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+
+    // 受试者明细 — data-cat 映射类别
+    const subjColsH1 = getSubjectColumns(records);
+    let dtHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击柱子筛选类别）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
+    dtHtml += '<table><thead><tr><th>#</th>' + subjColsH1.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+    const isRefH1 = refGroup && refLevels && refLevels.length > 0;
+    if (groupVar) dtHtml += '<th>' + escapeHtml(groupVar) + '</th>';
+    dtHtml += '</tr></thead><tbody>';
+    let ridx1 = 0;
+    for (const r of records) {
+      ridx1++;
+      const catVal = String(r[varName] ?? '');
+      const gDisplay1 = isRefH1 ? (refLevels.includes(String(r[groupVar] ?? '')) ? refGroupLabel(refLevels) : '其他中心') : String(r[groupVar] ?? '');
+      dtHtml += '<tr data-cat="' + escapeHtml(catVal) + '"><td>' + ridx1 + '</td>';
+      for (const c of subjColsH1) dtHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+      dtHtml += '<td>' + escapeHtml(catVal) + '</td>';
+      if (groupVar) dtHtml += '<td>' + escapeHtml(gDisplay1) + '</td>';
+      dtHtml += '</tr>';
+    }
+    dtHtml += '</tbody></table></div>';
+    document.getElementById('detailDistribution').innerHTML = dtHtml;
+
+    // 点击柱子 → 筛选对应类别
+    const barEl = document.getElementById(divId);
+    barEl.removeAllListeners('plotly_click');
+    barEl.on('plotly_click', function(edata) {
+      if (!edata || !edata.points || edata.points.length === 0) return;
+      const clickedX = String(edata.points[0].x);
+      const tbody = document.getElementById('detailDistribution').querySelector('tbody');
+      if (!tbody) return;
+      // 再次点击同一类别 → 恢复全部
+      if (barEl._lastBarClick === clickedX) {
+        tbody.querySelectorAll('tr').forEach(tr => { tr.style.display = ''; });
+        barEl._lastBarClick = null;
+      } else {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          tr.style.display = tr.dataset.cat === clickedX ? '' : 'none';
+        });
+        barEl._lastBarClick = clickedX;
+      }
+    });
+  } else {
+    // Histogram — overlaid, journal style
+    const data = getGroupedValues(records, varName, groupVar, refGroup, refLevels);
+    const traces = [];
+    let ci = 0;
+    for (const [gName, vals] of Object.entries(data)) {
+      if (vals.length === 0) continue;
+      const c = JR_COLORS[ci % JR_COLORS.length];
+      traces.push({
+        type: 'histogram', x: vals, name: gName,
+        opacity: 0.55, nbinsx: nBins,
+        marker: { color: c, line: { color: c, width: 1 } },
+        hovertemplate: '%{x}: <b>%{y} 例</b><extra>' + gName + '</extra>'
+      });
+      ci++;
+    }
+
+    // 计算分箱边界：使用须线范围（Q1−1.5×IQR ~ Q3+1.5×IQR），过滤极端值对分箱的干扰
+    const allVals = [].concat(...Object.values(data));
+    if (allVals.length === 0) return;
+    const sortedAll = [...allVals].sort((a, b) => a - b);
+    const q1h = quantile(sortedAll, 0.25);
+    const q3h = quantile(sortedAll, 0.75);
+    const iqrH = q3h - q1h;
+    const lowerH = q1h - 1.5 * iqrH;
+    const upperH = q3h + 1.5 * iqrH;
+    // 分箱范围限制在须线内，须线外的数据归入首/末箱
+    const binMin = Math.max(sortedAll[0], lowerH);
+    const binMax = Math.min(sortedAll[sortedAll.length - 1], upperH);
+    const binSize = (binMax - binMin) / nBins || 1;
+    const binStart = binMin - binSize * 0.001;
+    const binEnd = binMax + binSize * 0.001;
+
+    const layout = jLayout(varName, varName, 'Frequency', {
+      barmode: 'overlay', legend: { font: JR_FONT },
+      xaxis: Object.assign({}, JR_LAYOUT_BASE.xaxis, {
+        range: [binStart, binEnd]
+      })
+    });
+    // 使用 xbins 固定分箱，保证点击事件可预测
+    traces.forEach(t => { t.xbins = { start: binStart, end: binEnd, size: binSize }; });
+    Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+
+    // 受试者明细 — data-bin 映射分箱区间
+    const subjColsH2 = getSubjectColumns(records);
+    let dtHtml2 = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击柱子筛选区间）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
+    dtHtml2 += '<table><thead><tr><th>#</th>' + subjColsH2.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+    const isRefH2 = refGroup && refLevels && refLevels.length > 0;
+    if (groupVar) dtHtml2 += '<th>' + escapeHtml(groupVar) + '</th>';
+    dtHtml2 += '</tr></thead><tbody>';
+    let ridx2 = 0;
+    for (const r of records) {
+      ridx2++;
+      const val = r[varName];
+      let binKey = '';
+      if (val !== null && typeof val === 'number') {
+        const bIdx = Math.floor((val - binStart) / binSize);
+        binKey = (binStart + bIdx * binSize).toFixed(2) + '-' + (binStart + (bIdx+1) * binSize).toFixed(2);
+      }
+      const gDisplay2 = isRefH2 ? (refLevels.includes(String(r[groupVar] ?? '')) ? refGroupLabel(refLevels) : '其他中心') : String(r[groupVar] ?? '');
+      dtHtml2 += '<tr data-bin="' + escapeHtml(binKey) + '"><td>' + ridx2 + '</td>';
+      for (const c of subjColsH2) dtHtml2 += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+      dtHtml2 += '<td>' + escapeHtml(String(val ?? '')) + '</td>';
+      if (groupVar) dtHtml2 += '<td>' + escapeHtml(gDisplay2) + '</td>';
+      dtHtml2 += '</tr>';
+    }
+    dtHtml2 += '</tbody></table></div>';
+    document.getElementById('detailDistribution').innerHTML = dtHtml2;
+
+    // 点击直方图柱子 → 筛选对应区间
+    const histEl = document.getElementById(divId);
+    histEl.removeAllListeners('plotly_click');
+    histEl.on('plotly_click', function(edata) {
+      if (!edata || !edata.points || edata.points.length === 0) return;
+      const clickedX = edata.points[0].x;
+      const bIdx = Math.floor((clickedX - binStart) / binSize);
+      const targetBin = (binStart + bIdx * binSize).toFixed(2) + '-' + (binStart + (bIdx+1) * binSize).toFixed(2);
+      const tbody = document.getElementById('detailDistribution').querySelector('tbody');
+      if (!tbody) return;
+      // 再次点击同一区间 → 恢复全部
+      if (histEl._lastBinClick === targetBin) {
+        tbody.querySelectorAll('tr').forEach(tr => { tr.style.display = ''; });
+        histEl._lastBinClick = null;
+      } else {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          tr.style.display = tr.dataset.bin === targetBin ? '' : 'none';
+        });
+        histEl._lastBinClick = targetBin;
+      }
+    });
+  }
+}
+
+// ======================================================================
+//  ControlChartCalc — 中心间差异漏斗图 (Funnel Plot)
+// ======================================================================
+function wilsonCI(p, n, z) {
+  if (n === 0) return { lower: 0, upper: 1 };
+  const z2 = z * z;
+  const denom = 1 + z2 / n;
+  const center = (p + z2 / (2 * n)) / denom;
+  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n) / denom;
+  return { lower: Math.max(0, center - margin), upper: Math.min(1, center + margin) };
+}
+
+function calcControlChart(records, varName, levelName, minN, siteCol) {
+  // Group by site column (user-selected)
+  const siteMap = new Map();
+  for (const r of records) {
+    const site = String(r[siteCol] || 'Unknown');
+    if (!siteMap.has(site)) siteMap.set(site, { n: 0, nPos: 0 });
+    const entry = siteMap.get(site);
+    const v = r[varName];
+    if (v !== null && v !== undefined) {
+      entry.n++;
+      if (String(v) === String(levelName)) entry.nPos++;
+    }
+  }
+
+  // Build site data array
+  const sites = [];
+  for (const [siteId, d] of siteMap) {
+    if (d.n === 0) continue;
+    sites.push({
+      siteId,
+      n: d.n,
+      nPos: d.nPos,
+      rate: d.nPos / d.n
+    });
+  }
+  // Sort by enrollment size
+  sites.sort((a, b) => a.n - b.n);
+
+  // Overall rate
+  const totalN = sites.reduce((s, d) => s + d.n, 0);
+  const totalPos = sites.reduce((s, d) => s + d.nPos, 0);
+  const overallP = totalN > 0 ? totalPos / totalN : 0;
+
+  // Generate CI bands for funnel
+  const maxN = Math.max(...sites.map(s => s.n), 10);
+  const funnelN = [];
+  const f95Lower = [], f95Upper = [], f99Lower = [], f99Upper = [];
+  for (let n = 1; n <= maxN; n++) {
+    funnelN.push(n);
+    const ci95 = wilsonCI(overallP, n, 1.96);
+    f95Lower.push(ci95.lower);
+    f95Upper.push(ci95.upper);
+    const ci99 = wilsonCI(overallP, n, 2.576);
+    f99Lower.push(ci99.lower);
+    f99Upper.push(ci99.upper);
+  }
+
+  // Find out-of-control sites (beyond 99% CI, N >= minN)
+  const outOfControl = [];
+  const minNThreshold = Math.max(1, minN || 1);
+  for (const site of sites) {
+    if (site.n < minNThreshold) continue;
+    const ci99 = wilsonCI(overallP, site.n, 2.576);
+    if (site.rate < ci99.lower || site.rate > ci99.upper) {
+      outOfControl.push({ ...site, ciLower: ci99.lower, ciUpper: ci99.upper });
+    }
+  }
+
+  return {
+    sites, overallP, totalN, totalPos,
+    funnelN, f95Lower, f95Upper, f99Lower, f99Upper,
+    outOfControl, minNThreshold
+  };
+}
+
+function renderControlChart(ccData, varName, levelName, divId) {
+  const { sites, overallP, totalN, totalPos, funnelN, f95Lower, f95Upper, f99Lower, f99Upper, outOfControl } = ccData;
+  const oocIds = new Set(outOfControl.map(s => s.siteId));
+
+  const traces = [];
+
+  // 99% CI lines (outer, darker)
+  traces.push({
+    x: funnelN, y: f99Upper, type: 'scatter', mode: 'lines',
+    name: '99% CI', showlegend: true, hoverinfo: 'skip',
+    line: { color: '#7F7F7F', width: 1.5, dash: 'dash' }
+  });
+  traces.push({
+    x: funnelN, y: f99Lower, type: 'scatter', mode: 'lines',
+    name: '99% CI', showlegend: false, hoverinfo: 'skip',
+    line: { color: '#7F7F7F', width: 1.5, dash: 'dash' }
+  });
+  // 95% CI lines (inner, lighter)
+  traces.push({
+    x: funnelN, y: f95Upper, type: 'scatter', mode: 'lines',
+    name: '95% CI', showlegend: true, hoverinfo: 'skip',
+    line: { color: '#BFBFBF', width: 1.2, dash: 'dot' }
+  });
+  traces.push({
+    x: funnelN, y: f95Lower, type: 'scatter', mode: 'lines',
+    name: '95% CI', showlegend: false, hoverinfo: 'skip',
+    line: { color: '#BFBFBF', width: 1.2, dash: 'dot' }
+  });
+  // Overall rate reference line
+  traces.push({
+    x: [0.5, Math.max(...funnelN) * 1.05],
+    y: [overallP, overallP],
+    type: 'scatter', mode: 'lines',
+    name: `Overall ${(overallP*100).toFixed(1)}%`,
+    line: { color: '#c0504d', width: 1.5, dash: 'dash' },
+    hoverinfo: 'skip'
+  });
+
+  // Normal sites
+  const normalSites = sites.filter(s => !oocIds.has(s.siteId));
+  if (normalSites.length > 0) {
+    traces.push({
+      x: normalSites.map(s => s.n),
+      y: normalSites.map(s => s.rate),
+      type: 'scatter', mode: 'markers',
+      name: 'Sites',
+      marker: { color: JR_COLORS[0], size: Math.max(6, Math.min(14, 60 / Math.sqrt(sites.length))), line: { width: 1, color: '#fff' } },
+      text: normalSites.map(s => `${s.siteId}<br>N=${s.n}, ${s.nPos}/${s.n}=${(s.rate*100).toFixed(1)}%`),
+      hovertemplate: `<b>Site %{text}</b><extra></extra>`
+    });
+  }
+
+  // Out-of-control sites (highlighted)
+  if (outOfControl.length > 0) {
+    traces.push({
+      x: outOfControl.map(s => s.n),
+      y: outOfControl.map(s => s.rate),
+      type: 'scatter', mode: 'markers+text',
+      name: 'Beyond 99% CI',
+      marker: { color: '#c0504d', size: Math.max(8, Math.min(16, 70 / Math.sqrt(sites.length))), line: { width: 2, color: '#fff' } },
+      text: outOfControl.map(s => s.siteId),
+      textposition: 'top center',
+      textfont: { family: JR_FONT.family, size: 10, color: '#c0504d' },
+      hovertemplate: `<b>Site %{text}</b><br>N=%{x}, %{y:.1%}<br>99% CI: [%{customdata[0]:.1%}, %{customdata[1]:.1%}]<extra></extra>`,
+      customdata: outOfControl.map(s => [s.ciLower, s.ciUpper])
+    });
+  }
+
+  const layout = jLayout(`${varName} — ${levelName} by site`, 'Subjects per site (N)', 'Proportion', {
+    margin: { l: 70, r: 25, t: 55, b: 65 },
+    hovermode: 'closest',
+    legend: { orientation: 'h', y: 1.1, font: JR_FONT },
+    xaxis: Object.assign({}, JR_LAYOUT_BASE.xaxis, {
+      title: { text: 'Subjects per site (N)', font: JR_FONT },
+      range: [0, Math.max(...funnelN) * 1.08]
+    }),
+    yaxis: Object.assign({}, JR_LAYOUT_BASE.yaxis, {
+      title: { text: 'Proportion', font: JR_FONT },
+      tickformat: '.0%',
+      range: (() => {
+        const allY = [...sites.map(s => s.rate), f99Lower[0], f99Upper[0]];
+        const yMin = Math.min(...allY);
+        const yMax = Math.max(...allY);
+        const pad = Math.max(0.06, (yMax - yMin) * 0.18);
+        return [Math.max(-0.02, yMin - pad), Math.min(1.02, yMax + pad)];
+      })()
+    })
+  });
+  Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+}
+
+// ======================================================================
+//  UI Controller
+// ======================================================================
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const colors = { success: '#4caf90', error: '#c0504d', warning: '#ED7D31' };
+  const icons = { success: 'bi-check-circle', error: 'bi-exclamation-circle', warning: 'bi-exclamation-triangle' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background:${colors[type]||colors.success}; color:#fff; padding:0.6rem 1rem;
+    margin-bottom:0.4rem; font-size:0.82rem; display:flex; align-items:center; gap:0.5rem;
+    box-shadow:0 2px 8px rgba(0,0,0,0.15); animation:fadeIn 0.25s ease;
+    max-width:400px; font-family:var(--font-ui);
+  `;
+  toast.innerHTML = `<i class="bi ${icons[type]||icons.success}"></i> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+function updateNavStatus(msg) {
+  document.getElementById('navStatus').textContent = msg;
+}
+
+function renderSidebar(project) {
+  const meta = project.metadata;
+  const analysisKeys = Object.keys(meta).filter(k => {
+    const t = meta[k].type;
+    return t !== 'id' && t !== 'empty';
+  });
+  const basicKeys = Object.keys(meta).filter(k => {
+    const t = meta[k].type;
+    // id 类型：有重复值的（如 SITEID），或已知标识变量名（如 SUBJID）
+    return t === 'id' && (meta[k].nUnique < meta[k].nTotal || KNOWN_BASIC_VARS.has(k.toLowerCase()));
+  });
+
+  // 基础变量列表（只读展示）
+  let basicHtml = '';
+  for (const key of basicKeys) {
+    basicHtml += `<div class="var-item var-item-basic">
+      <span style="color:var(--ink-light);">${escapeHtml(key)}</span>
+      <span class="var-type-badge type-basic">标识</span>
+    </div>`;
+  }
+  document.getElementById('basicVarList').innerHTML = basicHtml || '<div class="text-muted" style="font-size:0.72rem;padding:0.25rem 0;">无基础变量</div>';
+
+  // 分析变量列表
+  let varHtml = '';
+  for (const key of analysisKeys) {
+    const t = meta[key].type;
+    const typeLabel = { continuous: '连续', categorical: '分类', ordinal: '有序', binary: '二分类' }[t] || t;
+    const typeClass = { continuous: 'type-continuous', categorical: 'type-categorical', ordinal: 'type-ordinal', binary: 'type-binary' }[t] || '';
+    const checkedAttr = project.selectedVars.has(key) ? ' checked' : '';
+    varHtml += `<label class="var-item"><input type="checkbox" class="var-checkbox" data-key="${escapeHtml(key)}"${checkedAttr}>${escapeHtml(key)}<span class="var-type-badge ${typeClass}">${typeLabel}</span></label>`;
+  }
+  document.getElementById('analysisVarList').innerHTML = varHtml || '<div class="text-muted" style="font-size:0.78rem;">无分析变量</div>';
+
+  // Group select — include categorical/binary/ordinal, plus id-type with repeated values (e.g. SITEID)
+  const groupSelect = document.getElementById('groupSelect');
+  const catVars = analysisKeys.filter(k => {
+    const t = meta[k].type;
+    const lvls = meta[k].levels || [];
+    return (t === 'categorical' || t === 'binary' || t === 'ordinal') && lvls.length >= 2;
+  });
+  // Also add id-type variables that have levels (repeated values, e.g. SITEID with many centers)
+  const groupingVars = [...catVars];
+  for (const [k, info] of Object.entries(meta)) {
+    if (info.type === 'id' && (info.levels || []).length >= 2 && info.nUnique < info.nTotal) {
+      groupingVars.push(k);
+    }
+  }
+  groupSelect.innerHTML = '<option value="">不分组 (Overall)</option>';
+  for (const key of groupingVars) {
+    const sel = (project.groupVar === key) ? ' selected' : '';
+    groupSelect.innerHTML += `<option value="${escapeHtml(key)}"${sel}>${escapeHtml(key)}</option>`;
+  }
+  groupSelect.disabled = groupingVars.length === 0;
+  if (!groupingVars.includes(project.groupVar)) {
+    groupSelect.value = '';
+  } else {
+    groupSelect.value = project.groupVar || '';
+  }
+
+  // Reference group panel — multi-select checkboxes
+  const refPanel = document.getElementById('refGroupPanel');
+  const chkRef = document.getElementById('chkRefGroup');
+  const refLevelPanel = document.getElementById('refLevelPanel');
+  const selGroup = project.groupVar;
+  if (selGroup && meta[selGroup]) {
+    const lvls = meta[selGroup].levels || [];
+    if (lvls.length > 2) {
+      refPanel.style.display = 'block';
+      chkRef.checked = !!project.refGroup;
+      refLevelPanel.style.display = project.refGroup ? 'block' : 'none';
+      // Build checkboxes
+      const refSet = new Set(project.refLevels || []);
+      let cbHtml = '';
+      for (const lvl of lvls) {
+        const lvlStr = String(lvl);
+        const checkedAttr = refSet.has(lvlStr) ? ' checked' : '';
+        cbHtml += `<label style="display:flex;align-items:center;gap:0.3rem;padding:0.12rem 0;cursor:pointer;font-weight:400;">
+          <input type="checkbox" class="ref-level-cb" value="${escapeHtml(lvlStr)}"${checkedAttr}>${escapeHtml(lvlStr)}
+        </label>`;
+      }
+      refLevelPanel.innerHTML = cbHtml;
+    } else {
+      refPanel.style.display = 'none';
+      project.refGroup = false;
+      project.refLevels = [];
+    }
+  } else {
+    refPanel.style.display = 'none';
+    project.refGroup = false;
+    project.refLevels = [];
+  }
+
+  // Filter variable dropdown — 包含基础变量和分析变量
+  const filterVarSel = document.getElementById('filterVar');
+  const allFilterableKeys = [...basicKeys, ...analysisKeys];
+  filterVarSel.innerHTML = '<option value="">选择变量</option>';
+  for (const key of allFilterableKeys) {
+    const t = meta[key].type;
+    const label = t === 'id' ? '标识' : typeLabelShort(t);
+    filterVarSel.innerHTML += `<option value="${escapeHtml(key)}">${escapeHtml(key)} (${label})</option>`;
+  }
+  filterVarSel.disabled = false;
+  filterVarSel.value = '';
+
+  // Active filter chips
+  const afDiv = document.getElementById('activeFilters');
+  afDiv.innerHTML = (project.filters || []).map((f,i) =>
+    `<span class="filter-chip" data-idx="${i}" style="display:inline-flex;align-items:center;gap:0.2rem;background:var(--accent-blue);color:#fff;padding:0.15rem 0.45rem;border-radius:3px;font-size:0.7rem;cursor:pointer;">
+      ${escapeHtml(f.label)} &times;
+    </span>`
+  ).join('');
+
+  // Clear button state
+  document.getElementById('btnClearFilters').disabled = (project.filters || []).length === 0;
+  document.getElementById('btnAddFilter').disabled = true;
+  document.getElementById('filterOp').disabled = true;
+  document.getElementById('filterVal').disabled = true;
+
+  // Project info
+  const nSubj = project.records.length;
+  const nFiltered = getFilteredRecords(project).length;
+  const filterInfo = nFiltered !== nSubj ? ` <span style="color:var(--accent-orange);">(${nFiltered} 筛选后)</span>` : '';
+  document.getElementById('projectInfo').innerHTML = `
+    <div><strong>项目名称:</strong> ${escapeHtml(project.name)}</div>
+    <div><strong>受试者数:</strong> ${nSubj}${filterInfo}</div>
+    <div><strong>变量数:</strong> ${Object.keys(meta).length}</div>
+    <div><strong>文件:</strong> ${escapeHtml(project.fileName)}</div>
+  `;
+
+  // Re-bind filter chip click
+  afDiv.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      const idx = parseInt(this.dataset.idx);
+      project.filters.splice(idx, 1);
+      refreshAll();
+    });
+  });
+}
+
+function typeLabelShort(t) {
+  return { continuous: '连续', categorical: '分类', ordinal: '有序', binary: '二分类' }[t] || t;
+}
+
+function renderPanel(chartDivId, panelId) {
+  // Show only the target panel — 图表面板使用 flex 布局以占满全屏
+  var flexPanels = ['panelDistribution', 'panelCorrelation', 'panelControlChart'];
+  ['panelTable1', 'panelDistribution', 'panelCorrelation', 'panelEnrollment', 'panelControlChart'].forEach(function(id) {
+    if (id === panelId) {
+      document.getElementById(id).style.display = flexPanels.indexOf(id) >= 0 ? 'flex' : 'block';
+    } else {
+      document.getElementById(id).style.display = 'none';
+    }
+  });
+  document.getElementById('emptyState').style.display = 'none';
+}
+
+// 当前特征分布面板的图表类型: 'box' | 'hist'
+let currentDistChartType = 'box';
+
+function renderDistributionPanel() {
+  const project = state.active;
+  if (!project) return;
+  renderPanel(null, 'panelDistribution');
+  populateVarSelect('distVar', null);
+  autoSetDistChartType();
+  renderCurrentDistChart();
+}
+
+// Silverman 带宽 — 用于 KDE 核密度估计
+function silvermanBandwidth(data) {
+  const n = data.length;
+  if (n < 2) return 1;
+  const mean = data.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(data.reduce((s, x) => s + (x - mean) * (x - mean), 0) / (n - 1));
+  const sorted = [...data].sort((a, b) => a - b);
+  const iqr = quantile(sorted, 0.75) - quantile(sorted, 0.25);
+  return 0.9 * Math.min(sd, iqr / 1.34) * Math.pow(n, -0.2);
+}
+
+// ======================================================================
+//  Correlation Analysis（相关性分析 + 异常点 + 中心漏斗图）
+// ======================================================================
+function renderCorrelationPanel() {
+  const project = state.active;
+  if (!project) return;
+  renderPanel(null, 'panelCorrelation');
+  // 填充 X/Y 下拉框（仅连续型已勾选分析变量）
+  const meta = project.metadata;
+  ['corrVarX', 'corrVarY'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    const prev = sel.value;
+    sel.innerHTML = '';
+    for (const [key, info] of Object.entries(meta)) {
+      if (info.type !== 'continuous') continue;
+      if (!project.selectedVars.has(key)) continue;
+      const selAttr = (key === prev) ? ' selected' : '';
+      sel.innerHTML += `<option value="${escapeHtml(key)}"${selAttr}>${escapeHtml(key)}</option>`;
+    }
+    if (!sel.value && sel.options.length > 0) {
+      if (selId === 'corrVarY' && sel.options.length > 1) {
+        sel.value = sel.options[1].value; // Y 默认选第二个，避免与 X 相同
+      } else {
+        sel.value = sel.options[0].value;
+      }
+    }
+  });
+  renderCorrelationCharts();
+}
+
+function renderCorrelationCharts() {
+  const project = state.active;
+  if (!project) return;
+  const xVar = document.getElementById('corrVarX').value;
+  const yVar = document.getElementById('corrVarY').value;
+  const threshold = parseFloat(document.getElementById('corrThreshold').value) || 2.0;
+  if (!xVar || !yVar) return;
+  if (xVar === yVar) {
+    Plotly.purge('chartCorrelationScatter');
+    Plotly.purge('chartCorrelationFunnel');
+    document.getElementById('correlationSiteSummary').innerHTML = '';
+    document.getElementById('detailCorrelation').innerHTML = '';
+    showToast('X 和 Y 不能是同一个变量，请选择不同的变量', 'warning');
+    return;
+  }
+
+  const filtered = getFilteredRecords(project);
+  const siteCol = detectSiteCol(filtered) || '站点未知';
+  const subjCols = getSubjectColumns(filtered);
+  const meta = state.active.metadata;
+
+  // 提取完整配对数据
+  const pairs = [];
+  for (const r of filtered) {
+    const x = r[xVar], y = r[yVar];
+    if (x !== null && y !== null && typeof x === 'number' && typeof y === 'number') {
+      pairs.push({ x, y, site: String(r[siteCol] || 'Unknown'), record: r });
+    }
+  }
+  if (pairs.length < 3) { showToast('有效配对数据不足 (<3)', 'warning'); return; }
+
+  const n = pairs.length;
+  const xs = pairs.map(p => p.x), ys = pairs.map(p => p.y);
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
+  const ssxy = xs.reduce((s, xi, i) => s + (xi - xMean) * (ys[i] - yMean), 0);
+  const ssxx = xs.reduce((s, xi) => s + (xi - xMean) * (xi - xMean), 0);
+  const b = ssxx !== 0 ? ssxy / ssxx : 0;
+  const a = yMean - b * xMean;
+
+  // 残差
+  const residuals = pairs.map(p => p.y - (a + b * p.x));
+  const rMean = residuals.reduce((s, v) => s + v, 0) / n;
+  const rSd = Math.sqrt(residuals.reduce((s, v) => s + (v - rMean) * (v - rMean), 0) / (n - 1));
+  const stdResiduals = residuals.map(r => rSd > 0 ? r / rSd : 0);
+  const isOutlier = stdResiduals.map(z => Math.abs(z) > threshold);
+
+  // 散点图
+  const normalX = [], normalY = [], outlierX = [], outlierY = [], outlierText = [];
+  pairs.forEach((p, i) => {
+    if (isOutlier[i]) {
+      outlierX.push(p.x); outlierY.push(p.y);
+      const label = (subjCols.length > 0 ? String(p.record[subjCols[0]] || '') + ' / ' : '') + p.site;
+      outlierText.push(label + '<br>Z=' + stdResiduals[i].toFixed(2));
+    } else {
+      normalX.push(p.x); normalY.push(p.y);
+    }
+  });
+
+  const xLine = [Math.min(...xs), Math.max(...xs)];
+  const yLine = xLine.map(x => a + b * x);
+
+  const scatterTraces = [];
+  if (normalX.length > 0) {
+    scatterTraces.push({
+      type: 'scatter', x: normalX, y: normalY, mode: 'markers', name: '正常',
+      marker: { color: '#A0A0A0', size: 6, opacity: 0.5 },
+      hovertemplate: '(%{x:.1f}, %{y:.1f})<extra></extra>'
+    });
+  }
+  if (outlierX.length > 0) {
+    scatterTraces.push({
+      type: 'scatter', x: outlierX, y: outlierY, mode: 'markers+text', name: '异常 |Z|>' + threshold,
+      marker: { color: '#c0504d', size: 8, opacity: 0.8, line: { color: '#fff', width: 1 } },
+      text: outlierText.map(t => t.split('<br>')[0]), textposition: 'top center',
+      textfont: { family: JR_FONT.family, size: 8, color: '#c0504d' },
+      hovertemplate: '%{text}<extra></extra>'
+    });
+  }
+  scatterTraces.push({
+    type: 'scatter', x: xLine, y: yLine, mode: 'lines', name: '回归线',
+    line: { color: '#4472C4', width: 1.5, dash: 'solid' },
+    hoverinfo: 'skip'
+  });
+  // 95% CI 带（简化：±2*SE 在两端）
+  const xSorted = [...xs].sort((a,b)=>a-b);
+  const seLine = xSorted.map(x => {
+    const xd = x - xMean;
+    const se = rSd * Math.sqrt(1/n + (xd*xd)/ssxx);
+    return se;
+  });
+  const ciUpper = xSorted.map((x, i) => a + b * x + 1.96 * seLine[i]);
+  const ciLower = xSorted.map((x, i) => a + b * x - 1.96 * seLine[i]);
+  scatterTraces.push({
+    type: 'scatter', x: [...xSorted, ...xSorted.reverse()], y: [...ciUpper, ...ciLower.reverse()],
+    fill: 'toself', fillcolor: 'rgba(68,114,196,0.10)', mode: 'none', name: '95% CI', hoverinfo: 'skip'
+  });
+
+  const fitLayout = jLayout(`${yVar} vs ${xVar}`, xVar, yVar, { legend: { font: JR_FONT } });
+  Plotly.newPlot('chartCorrelationScatter', scatterTraces, fitLayout, { responsive: true, displayModeBar: true });
+
+  // 中心漏斗图
+  const siteMap = new Map();
+  for (let i = 0; i < pairs.length; i++) {
+    const s = pairs[i].site;
+    if (!siteMap.has(s)) siteMap.set(s, { n: 0, nOutlier: 0 });
+    const entry = siteMap.get(s);
+    entry.n++;
+    if (isOutlier[i]) entry.nOutlier++;
+  }
+  const siteStats = [];
+  for (const [siteId, d] of siteMap) {
+    if (d.n === 0) continue;
+    siteStats.push({ siteId, n: d.n, nOutlier: d.nOutlier, rate: d.nOutlier / d.n });
+  }
+  siteStats.sort((a,b) => a.n - b.n);
+
+  const totalN = siteStats.reduce((s,d)=>s+d.n,0);
+  const totalOut = siteStats.reduce((s,d)=>s+d.nOutlier,0);
+  const overallP = totalN > 0 ? totalOut / totalN : 0;
+  const maxN = Math.max(...siteStats.map(s=>s.n), 10);
+  const funnelN = [], f95L = [], f95U = [], f99L = [], f99U = [];
+  for (let ni = 1; ni <= maxN; ni++) {
+    funnelN.push(ni);
+    const ci95 = wilsonCI(overallP, ni, 1.96);
+    f95L.push(ci95.lower); f95U.push(ci95.upper);
+    const ci99 = wilsonCI(overallP, ni, 2.576);
+    f99L.push(ci99.lower); f99U.push(ci99.upper);
+  }
+  const ooc = [];
+  for (const s of siteStats) {
+    const ci99 = wilsonCI(overallP, s.n, 2.576);
+    if (s.rate > ci99.upper) ooc.push({...s, ciLower: ci99.lower, ciUpper: ci99.upper});
+  }
+  const oocIds = new Set(ooc.map(s=>s.siteId));
+
+  const funnelTraces = [];
+  [{vals: f99L, name:'99% CI', dash:'dash', c:'#7F7F7F', w:1.5},
+   {vals: f99U, name:'99% CI', dash:'dash', c:'#7F7F7F', w:1.5},
+   {vals: f95L, name:'95% CI', dash:'dot', c:'#BFBFBF', w:1.2},
+   {vals: f95U, name:'95% CI', dash:'dot', c:'#BFBFBF', w:1.2}].forEach(band => {
+    funnelTraces.push({ type:'scatter', x:funnelN, y:band.vals, mode:'lines', name:band.name,
+      showlegend: band.vals===f99L||band.vals===f95L, hoverinfo:'skip',
+      line:{color:band.c, width:band.w, dash:band.dash} });
+  });
+  funnelTraces.push({ type:'scatter', x:[0.5, maxN*1.05], y:[overallP,overallP], mode:'lines',
+    name:`Overall ${(overallP*100).toFixed(1)}%`, line:{color:'#c0504d', width:1.5, dash:'dash'}, hoverinfo:'skip' });
+  const norm = siteStats.filter(s=>!oocIds.has(s.siteId));
+  if (norm.length>0) funnelTraces.push({ type:'scatter', x:norm.map(s=>s.n), y:norm.map(s=>s.rate), mode:'markers',
+    name:'Sites', marker:{color:JR_COLORS[0], size:8, line:{width:1, color:'#fff'}},
+    text:norm.map(s=>`${s.siteId}<br>N=${s.n}, ${s.nOutlier}异常 (${(s.rate*100).toFixed(1)}%)`),
+    hovertemplate:'<b>%{text}</b><extra></extra>' });
+  if (ooc.length>0) funnelTraces.push({ type:'scatter', x:ooc.map(s=>s.n), y:ooc.map(s=>s.rate), mode:'markers+text',
+    name:'Beyond 99% CI', marker:{color:'#c0504d', size:10, line:{width:2, color:'#fff'}},
+    text:ooc.map(s=>s.siteId), textposition:'top center',
+    textfont:{family:JR_FONT.family, size:9, color:'#c0504d'},
+    hovertemplate:'<b>%{text}</b><br>N=%{x}, %{y:.1%}<extra></extra>' });
+
+  const fLayout = jLayout('中心异常占比', 'Subjects per site (N)', 'Outlier proportion', {
+    margin:{l:70, r:25, t:55, b:65}, hovermode:'closest',
+    legend:{orientation:'h', y:1.1, font:JR_FONT},
+    xaxis:Object.assign({},JR_LAYOUT_BASE.xaxis,{title:{text:'Subjects per site (N)',font:JR_FONT},range:[0,maxN*1.08]}),
+    yaxis:Object.assign({},JR_LAYOUT_BASE.yaxis,{title:{text:'Outlier proportion',font:JR_FONT},tickformat:'.0%',
+      range:(()=>{const allY=[...siteStats.map(s=>s.rate),...f99L,...f99U];const yMin=Math.min(...allY),yMax=Math.max(...allY);
+        const pad=Math.max(0.06,(yMax-yMin)*0.18);return[Math.max(-0.02,yMin-pad),Math.min(1.02,yMax+pad)];})()})
+  });
+  Plotly.newPlot('chartCorrelationFunnel', funnelTraces, fLayout, { responsive: true, displayModeBar: true });
+
+  // 中心汇总
+  let sumHtml = `<strong>总中心数:</strong> ${siteStats.length} &nbsp;|&nbsp; <strong>总例数:</strong> ${totalN} &nbsp;|&nbsp; <strong>整体异常率:</strong> ${(overallP*100).toFixed(1)}%`;
+  sumHtml += ` &nbsp;|&nbsp; <strong>阈值:</strong> |Z| > ${threshold}`;
+  if (ooc.length > 0) {
+    sumHtml += `<br><span style="color:#c0504d;"><strong>异常高中心 (超出 99% CI):</strong></span> `;
+    sumHtml += ooc.map(s => `${s.siteId}: ${s.nOutlier}/${s.n}=${(s.rate*100).toFixed(1)}%`).join(', ');
+  } else {
+    sumHtml += `<br><span style="color:#4caf90;">所有中心均在 99% 控制限内</span>`;
+  }
+  document.getElementById('correlationSiteSummary').innerHTML = sumHtml;
+
+  // 异常受试者明细
+  const outliers = pairs.filter((p,i) => isOutlier[i]);
+  const allBasicCols = (() => {
+    const bc = [...getSubjectColumns(filtered)];
+    for (const k of Object.keys(filtered[0]||{})) {
+      if (meta[k] && meta[k].type==='id' && !bc.includes(k)) bc.push(k);
+    }
+    return bc;
+  })();
+  let dtHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-exclamation-triangle"></i> 异常受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（|Z| &gt; ' + threshold + '）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + outliers.length + '</span></div>';
+  dtHtml += '<table><thead><tr><th>#</th><th>中心</th>' + allBasicCols.map(c=>'<th>'+escapeHtml(c)+'</th>').join('') + '<th>'+escapeHtml(xVar)+'</th><th>'+escapeHtml(yVar)+'</th><th>残差 Z</th></tr></thead><tbody>';
+  outliers.forEach((p,i) => {
+    const z = stdResiduals.find((_,j) => pairs[j]===p);
+    const zi = pairs.indexOf(p);
+    dtHtml += `<tr><td>${i+1}</td><td><strong>${escapeHtml(p.site)}</strong></td>`;
+    for (const c of allBasicCols) dtHtml += `<td>${escapeHtml(String(p.record[c]??''))}</td>`;
+    dtHtml += `<td>${fmtNum(p.x)}</td><td>${fmtNum(p.y)}</td><td style="color:#c0504d;font-weight:600;">${stdResiduals[zi].toFixed(2)}</td></tr>`;
+  });
+  dtHtml += '</tbody></table></div>';
+  document.getElementById('detailCorrelation').innerHTML = dtHtml;
+
+  // 点击散点筛选明细
+  const chartEl = document.getElementById('chartCorrelationScatter');
+  chartEl.removeAllListeners('plotly_click');
+  chartEl.on('plotly_click', function(edata) {
+    if (!edata||!edata.points||edata.points.length===0) return;
+    const cx = edata.points[0].x, cy = edata.points[0].y;
+    const tbody = document.getElementById('detailCorrelation').querySelector('tbody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+    // 匹配最近点
+    let bestIdx = -1, bestDist = Infinity;
+    pairs.forEach((p,i) => { const d=Math.abs(p.x-cx)+Math.abs(p.y-cy); if(d<bestDist){bestDist=d;bestIdx=i;} });
+    if (bestIdx<0) return;
+    const targetSite = pairs[bestIdx].site;
+    if (chartEl._lastCorrSite === targetSite) {
+      rows.forEach(tr=>{ tr.style.display=''; });
+      chartEl._lastCorrSite = null;
+    } else {
+      rows.forEach(tr=>{ tr.style.display = (tr.cells[1]?.textContent?.trim()===targetSite) ? '' : 'none'; });
+      chartEl._lastCorrSite = targetSite;
+    }
+  });
+}
+
+// ======================================================================
+//  Enrollment Analysis（入组分析 — 桑基图 + 入组进度）
+// ======================================================================
+function renderEnrollmentPanel() {
+  const project = state.active;
+  if (!project) return;
+  renderPanel(null, 'panelEnrollment');
+  renderNodeConfig();
+  renderEnrollmentCharts();
+}
+
+function renderNodeConfig() {
+  const project = state.active;
+  if (!project) return;
+  const meta = project.metadata;
+  const nodes = project.enrollmentNodes || [];
+  const varOptions = Object.keys(meta).filter(k => meta[k].type !== 'empty');
+
+  // 辅助：通过唯一 ID 查找节点
+  const findNode = (id) => nodes.find(n => n.id === parseInt(id));
+
+  let html = '';
+  nodes.forEach((node, idx) => {
+    html += `<div class="node-row" style="display:flex;gap:0.35rem;align-items:center;padding:0.25rem 0;flex-wrap:wrap;">
+      <span style="font-size:0.7rem;color:var(--ink-muted);width:24px;">#${idx+1}</span>
+      <select class="form-select form-select-sm node-parent" style="width:110px;font-size:0.72rem;" data-node-id="${node.id}">
+        <option value="">无上游(起点)</option>`;
+    nodes.forEach(pn => {
+      if (pn.id !== node.id) {
+        const sel = (node.parentId === pn.id) ? ' selected' : '';
+        html += `<option value="${pn.id}"${sel}>${escapeHtml(pn.name||'节点'+pn.id)}</option>`;
+      }
+    });
+    html += `</select>
+      <span style="font-size:0.65rem;color:var(--ink-muted);">→</span>
+      <input type="text" class="form-control form-control-sm node-name" value="${escapeHtml(node.name)}" style="width:80px;font-size:0.72rem;" data-node-id="${node.id}">
+      <select class="form-select form-select-sm node-var" style="width:150px;font-size:0.72rem;" data-node-id="${node.id}">
+        <option value="">选择变量</option>`;
+    varOptions.forEach(k => {
+      const sel = (node.variable === k) ? ' selected' : '';
+      html += `<option value="${escapeHtml(k)}"${sel}>${escapeHtml(k)}</option>`;
+    });
+    html += `</select>
+      <select class="form-select form-select-sm node-cond" style="width:70px;font-size:0.72rem;" data-node-id="${node.id}">
+        <option value="notnull"${node.condition==='notnull'?' selected':''}>非空</option>
+        <option value="isnull"${node.condition==='isnull'?' selected':''}>为空</option>
+        <option value="equals"${node.condition==='equals'?' selected':''}>等于</option>
+        <option value="notequal"${node.condition==='notequal'?' selected':''}>不等于</option>
+      </select>
+      <div class="node-val-wrapper" style="display:${node.condition==='equals'||node.condition==='notequal'?'inline':'none'};width:150px;max-height:120px;overflow-y:auto;border:1px solid var(--rule);background:#fff;font-size:0.68rem;padding:0.15rem 0.3rem;" data-node-id="${node.id}"></div>
+      <label style="font-size:0.7rem;white-space:nowrap;"><input type="checkbox" class="node-terminal" data-node-id="${node.id}"${node.isTerminal?' checked':''}> 终点</label>
+      <select class="form-select form-select-sm node-merge-parent" style="width:100px;font-size:0.7rem;display:${node.isTerminal?'inline':'none'};" data-node-id="${node.id}">
+        <option value="">自动(${node.parentId ? (nodes.find(pn=>pn.id===node.parentId)||{}).name||node.parentId : '无'})</option>`;
+    nodes.forEach(pn => {
+      if (pn.id !== node.id && !pn.isTerminal) {
+        const msel = (node.mergeParentId === pn.id) ? ' selected' : '';
+        html += `<option value="${pn.id}"${msel}>${escapeHtml(pn.name||'节点'+pn.id)}</option>`;
+      }
+    });
+    html += `</select>`;
+    if (nodes.length > 1) {
+      html += `<button class="btn btn-sm btn-outline-secondary btn-del-node" data-node-id="${node.id}" style="font-size:0.6rem;padding:0 0.3rem;">&times;</button>`;
+    }
+    html += '</div>';
+  });
+  document.getElementById('nodeConfigArea').innerHTML = html;
+
+  // 绑定事件 — 全部通过节点唯一 ID 查找，不依赖数组索引
+  document.querySelectorAll('.node-parent').forEach(el => { el.onchange = () => {
+    const n = findNode(el.dataset.nodeId); if (n) n.parentId = el.value ? parseInt(el.value) : null;
+  }; });
+  document.querySelectorAll('.node-name').forEach(el => { el.onchange = () => {
+    const n = findNode(el.dataset.nodeId); if (n) n.name = el.value;
+  }; });
+  document.querySelectorAll('.node-var').forEach(el => { el.onchange = () => {
+    const n = findNode(el.dataset.nodeId);
+    if (n) { n.variable = el.value; populateNodeValueCheckboxes(n.id); }
+  }; });
+  document.querySelectorAll('.node-cond').forEach(el => {
+    el.onchange = function() {
+      const n = findNode(this.dataset.nodeId);
+      if (!n) return;
+      n.condition = this.value;
+      const row = this.closest('.node-row');
+      if (row) {
+        const wrapper = row.querySelector('.node-val-wrapper');
+        if (wrapper) {
+          wrapper.style.display = (this.value === 'equals' || this.value === 'notequal') ? 'inline' : 'none';
+          if (this.value !== 'equals' && this.value !== 'notequal') n.value = '';
+        }
+      }
+      if (this.value === 'equals' || this.value === 'notequal') populateNodeValueCheckboxes(n.id);
+    };
+  });
+  document.querySelectorAll('.node-terminal').forEach(el => { el.onchange = () => {
+    const n = findNode(el.dataset.nodeId);
+    if (!n) return;
+    n.isTerminal = el.checked;
+    const row = el.closest('.node-row');
+    if (row) {
+      const mergeSel = row.querySelector('.node-merge-parent');
+      if (mergeSel) mergeSel.style.display = el.checked ? 'inline' : 'none';
+    }
+    if (!el.checked) n.mergeParentId = null;
+  }; });
+  document.querySelectorAll('.node-merge-parent').forEach(el => { el.onchange = () => {
+    const n = findNode(el.dataset.nodeId);
+    if (n) n.mergeParentId = el.value ? parseInt(el.value) : null;
+  }; });
+  document.querySelectorAll('.btn-del-node').forEach(el => {
+    el.onclick = () => {
+      const nodeId = parseInt(el.dataset.nodeId);
+      const idx = nodes.findIndex(n => n.id === nodeId);
+      if (idx >= 0) { nodes.splice(idx, 1); renderNodeConfig(); }
+    };
+  });
+
+  // 初始化所有等于/不等于节点的多选框
+  nodes.forEach(node => {
+    if (node.condition === 'equals' || node.condition === 'notequal') populateNodeValueCheckboxes(node.id);
+  });
+}
+
+// 为节点的"等于/不等于"条件填充变量值多选
+function populateNodeValueCheckboxes(nodeId) {
+  const project = state.active;
+  if (!project) return;
+  const allNodes = project.enrollmentNodes || [];
+  const node = allNodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const wrapper = document.querySelector(`.node-val-wrapper[data-node-id="${nodeId}"]`);
+  if (!wrapper) return;
+  const varName = node.variable;
+  const meta = project.metadata;
+  if (!varName || !meta[varName] || !meta[varName].levels) {
+    wrapper.innerHTML = '<span style="color:var(--ink-muted);">请先选择分类变量</span>';
+    return;
+  }
+  const levels = meta[varName].levels || [];
+  const selected = new Set((node.value || '').split(',').filter(Boolean));
+  wrapper.innerHTML = levels.map(lv => {
+    const lvs = String(lv);
+    const chk = selected.has(lvs) ? ' checked' : '';
+    return `<label style="display:flex;align-items:center;gap:0.2rem;cursor:pointer;font-weight:400;padding:0.05rem 0;">
+      <input type="checkbox" class="node-val-cb" value="${escapeHtml(lvs)}"${chk} data-node-id="${nodeId}">${escapeHtml(lvs)}
+    </label>`;
+  }).join('') + `<button class="btn btn-sm btn-outline-primary btn-expand-vals" data-node-id="${node.id}" style="margin-top:0.3rem;font-size:0.65rem;padding:0.1rem 0.4rem;width:100%;">📋 选中值展开为子节点</button>`;
+  // 绑定多选变更
+  wrapper.querySelectorAll('.node-val-cb').forEach(cb => {
+    cb.onchange = () => {
+      const n = allNodes.find(x => x.id === nodeId);
+      if (!n) return;
+      const allCbs = wrapper.querySelectorAll('.node-val-cb:checked');
+      n.value = Array.from(allCbs).map(c => c.value).join(',');
+    };
+  });
+  // 绑定"展开为子节点"按钮
+  const btnExpand = wrapper.querySelector('.btn-expand-vals');
+  if (btnExpand) {
+    btnExpand.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const tplId = parseInt(btnExpand.dataset.nodeId);
+      const templateNode = allNodes.find(n => n.id === tplId);
+      if (!templateNode) { showToast('模板节点不存在', 'error'); return; }
+      const checkedCbs = wrapper.querySelectorAll('.node-val-cb:checked');
+      if (checkedCbs.length === 0) { showToast('请先勾选要展开的值', 'warning'); return; }
+      // 子节点继承模板节点的上游（平级展开）
+      const targetParentId = templateNode.parentId;
+      const maxId = allNodes.length > 0 ? Math.max(...allNodes.map(n => n.id)) : 0;
+      let newId = maxId;
+      let added = 0;
+      checkedCbs.forEach(cb => {
+        const rawVal = cb.value;
+        // 清洗名称：去掉首尾空白和常见前导符号（- – —），避免生成 "-死亡" 这类名称
+        const cleanName = rawVal.replace(/^[\s\-–—]+/, '').replace(/[\s\-–—]+$/, '').trim();
+        const exists = allNodes.some(n => n.parentId === targetParentId && n.name === cleanName);
+        if (!exists) {
+          newId++;
+          allNodes.push({
+            id: newId, name: cleanName,
+            variable: templateNode.variable, condition: 'equals', value: rawVal,
+            isTerminal: templateNode.isTerminal, parentId: targetParentId, mergeParentId: null
+          });
+          added++;
+        }
+      });
+      if (added > 0) {
+        renderNodeConfig();
+        showToast(`已添加 ${added} 个子节点`);
+      } else {
+        showToast('所选值的子节点已存在', 'warning');
+      }
+    };
+  }
+}
+
+function checkNodeCondition(val, condition, targetVal) {
+  if (condition === 'notnull') return val !== null && val !== undefined && val !== '';
+  if (condition === 'isnull') return val === null || val === undefined || val === '';
+  if (condition === 'equals') {
+    const tgt = (targetVal || '').split(',').filter(Boolean);
+    if (tgt.length === 0) return true; // 未选值 = 全部通过
+    return tgt.includes(String(val ?? ''));
+  }
+  if (condition === 'notequal') {
+    const tgt = (targetVal || '').split(',').filter(Boolean);
+    if (tgt.length === 0) return true; // 未选值 = 全部通过
+    return !tgt.includes(String(val ?? ''));
+  }
+  return false;
+}
+
+// ======================================================================
+//  全局桑基图位置自动保存（按 STUDYID 隔离，与"保存方案"共用 key）
+// ======================================================================
+function autoSaveSankeyPositions(showFeedback) {
+  const project = state.active;
+  if (!project) return;
+  // 仅当有位置数据时才保存
+  const hasPositions = project.sankeyPositions && Object.keys(project.sankeyPositions).length > 0;
+  if (!hasPositions) return;
+  const studyIdCol = detectStudyId(project.records);
+  const studyId = studyIdCol ? String(project.records[0][studyIdCol] ?? '').trim() : (project.name || 'default');
+  if (!studyId) return;
+  const key = 'bct_' + studyId;
+  try {
+    let existing = {};
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      try { existing = JSON.parse(raw); } catch(e) {}
+    }
+    existing.sankeyPositions = project.sankeyPositions || {};
+    existing.enrollmentNodes = project.enrollmentNodes || existing.enrollmentNodes || [];
+    existing.savedAt = Date.now();
+    localStorage.setItem(key, JSON.stringify(existing));
+    // 视觉反馈
+    if (showFeedback !== false) {
+      const status = document.getElementById('sankeyPosStatus');
+      if (status) {
+        status.textContent = '✅ 已自动保存 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        status.style.color = 'var(--accent-green)';
+        clearTimeout(status._timeout);
+        status._timeout = setTimeout(function() {
+          status.textContent = '✋ 手动模式（拖拽后自动保存）';
+          status.style.color = 'var(--accent-orange)';
+        }, 1800);
+      }
+    }
+  } catch(e) {
+    console.warn('[位置保存] 失败:', e.message);
+    var errStatus = document.getElementById('sankeyPosStatus');
+    if (errStatus) {
+      errStatus.textContent = '⚠️ 自动保存失败';
+      errStatus.style.color = 'var(--accent-red)';
+    }
+  }
+}
+
+// 页面关闭/刷新前保存桑基图位置（全局只注册一次）
+window.addEventListener('beforeunload', function() {
+  var project = state.active;
+  if (!project || !project.sankeyPositions || !Object.keys(project.sankeyPositions).length) return;
+  // 仅保存已在内存中的位置（轮询已负责从 _fullData 实时捕获）
+  autoSaveSankeyPositions(false);
+});
+
+// 全局轮询句柄（独立于 renderEnrollmentCharts 的闭包，避免多实例泄露）
+var sankeyPollInterval = null;
+
+function renderEnrollmentCharts() {
+  const project = state.active;
+  if (!project) return;
+  const nodes = project.enrollmentNodes || [];
+  if (nodes.length < 2) { showToast('至少需要2个节点', 'warning'); return; }
+  const filtered = getFilteredRecords(project);
+  const siteCol = detectSiteCol(filtered) || 'Unknown';
+
+  // 计算每个受试者到达哪个节点（基于 parentId 层级）
+  const subjectFlows = filtered.map(r => {
+    const reached = new Set();
+    // BFS/层级：先检查无上游的起点节点，再检查子节点
+    const queue = nodes.filter(n => !n.parentId);
+    while (queue.length > 0) {
+      const node = queue.shift();
+      // 无上游（起点）或有上游且上游已到达
+      if (!node.parentId || reached.has(node.parentId)) {
+        // 有变量 → 按条件判断；无变量 → 全部通过（用户可能暂未配置）
+        const hasVar = !!node.variable;
+        const pass = hasVar ? checkNodeCondition(r[node.variable], node.condition, node.value) : true;
+        if (pass) {
+          reached.add(node.id);
+          // 子节点入队
+          nodes.filter(n => n.parentId === node.id).forEach(child => queue.push(child));
+        }
+      }
+    }
+    return { record: r, reached, site: String(r[siteCol] || 'Unknown') };
+  });
+
+  // 桑基图 — Plotly 实现，节点标签带人数
+  const nodeCounts = {};
+  nodes.forEach(n => { nodeCounts[n.id] = subjectFlows.filter(s => s.reached.has(n.id)).length; });
+  // 调试变量（仅在需要排查时取消注释）
+  // nodes.forEach(n => { console.log('  #' + n.id, n.name, ':', nodeCounts[n.id], 'parentId:', n.parentId); });
+  const statusVals = [...new Set(filtered.map(r => r['状态']).filter(v => v !== null && v !== ''))];
+
+  const colorPalette = ['#4472C4','#ED7D31','#70AD47','#c0504d','#5B9BD5','#A5A5A5','#FFC000','#996633'];
+
+  // 计算每个节点的深度（距根节点的层级数）
+  function nodeDepth(nid, visited = new Set()) {
+    if (visited.has(nid)) return 0;
+    visited.add(nid);
+    const n = nodes.find(nd => nd.id == nid);
+    if (!n || !n.parentId) return 0;
+    return nodeDepth(n.parentId, visited) + 1;
+  }
+  const depthMap = {};
+  let maxDepth = 0;
+  nodes.forEach(n => { depthMap[n.id] = nodeDepth(n.id); maxDepth = Math.max(maxDepth, depthMap[n.id]); });
+  // 同深度节点计数
+  const depthCount = {};
+  nodes.forEach(n => { const d = depthMap[n.id]; depthCount[d] = (depthCount[d] || 0) + 1; });
+
+  // 固定 x 坐标（层级均匀分布），y 坐标（同层均匀分布）
+  const nodeX = [], nodeY = [];
+  const depthCursor = {};
+  nodes.forEach((n, i) => {
+    const d = depthMap[n.id];
+    const x = maxDepth > 0 ? 0.02 + (d / maxDepth) * 0.96 : 0.5;
+    if (!depthCursor[d]) depthCursor[d] = 0;
+    const y = depthCount[d] > 1 ? 0.05 + (depthCursor[d] / (depthCount[d] - 1)) * 0.9 : 0.5;
+    depthCursor[d]++;
+    nodeX.push(x);
+    nodeY.push(y);
+  });
+
+  // === 一步构建标签：合并同名终点节点 ===
+  // 终点节点仅按名称合并（忽略 mergeParentId），确保同一名称的终点始终汇总
+  const sankeyLabels = [];
+  const sankeyColors = [];
+  const mergedLabelIdx = {}; // key → label index
+  const finalLabelIdx = {};  // nodeId → label index
+
+  // 终点合并 key：只看名称
+  const termMergeKey = (n) => '__term__' + (n.name || '');
+
+  nodes.forEach(n => {
+    const key = n.isTerminal ? termMergeKey(n) : ('__node__' + n.id);
+    if (mergedLabelIdx[key] === undefined) {
+      mergedLabelIdx[key] = sankeyLabels.length;
+      sankeyLabels.push(n.name + ' (0例)');
+      sankeyColors.push(n.isTerminal ? '#999' : colorPalette[nodes.indexOf(n) % colorPalette.length]);
+    }
+    finalLabelIdx[n.id] = mergedLabelIdx[key];
+  });
+
+  // 计算每个标签的实际人数（终点仅按名称去重）
+  const mergedCounts = {};
+  nodes.forEach(n => {
+    const key = n.isTerminal ? termMergeKey(n) : ('__node__' + n.id);
+    if (n.isTerminal) {
+      if (!mergedCounts[key]) {
+        // 同名终点全部合并，忽略 mergeParentId
+        const sameKeyIds = nodes.filter(x =>
+          x.isTerminal && x.name === n.name
+        ).map(x => x.id);
+        mergedCounts[key] = subjectFlows.filter(s => sameKeyIds.some(id => s.reached.has(id))).length;
+      }
+    } else {
+      mergedCounts[key] = (mergedCounts[key] || 0) + (nodeCounts[n.id] || 0);
+    }
+  });
+  // 更新标签文字
+  Object.keys(mergedLabelIdx).forEach(key => {
+    const idx = mergedLabelIdx[key];
+    const count = mergedCounts[key] || 0;
+    const firstN = nodes.find(n => (n.isTerminal ? termMergeKey(n) : ('__node__' + n.id)) === key);
+    const name = firstN ? firstN.name : '';
+    sankeyLabels[idx] = name + ' (' + count + '例)';
+  });
+
+  // 构建坐标：终点的 x 统一放在最右端（全局合并后无法区分 mergeParentId 层级）
+  const finalNodeX = sankeyLabels.map((_, i) => {
+    const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+    if (!nid) return 0.5;
+    const n = nodes.find(nd => nd.id == nid);
+    if (!n) return 0.5;
+    if (n.isTerminal) {
+      return maxDepth > 0 ? 0.02 + ((maxDepth + 1) / (maxDepth + 1)) * 0.96 : 0.5;
+    }
+    return nodeX[nodes.indexOf(n)] || 0.5;
+  });
+  // 构建链接并合并相同 (source, target) 对
+  // 关键修复：对于合并后的终点节点，同一 (source→merged_target) 的多个子节点
+  // 可能包含重复受试者（如同一人同时满足 AE=死亡 和 SAE=死亡），
+  // 必须按受试者去重，而非简单累加各子节点的 passed 值。
+  const linkMap = {}; // key: "source→target" → { source, target, value }
+  const termLinkSubjSets = {}; // key: "source→target" → Set of subject indices (仅终点节点)
+
+  nodes.forEach(n => {
+    const sourceId = (n.isTerminal && n.mergeParentId) ? n.mergeParentId : n.parentId;
+    if (!sourceId) return;
+    const s = finalLabelIdx[sourceId];
+    const t = finalLabelIdx[n.id];
+    const lk = s + '→' + t;
+
+    if (n.isTerminal) {
+      // 终点节点：先收集所有受试者索引到 Set，稍后统一去重
+      if (!termLinkSubjSets[lk]) termLinkSubjSets[lk] = new Set();
+      subjectFlows.forEach((sf, sfIdx) => {
+        if (sf.reached.has(n.id)) termLinkSubjSets[lk].add(sfIdx);
+      });
+    } else {
+      // 非终点节点：直接计数（每个中间节点的受试者天然不重复）
+      const passed = subjectFlows.filter(sf => sf.reached.has(n.id)).length;
+      if (passed <= 0) return;
+      if (!linkMap[lk]) linkMap[lk] = { source: s, target: t, value: 0 };
+      linkMap[lk].value += passed;
+    }
+  });
+
+  // 终点节点链接：用去重后的 Set.size 作为真实流量
+  Object.entries(termLinkSubjSets).forEach(([lk, subjSet]) => {
+    if (subjSet.size <= 0) return;
+    const [s, t] = lk.split('→').map(Number);
+    if (!linkMap[lk]) linkMap[lk] = { source: s, target: t, value: 0 };
+    linkMap[lk].value += subjSet.size;
+  });
+
+  const aggLinks = Object.values(linkMap);
+
+  // 调试信息已注释，需要排查时取消注释即可
+  // console.log('=== 桑基图标签合并 ===', nodes.length, '→', sankeyLabels.length);
+
+  // === 页面内调试面板：显示每个节点的到达人数和合并详情 ===
+  // === 根据实际流向计算 y 坐标，减少交叉 ===
+  // 先按深度分组
+  const depthGroups = {}; // depth → [label indices]
+  sankeyLabels.forEach((_, i) => {
+    const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+    if (!nid) return;
+    const n = nodes.find(nd => nd.id == nid);
+    if (!n) return;
+    let d;
+    if (n.isTerminal) {
+      d = maxDepth + 1; // 所有终点统一在最右层
+    } else {
+      d = depthMap[n.id] || 0;
+    }
+    if (!depthGroups[d]) depthGroups[d] = [];
+    depthGroups[d].push(i);
+  });
+  // 在每个深度组内，按连接到上一层的顺序排列（减少交叉）
+  const finalNodeY = new Array(sankeyLabels.length).fill(0.5);
+  // 构建反向邻接表：target → [sources]
+  const incomingMap = {}; // target index → [{source, value}]
+  aggLinks.forEach(l => {
+    if (!incomingMap[l.target]) incomingMap[l.target] = [];
+    incomingMap[l.target].push({ source: l.source, value: l.value });
+  });
+  const outgoingMap = {}; // source index → [{target, value}]
+  aggLinks.forEach(l => {
+    if (!outgoingMap[l.source]) outgoingMap[l.source] = [];
+    outgoingMap[l.source].push({ target: l.target, value: l.value });
+  });
+
+  // BFS-like assignment: start from depth 0, assign y, then position children near parents
+  const sortedDepths = Object.keys(depthGroups).map(Number).sort((a,b) => a-b);
+  if (sortedDepths.length > 0) {
+    // Assign y within each depth group
+    sortedDepths.forEach(d => {
+      const members = depthGroups[d] || [];
+      if (d === 0) {
+        // Root nodes: evenly space
+        members.forEach((idx, j) => {
+          finalNodeY[idx] = members.length > 1 ? 0.05 + (j / (members.length - 1)) * 0.9 : 0.5;
+        });
+      } else {
+        // Position based on weighted average of connected sources' y（锚定父节点位置）
+        members.forEach(idx => {
+          const incoming = incomingMap[idx];
+          if (incoming && incoming.length > 0) {
+            const totalW = incoming.reduce((sum, inc) => sum + inc.value, 0);
+            if (totalW > 0) {
+              finalNodeY[idx] = incoming.reduce((sum, inc) => sum + (finalNodeY[inc.source] || 0.5) * inc.value, 0) / totalW;
+            } else {
+              finalNodeY[idx] = 0.5;
+            }
+          } else {
+            finalNodeY[idx] = 0.5;
+          }
+        });
+        // Sort members by their weighted y to keep parent-relative order
+        members.sort((a, b) => finalNodeY[a] - finalNodeY[b]);
+        // 仅做防碰撞处理（最小间距），不重新均匀分布，保持子节点靠近父节点
+        const minGap = 0.03; // 最小间距
+        for (let j = 1; j < members.length; j++) {
+          const prev = members[j - 1], curr = members[j];
+          if (finalNodeY[curr] - finalNodeY[prev] < minGap) {
+            finalNodeY[curr] = finalNodeY[prev] + minGap;
+          }
+        }
+        // 如果防碰撞导致部分节点超出下界，整体上移
+        const maxY = members[members.length - 1] ? finalNodeY[members[members.length - 1]] : 0.95;
+        if (maxY > 0.95) {
+          const shift = maxY - 0.95;
+          members.forEach(idx => { finalNodeY[idx] = Math.max(0.01, finalNodeY[idx] - shift); });
+        }
+        // 确保所有节点在可见范围内
+        members.forEach(idx => {
+          finalNodeY[idx] = Math.max(0.01, Math.min(0.99, finalNodeY[idx]));
+        });
+      }
+    });
+  }
+
+  const finalSource = aggLinks.map(l => l.source);
+  const finalTarget = aggLinks.map(l => l.target);
+  const finalValue = aggLinks.map(l => l.value);
+  const finalColors = aggLinks.map((l, i) => colorPalette[i % colorPalette.length] + '40');
+
+  if (finalSource.length === 0) {
+    document.getElementById('chartSankey').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">暂无流向数据<br><small>请为子节点配置判定变量</small></div>';
+    return;
+  }
+
+  const sDom = document.getElementById('chartSankey');
+  // 渲染前从 Plotly 内部状态捕获旧图表的手动拖拽位置（finalLabelIdx 已就绪）
+  try { captureCurrentPositions(); } catch(e) { console.warn('[位置捕获] 异常:', e.message); }
+  if (project.sankeyPositions && Object.keys(project.sankeyPositions).length > 0) {
+    try { autoSaveSankeyPositions(false); } catch(e) {}
+  }
+  const hasSavedPos = state.active.sankeyPositions && Object.keys(state.active.sankeyPositions).length > 0;
+
+  // 节点基础配置
+  const nodeBase = {
+    pad: 20, thickness: 24,
+    line: { color: '#fff', width: 1 },
+    label: sankeyLabels,
+    color: sankeyColors
+  };
+
+  const traceBase = {
+    type: 'sankey', orientation: 'h',
+    link: { source: finalSource, target: finalTarget, value: finalValue, color: finalColors }
+  };
+
+  const layoutBase = {
+    title: { text: '<b>受试者流向</b>', font: JR_FONT },
+    font: { family: '"PingFang SC","Microsoft YaHei",sans-serif', size: 12 },
+    margin: { l: 5, r: 5, t: 50, b: 5 },
+    paper_bgcolor: '#fff',
+    height: Math.min(1500, Math.max(400, sankeyLabels.length * 38))
+  };
+
+  if (hasSavedPos) {
+    // 有已保存位置 → 直接渲染自由模式（混合：旧节点用已保存坐标，新节点用自动计算）
+    const px = sankeyLabels.map((_, i) => {
+      const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+      if (nid && state.active.sankeyPositions[nid] && state.active.sankeyPositions[nid].x !== undefined) {
+        return state.active.sankeyPositions[nid].x;
+      }
+      return finalNodeX[i];
+    });
+    const py = sankeyLabels.map((_, i) => {
+      const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+      if (nid && state.active.sankeyPositions[nid] && state.active.sankeyPositions[nid].y !== undefined) {
+        return state.active.sankeyPositions[nid].y;
+      }
+      return finalNodeY[i];
+    });
+
+    const freeLayout = Object.assign({}, layoutBase, {
+      title: { text: '<b>受试者流向</b>', font: JR_FONT }
+    });
+
+    Plotly.newPlot('chartSankey', [Object.assign({}, traceBase, {
+      arrangement: 'freeform',
+      node: Object.assign({}, nodeBase, { x: px, y: py })
+    })], freeLayout, { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'] });
+
+    updateSankeyButtons(true);
+    attachDragSave();
+    attachSankeyClick();
+    startSankeyPolling();
+  } else {
+    // 无已保存位置 → 自动布局
+    Plotly.newPlot('chartSankey', [Object.assign({}, traceBase, {
+      arrangement: 'snap',
+      node: nodeBase
+    })], layoutBase, { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'] });
+
+    updateSankeyButtons(false);
+    attachDragSave(); // snap 模式不触发拖拽，但保持代码一致
+    attachSankeyClick();
+  }
+
+  // 切换为自由拖拽模式（前提：sankeyPositions 已由"调整位置"按钮填充）
+  function switchToFreeform() {
+    const px = sankeyLabels.map((_, i) => {
+      const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+      if (nid && state.active.sankeyPositions && state.active.sankeyPositions[nid]) {
+        return state.active.sankeyPositions[nid].x !== undefined ? state.active.sankeyPositions[nid].x : finalNodeX[i];
+      }
+      return finalNodeX[i];
+    });
+    const py = sankeyLabels.map((_, i) => {
+      const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+      if (nid && state.active.sankeyPositions && state.active.sankeyPositions[nid]) {
+        return state.active.sankeyPositions[nid].y !== undefined ? state.active.sankeyPositions[nid].y : finalNodeY[i];
+      }
+      return finalNodeY[i];
+    });
+
+    Plotly.newPlot('chartSankey', [{
+      type: 'sankey', orientation: 'h',
+      arrangement: 'freeform',
+      node: {
+        pad: 20, thickness: 24,
+        line: { color: '#fff', width: 1 },
+        label: sankeyLabels,
+        color: sankeyColors,
+        x: px, y: py
+      },
+      link: {
+        source: finalSource, target: finalTarget, value: finalValue,
+        color: finalColors
+      }
+    }], {
+      title: { text: '<b>受试者流向</b>', font: JR_FONT },
+      font: { family: '"PingFang SC","Microsoft YaHei",sans-serif', size: 12 },
+      margin: { l: 5, r: 5, t: 50, b: 5 },
+      paper_bgcolor: '#fff',
+      height: Math.min(1500, Math.max(400, sankeyLabels.length * 38))
+    }, { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'] });
+
+    updateSankeyButtons(true);
+    attachDragSave();
+    attachSankeyClick();
+    startSankeyPolling();
+  }
+
+  function updateSankeyButtons(inFreeform) {
+    const btnAdj = document.getElementById('btnSankeyAdjust');
+    const btnRst = document.getElementById('btnSankeyReset');
+    const status = document.getElementById('sankeyPosStatus');
+    // 两个按钮始终可见
+    if (btnAdj) {
+      btnAdj.style.display = '';
+      btnAdj.style.opacity = inFreeform ? '0.45' : '1';
+      btnAdj.title = inFreeform ? '已在手动模式，坐标已锁定' : '锁定当前自动布局位置，允许拖拽微调';
+    }
+    if (btnRst) {
+      btnRst.style.display = '';
+      btnRst.disabled = !inFreeform;
+      btnRst.style.opacity = inFreeform ? '1' : '0.45';
+    }
+    if (status) {
+      status.style.display = inFreeform ? '' : 'none';
+      status.textContent = '✋ 手动模式（拖拽后自动保存）';
+      status.style.color = 'var(--accent-orange)';
+    }
+    if (!inFreeform) stopSankeyPolling();
+  }
+
+  // === 桑基图位置捕获与轮询保存 ===
+  // plotly_relayout 在 Sankey freeform 拖拽时不触发（Plotly 内部 D3 drag 不 emit 该事件），
+  // 因此改用主动轮询 _fullData[0].node.x/y 的方式读取位置并持久化
+  // 注意: sankeyPollInterval 在全局作用域声明，避免每次 renderEnrollmentCharts 调用产生新实例
+
+  function captureCurrentPositions() {
+    const gd = document.getElementById('chartSankey');
+    if (!gd || !gd._fullData || !gd._fullData[0] || !gd._fullData[0].node) {
+      console.log('[位置捕获] 跳过: gd或_fullData不可用');
+      return false;
+    }
+    const ax = gd._fullData[0].node.x || [];
+    const ay = gd._fullData[0].node.y || [];
+    console.log('[位置捕获] _fullData.node.x=' + JSON.stringify(ax.map(function(v){return (v!=null)?v.toFixed(3):'null';})), 'node.y=' + JSON.stringify(ay.map(function(v){return (v!=null)?v.toFixed(3):'null';})));
+    if (ax.length === 0) { console.log('[位置捕获] 跳过: node.x为空数组'); return false; }
+    if (!state.active) return false;
+    if (!state.active.sankeyPositions) state.active.sankeyPositions = {};
+    let changed = false;
+    console.log('[位置捕获] finalLabelIdx=' + JSON.stringify(finalLabelIdx));
+    ax.forEach(function(xVal, i) {
+      var nid = Object.entries(finalLabelIdx).find(function(e) { return e[1] === i; });
+      nid = nid ? nid[0] : null;
+      if (!nid) { console.log('[位置捕获] 索引' + i + ' 在finalLabelIdx中未找到nodeId'); return; }
+      if (!state.active.sankeyPositions[nid]) state.active.sankeyPositions[nid] = {};
+      if (state.active.sankeyPositions[nid].x !== xVal || state.active.sankeyPositions[nid].y !== ay[i]) {
+        console.log('[位置捕获] 节点' + nid + ' 位置变更: (' + state.active.sankeyPositions[nid].x + ',' + state.active.sankeyPositions[nid].y + ') → (' + xVal.toFixed(3) + ',' + ay[i].toFixed(3) + ')');
+        state.active.sankeyPositions[nid].x = xVal;
+        state.active.sankeyPositions[nid].y = ay[i];
+        changed = true;
+      }
+    });
+    console.log('[位置捕获] changed=' + changed + ', 当前sankeyPositions=' + JSON.stringify(state.active.sankeyPositions));
+    return changed;
+  }
+
+  function startSankeyPolling() {
+    stopSankeyPolling();
+    console.log('[轮询] 启动位置轮询 (每2.5秒)');
+    sankeyPollInterval = setInterval(function() {
+      console.log('[轮询] 定时检查...');
+      if (captureCurrentPositions()) {
+        autoSaveSankeyPositions(true);
+      }
+    }, 2500);
+  }
+
+  function stopSankeyPolling() {
+    if (sankeyPollInterval) {
+      console.log('[轮询] 停止位置轮询');
+      clearInterval(sankeyPollInterval);
+      sankeyPollInterval = null;
+    }
+  }
+
+  function attachDragSave() {
+    // plotly_relayout 在 Sankey 拖拽时不会触发，位置捕获由 startSankeyPolling 轮询完成。
+    // 此函数保留为空，保持调用一致性。
+  }
+
+  // 初始按钮状态 + 事件绑定
+  updateSankeyButtons(hasSavedPos);
+  if (!hasSavedPos) attachDragSave();
+
+  // 「调整位置」按钮：捕获当前自动布局坐标 → 切到可拖拽模式
+  const btnAdj = document.getElementById('btnSankeyAdjust');
+  if (btnAdj) {
+    btnAdj.onclick = function() {
+      if (!state.active) return;
+      if (!state.active.sankeyPositions) state.active.sankeyPositions = {};
+      // 从当前 snap 图表读取自动布局的坐标并保存
+      const gd = document.getElementById('chartSankey');
+      try {
+        if (gd._fullData && gd._fullData[0] && gd._fullData[0].node) {
+          const ax = gd._fullData[0].node.x || [];
+          const ay = gd._fullData[0].node.y || [];
+          sankeyLabels.forEach((_, i) => {
+            const nid = Object.entries(finalLabelIdx).find(([, v]) => v === i)?.[0];
+            if (nid) {
+              state.active.sankeyPositions[nid] = { x: ax[i] || finalNodeX[i], y: ay[i] || finalNodeY[i] };
+            }
+          });
+        }
+      } catch(e) {}
+      switchToFreeform();
+      // 位置已捕获，立即持久化到 localStorage
+      autoSaveSankeyPositions(false);
+    };
+  }
+
+  // 「重置位置」按钮：清除手动位置 → 回到自动布局，同步清除 localStorage
+  const btnRst = document.getElementById('btnSankeyReset');
+  if (btnRst) {
+    btnRst.onclick = function() {
+      if (!state.active) return;
+      state.active.sankeyPositions = {};
+      stopSankeyPolling();
+      // 同步从 localStorage 中清除该 STUDYID 的桑基图位置（保留节点配置）
+      const studyIdCol = detectStudyId(state.active.records);
+      const studyId = studyIdCol ? String(state.active.records[0][studyIdCol] ?? '').trim() : (state.active.name || 'default');
+      if (studyId) {
+        const key = 'bct_' + studyId;
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const data = JSON.parse(raw);
+            delete data.sankeyPositions;
+            localStorage.setItem(key, JSON.stringify(data));
+          }
+        } catch(e) {}
+      }
+      renderEnrollmentCharts();
+    };
+  }
+  // 点击桑基图节点 → 显示去重汇总明细（snap/freeform 通用）
+  // 处理桑基图节点点击的核心逻辑（供 plotly_click 和原生 click 共用）
+  function handleSankeyNodeClick(clickedLabelIdx) {
+    if (clickedLabelIdx === undefined) { console.log('[桑基图点击] 无法获取节点索引，跳过'); return; }
+
+    // 查找映射到该标签的所有节点
+    const mappedNodeIds = Object.entries(finalLabelIdx)
+      .filter(function(e) { return e[1] === clickedLabelIdx; })
+      .map(function(e) { return parseInt(e[0]); });
+
+    console.log('[桑基图点击] clickedLabelIdx=' + clickedLabelIdx + ', mappedNodeIds=' + JSON.stringify(mappedNodeIds));
+
+    if (mappedNodeIds.length === 0) return;
+
+    // 收集到达这些节点的所有受试者（去重）
+    const reachedSubjIndices = new Set();
+    mappedNodeIds.forEach(function(nid) {
+      subjectFlows.forEach(function(sf, sfIdx) {
+        if (sf.reached.has(nid)) reachedSubjIndices.add(sfIdx);
+      });
+    });
+
+    // 该标签对应的所有配置节点
+    const mappedNodes = mappedNodeIds.map(function(nid) { return nodes.find(function(nd) { return nd.id === nid; }); }).filter(Boolean);
+    const isTerminal = mappedNodes.some(function(n) { return n.isTerminal; });
+    const labelName = sankeyLabels[clickedLabelIdx] || '';
+
+    // 按来源分解
+    const incomingLinks = aggLinks.filter(function(l) { return l.target === clickedLabelIdx; });
+    const sourceBreakdown = incomingLinks.map(function(link) {
+      const srcLabelIdx = link.source;
+      const srcNodeIds = Object.entries(finalLabelIdx)
+        .filter(function(e) { return e[1] === srcLabelIdx; })
+        .map(function(e) { return parseInt(e[0]); });
+      const srcSubjSet = new Set();
+      mappedNodeIds.forEach(function(tgtNid) {
+        const tgtNode = nodes.find(function(nd) { return nd.id === tgtNid; });
+        if (!tgtNode) return;
+        var actualSrcId = (tgtNode.isTerminal && tgtNode.mergeParentId) ? tgtNode.mergeParentId : tgtNode.parentId;
+        if (actualSrcId && srcNodeIds.indexOf(actualSrcId) !== -1) {
+          subjectFlows.forEach(function(sf, sfIdx) {
+            if (sf.reached.has(tgtNid)) srcSubjSet.add(sfIdx);
+          });
+        }
+      });
+      const srcName = sankeyLabels[srcLabelIdx] || '未知来源';
+      return { sourceName: srcName, count: srcSubjSet.size, subjects: Array.from(srcSubjSet) };
+    });
+
+    // 构建显示列：每次点击时直接从 DOM 读取（不依赖闭包快照）
+    const basicCols = [];
+    if (filtered.length > 0) {
+      const subjCol = detectSubjectCol(filtered);
+      const siteCol = detectSiteCol(filtered);
+      const studyCol = detectStudyId(filtered);
+      if (studyCol && basicCols.indexOf(studyCol) === -1) basicCols.push(studyCol);
+      if (siteCol && basicCols.indexOf(siteCol) === -1) basicCols.push(siteCol);
+      if (subjCol && basicCols.indexOf(subjCol) === -1) basicCols.push(subjCol);
+    }
+    // 直接从 DOM 复选框读取当前勾选的分析变量
+    const analysisCols = [];
+    var allCbs = document.querySelectorAll('#analysisVarList .var-checkbox');
+    allCbs.forEach(function(cb) {
+      if (cb.checked && basicCols.indexOf(cb.dataset.key) === -1) {
+        analysisCols.push(cb.dataset.key);
+      }
+    });
+    const allCols = basicCols.concat(analysisCols);
+    console.log('[桑基图点击] 明细列: 基础=' + JSON.stringify(basicCols) + ', 分析=' + JSON.stringify(analysisCols) + ', 合计=' + allCols.length + '列');
+    const totalUnique = reachedSubjIndices.size;
+
+    // 从桑基图标签中提取显示人数用于对比
+    var labelCountMatch = labelName.match(/\((\d+)例\)/);
+    var labelDisplayCount = labelCountMatch ? parseInt(labelCountMatch[1]) : null;
+
+    var detailHtml = '<div class="card-clinical">';
+    detailHtml += '<div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSankeyDetail()">';
+    detailHtml += '<span><i class="bi bi-node-plus"></i> 节点明细：<b>' + escapeHtml(labelName) + '</b>';
+    if (isTerminal) detailHtml += ' <span style="font-size:0.7rem;color:var(--accent-red);">(终点)</span>';
+    detailHtml += ' <small style="color:var(--ink-muted);font-weight:400;" id="sankeyDetailToggle">（点击收起）</small>';
+    detailHtml += '</span>';
+    detailHtml += '<span style="font-size:0.72rem;color:var(--ink-light);" onclick="event.stopPropagation()">';
+    detailHtml += '去重合计：<b>' + totalUnique + '例</b>';
+    if (labelDisplayCount !== null && labelDisplayCount !== totalUnique) {
+      detailHtml += ' <span style="color:var(--accent-orange);">（标签显示' + labelDisplayCount + '例）</span>';
+    }
+    detailHtml += '</span>';
+    detailHtml += '</div>';
+    detailHtml += '<div id="sankeyDetailBody">';
+
+    if (sourceBreakdown.length > 0) {
+      detailHtml += '<div style="padding:0.4rem 0.8rem;">';
+      detailHtml += '<div style="font-size:0.72rem;color:var(--ink-muted);margin-bottom:0.3rem;">上游来源：</div>';
+      detailHtml += '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;">';
+      sourceBreakdown.forEach(function(sb) {
+        var pct = totalUnique > 0 ? (sb.count / totalUnique * 100).toFixed(1) : '0.0';
+        detailHtml += '<span style="display:inline-flex;align-items:center;gap:0.3rem;background:#f5f5f3;border:1px solid var(--rule-light);border-radius:4px;padding:0.25rem 0.55rem;font-size:0.76rem;white-space:nowrap;">';
+        detailHtml += '<b>' + escapeHtml(sb.sourceName) + '</b>';
+        detailHtml += '<span style="color:var(--ink-light);">' + sb.count + '例 (' + pct + '%)</span>';
+        detailHtml += '</span>';
+      });
+      detailHtml += '</div></div>';
+    }
+
+    var subjArr = Array.from(reachedSubjIndices).sort(function(a, b) { return a - b; });
+    detailHtml += '<div style="max-height:300px;overflow-y:auto;">';
+    detailHtml += '<table style="width:100%;font-size:0.74rem;border-collapse:collapse;">';
+    detailHtml += '<thead><tr style="border-bottom:1.5px solid var(--rule);position:sticky;top:0;background:#f5f5f3;">';
+    detailHtml += '<th style="text-align:left;padding:0.25rem 0.5rem;">#</th>';
+    allCols.forEach(function(c) { detailHtml += '<th style="text-align:left;padding:0.25rem 0.5rem;">' + escapeHtml(c) + '</th>'; });
+    if (sourceBreakdown.length > 0) detailHtml += '<th style="text-align:left;padding:0.25rem 0.5rem;">流入来源</th>';
+    detailHtml += '</tr></thead><tbody>';
+    subjArr.forEach(function(sfIdx, rowNum) {
+      var sf = subjectFlows[sfIdx];
+      var r = sf.record;
+      detailHtml += '<tr style="border-bottom:1px solid var(--rule-light);">';
+      detailHtml += '<td style="padding:0.15rem 0.5rem;">' + (rowNum + 1) + '</td>';
+      allCols.forEach(function(c) { detailHtml += '<td style="padding:0.15rem 0.5rem;">' + escapeHtml(String(r[c] != null ? r[c] : '')) + '</td>'; });
+      if (sourceBreakdown.length > 0) {
+        var srcNames = sourceBreakdown.filter(function(sb) { return sb.subjects.indexOf(sfIdx) !== -1; }).map(function(sb) { return sb.sourceName; });
+        detailHtml += '<td style="padding:0.15rem 0.5rem;font-size:0.7rem;">' + escapeHtml(srcNames.join('、') || '-') + '</td>';
+      }
+      detailHtml += '</tr>';
+    });
+    detailHtml += '</tbody></table></div>';
+    detailHtml += '</div>'; // sankeyDetailBody 闭合
+    detailHtml += '</div>'; // card-clinical 闭合
+
+    var panel = document.getElementById('sankeyDetailPanel');
+    panel.innerHTML = detailHtml;
+    panel.style.display = '';
+    console.log('[桑基图点击] 明细已展示: ' + totalUnique + '例受试者, 节点=' + labelName);
+  }
+
+  function attachSankeyClick() {
+    const dom = document.getElementById('chartSankey');
+    if (!dom) { console.log('[桑基图点击] chartSankey DOM不存在，跳过绑定'); return; }
+    dom.removeAllListeners('plotly_click');
+    dom.removeAllListeners('plotly_hover');
+    if (dom._sankeyMouseDown) {
+      dom.removeEventListener('mousedown', dom._sankeyMouseDown);
+      dom.removeEventListener('mouseup', dom._sankeyMouseUp);
+    }
+    console.log('[桑基图点击] 绑定事件, 标签数=' + sankeyLabels.length);
+
+    // 用 plotly_hover 追踪鼠标悬停的节点（Plotly 提供正确的 pointNumber）
+    var lastHoveredIdx = null;
+    dom.on('plotly_hover', function(edata) {
+      if (!edata || !edata.points || edata.points.length === 0) return;
+      var pt = edata.points[0];
+      var idx = pt.pointNumber;
+      if (idx === undefined) idx = pt.pointIndex;
+      if (idx !== undefined) lastHoveredIdx = idx;
+    });
+
+    // mousedown/mouseup 区分拖拽和点击，使用 plotly_hover 提供的正确索引
+    var sankeyMouseDown = null;
+    dom._sankeyMouseDown = function(evt) {
+      sankeyMouseDown = { x: evt.clientX, y: evt.clientY };
+    };
+    dom._sankeyMouseUp = function(evt) {
+      if (!sankeyMouseDown) return;
+      var dx = evt.clientX - sankeyMouseDown.x;
+      var dy = evt.clientY - sankeyMouseDown.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      sankeyMouseDown = null;
+      if (dist > 5) return; // 拖拽，忽略
+      // 点击：使用 plotly_hover 提供的正确节点索引
+      console.log('[桑基图点击] 检测到点击, lastHoveredIdx=' + lastHoveredIdx + ', dist=' + dist.toFixed(1));
+      if (lastHoveredIdx !== null) {
+        handleSankeyNodeClick(lastHoveredIdx);
+      }
+    };
+    dom.addEventListener('mousedown', dom._sankeyMouseDown);
+    dom.addEventListener('mouseup', dom._sankeyMouseUp);
+  }
+  // 初始绑定点击事件
+  attachSankeyClick();
+  // 研究入组进度 — 使用用户选择的日期变量
+  const dateVarSel = document.getElementById('enrollDateVar');
+  // 填充日期下拉框（自动检测默认值）
+  const meta = state.active.metadata;
+  const allVarKeys = Object.keys(meta).filter(k => meta[k].type !== 'empty');
+  dateVarSel.innerHTML = '<option value="">选择日期变量</option>';
+  allVarKeys.forEach(k => {
+    dateVarSel.innerHTML += `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`;
+  });
+  const patterns = ['随机化日期','随机日期','入组日期','RANDDAT','RDDAT','RANDDT','RDDT','RNDDT'];
+  const autoDate = allVarKeys.find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+  if (autoDate) dateVarSel.value = autoDate;
+  const dateVar = dateVarSel.value;
+
+  // 从记录中解析日期（所有受试者，按月统计）
+  const allDates = [];
+  if (dateVar) {
+    subjectFlows.forEach(s => {
+      const raw = String(s.record[dateVar] || '');
+      const d = raw.replace(/[^0-9]/g, '').slice(0, 8);
+      if (d.length === 8 && !isNaN(parseInt(d))) {
+        allDates.push(d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8));
+      }
+    });
+    allDates.sort();
+  }
+
+  // 按月汇总：每月入组 + 累计入组
+  function monthlyStats(dates) {
+    const count = {};
+    dates.forEach(d => { const mm = d.slice(0,7); count[mm] = (count[mm]||0) + 1; });
+    const months = Object.keys(count).sort();
+    const monthly = months.map(m => count[m]);
+    const cum = []; let s = 0;
+    monthly.forEach(v => { s += v; cum.push(s); });
+    return { months, monthly, cum };
+  }
+
+  if (dateVar && allDates.length > 0) {
+    const ms = monthlyStats(allDates);
+    Plotly.newPlot('chartStudyEnroll', [
+      { type: 'bar', x: ms.months, y: ms.monthly, name: '每月入组',
+        yaxis: 'y', marker: { color: '#4775FF' },
+        text: ms.monthly.map(String), textposition: 'outside',
+        textfont: { family: JR_FONT.family, size: 9 } },
+      { type: 'scatter', x: ms.months, y: ms.cum, name: '累计入组',
+        yaxis: 'y2', mode: 'lines+markers+text',
+        line: { color: '#1A0099', width: 2 },
+        marker: { color: '#1A0099', size: 4, symbol: 'circle' },
+        text: ms.cum.map(String), textposition: 'top center',
+        textfont: { family: JR_FONT.family, size: 8, color: '#1A0099' } }
+    ], {
+      title: { text: '<b>研究入组进度 (' + dateVar + ')</b>', font: JR_FONT },
+      font: JR_FONT,
+      xaxis: { type: 'category', tickangle: -45, tickfont: { size: 9 }, automargin: true, title: { text: '月份', font: JR_FONT } },
+      yaxis: { title: { text: '每月入组例数', font: JR_FONT }, rangemode: 'nonnegative',
+        range: [0, Math.max(...ms.monthly) * 1.25] },
+      yaxis2: { title: { text: '累计入组例数', font: JR_FONT }, overlaying: 'y', side: 'right', rangemode: 'nonnegative' },
+      legend: { x: 0.01, y: 1.0, font: { size: 9 } },
+      margin: { l: 60, r: 60, t: 65, b: 80 },
+      paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+      height: 340
+    }, { responsive: true, displayModeBar: false });
+
+    // === 筛选进度（所有受试者，按中心 × 状态堆叠） ===
+    (function renderScreenChart() {
+      const screenVarSel = document.getElementById('screenStatusVar');
+      const prevVal = screenVarSel.value; // 保留用户之前的选择
+      // 填充筛选状态变量下拉框
+      screenVarSel.innerHTML = '<option value="">选择状态变量</option>';
+      Object.keys(meta).filter(function(k) { return meta[k].type !== 'empty'; }).forEach(function(k) {
+        var sel = (k === prevVal) ? ' selected' : '';
+        screenVarSel.innerHTML += '<option value="' + escapeHtml(k) + '"' + sel + '>' + escapeHtml(k) + '</option>';
+      });
+      screenVarSel.value = prevVal; // 恢复选择
+      const screenVar = screenVarSel.value;
+      if (!screenVar) {
+        document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">请选择筛选状态变量</div>';
+        return;
+      }
+
+      // 使用所有记录（非筛选后）
+      const allRecs = project.records;
+      const siteCol2 = detectSiteCol(allRecs) || 'Unknown';
+
+      // 按中心统计三种状态
+      const siteStatus = {}; // site → { enrolled: N, failed: N, screening: N }
+      const completeVals = ['完成','已入组','入组','随机','随机化','随机入组','用药','治疗'];
+      allRecs.forEach(function(r) {
+        const site = String(r[siteCol2] || 'Unknown');
+        if (!siteStatus[site]) siteStatus[site] = { enrolled: 0, failed: 0, screening: 0 };
+        const val = r[screenVar];
+        if (isMissing(val)) {
+          siteStatus[site].screening++;
+        } else if (completeVals.some(function(cv) { return String(val).indexOf(cv) !== -1; })) {
+          siteStatus[site].enrolled++;
+        } else {
+          siteStatus[site].failed++;
+        }
+      });
+
+      const screenSites = Object.keys(siteStatus).sort(function(a, b) {
+        var totalA = siteStatus[a].enrolled + siteStatus[a].failed + siteStatus[a].screening;
+        var totalB = siteStatus[b].enrolled + siteStatus[b].failed + siteStatus[b].screening;
+        return totalB - totalA;
+      });
+
+      if (screenSites.length === 0) {
+        document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">无数据</div>';
+        return;
+      }
+
+      const enrolledVals = screenSites.map(function(s) { return siteStatus[s].enrolled; });
+      const failedVals   = screenSites.map(function(s) { return siteStatus[s].failed; });
+      const screeningVals = screenSites.map(function(s) { return siteStatus[s].screening; });
+
+      Plotly.newPlot('chartScreenEnroll', [
+        { type: 'bar', x: screenSites, y: enrolledVals, name: '已入组',
+          marker: { color: '#70AD47' } },
+        { type: 'bar', x: screenSites, y: screeningVals, name: '筛选中',
+          marker: { color: '#FFC107' } },
+        { type: 'bar', x: screenSites, y: failedVals, name: '筛选失败',
+          marker: { color: '#c0504d' } }
+      ], {
+        title: { text: '<b>筛选进度（按中心 × 状态）</b>', font: JR_FONT },
+        font: JR_FONT,
+        barmode: 'stack',
+        xaxis: { type: 'category', tickangle: -60, tickfont: { size: 8 }, automargin: true, title: { text: '中心', font: JR_FONT } },
+        yaxis: { title: { text: '受试者数', font: JR_FONT }, rangemode: 'nonnegative' },
+        legend: { x: 1.0, y: 1.0, xanchor: 'right', font: { size: 9 } },
+        margin: { l: 60, r: 60, t: 65, b: 80 },
+        paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+        height: 340
+      }, { responsive: true, displayModeBar: false });
+    })();
+  } else {
+    const msg = dateVar ? '该日期变量未解析到有效日期' : '请为节点配置日期变量';
+    document.getElementById('chartStudyEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">' + msg + '</div>';
+    document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">请选择筛选状态变量</div>';
+  }
+
+  // 中心入组进度 — 用户选择判定变量和条件
+  const siteEnrollVarSel = document.getElementById('siteEnrollVar');
+  const siteEnrollCondSel = document.getElementById('siteEnrollCond');
+  // 填充下拉框（每次刷新）
+  siteEnrollVarSel.innerHTML = '<option value="">不筛选(全体)</option>';
+  Object.keys(meta).filter(k => meta[k].type !== 'empty').forEach(k => {
+    siteEnrollVarSel.innerHTML += `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`;
+  });
+  const auto = Object.keys(meta).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+  if (auto) siteEnrollVarSel.value = auto;
+  const enrollVar = siteEnrollVarSel.value;
+  const enrollCond = siteEnrollCondSel.value;
+
+  const siteCounts = {};
+  subjectFlows.forEach(s => {
+    if (enrollVar && !checkNodeCondition(s.record[enrollVar], enrollCond, '')) return;
+    siteCounts[s.site] = (siteCounts[s.site] || 0) + 1;
+  });
+  const siteEntries = Object.entries(siteCounts).sort((a,b) => b[1] - a[1]);
+  if (siteEntries.length > 0) {
+    const siteNames = siteEntries.map(e => e[0]);
+    const siteNums = siteEntries.map(e => e[1]);
+    const total = siteNums.reduce((a,b) => a+b, 0);
+    const cumPct = [];
+    let runSum = 0;
+    siteNums.forEach(n => { runSum += n; cumPct.push((runSum / total) * 100); });
+    Plotly.newPlot('chartSiteEnroll', [
+      { type: 'bar', x: siteNames, y: siteNums, name: '入组例数',
+        marker: { color: '#4775FF' },
+        text: siteNums.map(v => v + '例'), textposition: 'outside',
+        textfont: { family: JR_FONT.family, size: 9, color: '#333' },
+        cliponaxis: false,
+        hovertemplate: siteNums.map((v, i) => '<b>' + siteNames[i] + '</b><br>入组: ' + v + '例<br>占比: ' + (v/total*100).toFixed(1) + '%<extra></extra>'),
+        yaxis: 'y' },
+      { type: 'scatter', x: siteNames, y: cumPct, name: '累计百分比',
+        mode: 'lines+markers', yaxis: 'y2',
+        line: { color: '#1A0099', width: 1.5 },
+        marker: { color: '#1A0099', size: 4, symbol: 'circle' },
+        text: cumPct.map(v => v.toFixed(1) + '%'), textposition: 'top center',
+        cliponaxis: false,
+        textfont: { family: JR_FONT.family, size: 8, color: '#1A0099' } }
+    ], {
+      title: { text: '<b>中心入组进度</b>', font: JR_FONT },
+      font: JR_FONT,
+      xaxis: { type: 'category', categoryorder: 'array', categoryarray: siteNames, tickangle: -60, tickfont: { size: 8 }, automargin: true },
+      yaxis: { title: { text: '入组例数', font: JR_FONT }, rangemode: 'nonnegative',
+        range: [0, Math.max(...siteNums) * 1.5] },
+      yaxis2: { title: { text: '累计百分比 (%)', font: JR_FONT }, overlaying: 'y', side: 'right',
+        ticksuffix: '%', range: [0, 105], rangemode: 'nonnegative' },
+      shapes: [{ type: 'line', x0: -0.5, x1: siteNames.length - 0.5, y0: 80, y1: 80,
+        yref: 'y2', line: { color: '#FFC20A', width: 1, dash: 'dash' } }],
+      legend: { x: 1.0, y: 1.0, xanchor: 'right', font: { size: 9 } },
+      margin: { l: 60, r: 60, t: 65, b: 80 },
+      bargap: 0.1,
+      paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+      height: 340
+    }, { responsive: true, displayModeBar: false });
+  }
+
+  // 三个入组图表渲染后同步 resize，修正 automargin 导致的微小 X 轴偏移
+  setTimeout(function() {
+    ['chartStudyEnroll', 'chartScreenEnroll', 'chartSiteEnroll'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el._fullLayout) { Plotly.Plots.resize(el); }
+    });
+  }, 150);
+
+  // 渲染完成后，若有手动位置则持久化到 localStorage
+  autoSaveSankeyPositions(false);
+}
+
+// ======================================================================
+//  Raincloud Plot（云雨图）
+//  三层叠加：半小提琴（云）+ 箱线图（摘要）+ 抖动散点（雨）
+//  两组对比时左右分半，其他情况每组展示半侧
+// ======================================================================
+function renderRaincloudPlot(records, varName, groupVar, divId, refGroup, refLevels) {
+  const groups = getGroupedValues(records, varName, groupVar, refGroup, refLevels);
+  const groupNames = Object.keys(groups);
+  if (groupNames.length === 0) return;
+
+  const nGroups = groupNames.length;
+  const isSplit = (nGroups === 2);
+
+  const traces = [];
+  const tickVals = [];  // x 轴刻度位置
+  const tickText = [];  // x 轴刻度标签
+  let ci = 0;
+
+  for (const [gName, vals] of Object.entries(groups)) {
+    if (vals.length < 1) continue;
+    const c = JR_COLORS[ci % JR_COLORS.length];
+    const centerX = ci;
+    const cloudSide = isSplit ? (ci === 0 ? 'negative' : 'positive') : 'positive';
+    const boxX = centerX + (cloudSide === 'negative' ? 0.02 : -0.02); // 箱线图紧贴云雨对侧
+    tickVals.push(centerX);
+    tickText.push(gName + ' (N=' + vals.length + ')');
+
+    // 层1: 云 — 半小提琴（Plotly 内置 Gaussian KDE，Silverman 带宽）
+    traces.push({
+      type: 'violin', y: vals, x: vals.map(() => centerX), name: gName + '',
+      side: cloudSide,
+      points: false,
+      line: { color: c, width: 1.2 },
+      fillcolor: c + '18',
+      meanline: { visible: false },
+      spanmode: 'hard',
+      bandwidth: silvermanBandwidth(vals),
+      width: 0.45,
+      scalemode: 'width',
+      hoveron: 'violins',
+      hovertemplate: '<b>' + gName + '</b><br>N=' + vals.length + '<br>%{y}<extra></extra>'
+    });
+
+    // 层2: 箱线图（紧邻云雨外侧，窄箱体）
+    traces.push({
+      type: 'box', y: vals, x: vals.map(() => boxX), name: gName + '',
+      width: 0.03,
+      marker: { color: c, size: 2 },
+      line: { color: c, width: 1.5 },
+      fillcolor: 'rgba(255,255,255,0.85)',
+      boxpoints: false,
+      showlegend: false,
+      hoverinfo: 'y',
+      hovertemplate: 'Median: %{median:.2f}<br>Q1–Q3: %{q1:.2f}–%{q3:.2f}<extra></extra>'
+    });
+
+    // 层3: 雨 — 抖动散点（约束在云轮廓内）
+    const jitterR = 0.03;
+    const xJitter = vals.map(() => {
+      const r = Math.random() * jitterR;
+      if (isSplit) {
+        return cloudSide === 'negative' ? centerX - r : centerX + r;
+      }
+      return centerX + r;
+    });
+    traces.push({
+      type: 'scatter', y: vals, x: xJitter,
+      mode: 'markers', name: gName + '',
+      marker: { color: c, size: 3.5, opacity: 0.55 },
+      showlegend: false,
+      hoverinfo: 'y',
+      hovertemplate: '%{y}<extra></extra>'
+    });
+    ci++;
+  }
+
+  const allVals = [].concat(...Object.values(groups));
+  const yMin = Math.min(...allVals), yMax = Math.max(...allVals);
+  const yPad = Math.max((yMax - yMin) * 0.12, 0.5);
+
+  const layout = jLayout(varName + ' — 云雨图', '', varName, {
+    legend: { font: JR_FONT },
+    xaxis: Object.assign({}, JR_LAYOUT_BASE.xaxis, {
+      showgrid: false, zeroline: false,
+      tickvals: tickVals,
+      ticktext: tickText,
+      tickfont: { family: JR_FONT.family, size: 11 },
+      title: { text: '', font: JR_FONT },
+      range: isSplit ? [-0.6, 1.6] : [-0.5, nGroups - 0.5]
+    }),
+    yaxis: Object.assign({}, JR_LAYOUT_BASE.yaxis, {
+      title: { text: varName, font: JR_FONT },
+      range: [yMin - yPad, yMax + yPad]
+    })
+  });
+  Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+
+  // 受试者明细表：基础变量 + 分组变量 + 分析变量
+  const meta = state.active ? state.active.metadata : {};
+  const basicCols = getSubjectColumns(records);
+  // 补充其他基础变量（排除已出现的列和分析变量自身）
+  const extraBasic = Object.keys(records[0] || {}).filter(k => {
+    const t = meta[k] ? meta[k].type : null;
+    return t === 'id' && !basicCols.includes(k);
+  });
+  const allBasicCols = [...basicCols, ...extraBasic];
+  const allCols = [...allBasicCols];
+  if (groupVar && !allCols.includes(groupVar)) allCols.push(groupVar);
+  if (!allCols.includes(varName)) allCols.push(varName);
+
+  let dtHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击散点筛选）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
+  dtHtml += '<table><thead><tr><th>#</th>' + allCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '</tr></thead><tbody>';
+  let ridx = 0;
+  for (const r of records) {
+    ridx++;
+    const gVal = groupVar ? String(r[groupVar] ?? '') : '__all__';
+    const aVal = r[varName];
+    dtHtml += '<tr data-group="' + escapeHtml(gVal) + '" data-val="' + escapeHtml(String(aVal ?? '')) + '">';
+    dtHtml += '<td>' + ridx + '</td>';
+    for (const c of allCols) dtHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+    dtHtml += '</tr>';
+  }
+  dtHtml += '</tbody></table></div>';
+  document.getElementById('detailDistribution').innerHTML = dtHtml;
+
+  // 点击散点 → 按值筛选明细表
+  const chartEl = document.getElementById(divId);
+  chartEl.removeAllListeners('plotly_click');
+  chartEl.on('plotly_click', function(edata) {
+    if (!edata || !edata.points || edata.points.length === 0) return;
+    const pt = edata.points[0];
+    const clickVal = pt.y;
+    if (clickVal === undefined) return;
+    const targetKey = String(clickVal);
+    const tbody = document.getElementById('detailDistribution').querySelector('tbody');
+    if (!tbody) return;
+    if (chartEl._lastRainClick === targetKey) {
+      tbody.querySelectorAll('tr').forEach(tr => { tr.style.display = ''; });
+      chartEl._lastRainClick = null;
+    } else {
+      tbody.querySelectorAll('tr').forEach(tr => {
+        tr.style.display = tr.dataset.val === targetKey ? '' : 'none';
+      });
+      chartEl._lastRainClick = targetKey;
+    }
+  });
+}
+
+// 根据变量类型自动选择图表：连续型 → 箱线图，分类/二分类/有序 → 条形图
+function autoSetDistChartType() {
+  const project = state.active;
+  if (!project) return;
+  const selVar = document.getElementById('distVar').value;
+  if (!selVar) return;
+  const meta = project.metadata[selVar];
+  if (!meta) return;
+
+  const newType = (meta.type === 'continuous') ? 'box' : 'hist';
+  currentDistChartType = newType;
+
+  // 同步切换按钮状态
+  document.querySelectorAll('#distChartToggle .btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.distChart === newType);
+  });
+  // 同步分箱控件显示
+  document.getElementById('distBinControls').style.display = newType === 'hist' ? 'flex' : 'none';
+}
+
+function renderCurrentDistChart() {
+  const project = state.active;
+  if (!project) return;
+  const selVar = document.getElementById('distVar').value;
+  if (!selVar) return;
+  const filtered = getFilteredRecords(project);
+
+  if (currentDistChartType === 'box') {
+    renderBoxPlot(filtered, selVar, project.groupVar, 'chartDistribution', project.refGroup, project.refLevels);
+  } else if (currentDistChartType === 'kde') {
+    renderRaincloudPlot(filtered, selVar, project.groupVar, 'chartDistribution', project.refGroup, project.refLevels);
+  } else {
+    const bins = parseInt(document.getElementById('distBins').value) || 20;
+    renderHistogram(filtered, selVar, project.groupVar, bins, 'chartDistribution', project.refGroup, project.refLevels);
+  }
+}
+
+function renderActiveTab() {
+  const project = state.active;
+  if (!project) {
+    document.getElementById('emptyState').style.display = 'flex';
+    ['panelTable1','panelDistribution','panelCorrelation','panelControlChart'].forEach(id => document.getElementById(id).style.display='none');
+    return;
+  }
+
+  const activeTab = document.querySelector('.content-tab.active')?.dataset?.tab || 'table1';
+
+  if (activeTab === 'table1') {
+    renderPanel(null, 'panelTable1');
+    const filtered = getFilteredRecords(project);
+    const table1Data = generateTable1(project.metadata, filtered, project.groupVar, project.selectedVars, project.refGroup, project.refLevels);
+    document.getElementById('table1Container').innerHTML = renderTable1HTML(table1Data);
+  } else if (activeTab === 'distribution') {
+    renderDistributionPanel();
+  } else if (activeTab === 'correlation') {
+    renderCorrelationPanel();
+  } else if (activeTab === 'enrollment') {
+    renderEnrollmentPanel();
+  } else if (activeTab === 'controlchart') {
+    renderPanel(null, 'panelControlChart');
+    populateCCVarSelect();
+  }
+}
+
+function populateVarSelect(selectId, allowedTypes) {
+  const project = state.active;
+  if (!project) return;
+  const meta = project.metadata;
+  const select = document.getElementById(selectId);
+  const currentVal = select.value;
+  select.innerHTML = '';
+  for (const [key, info] of Object.entries(meta)) {
+    if (info.type === 'id' || info.type === 'empty') continue;
+    if (!project.selectedVars.has(key)) continue;
+    if (allowedTypes && !allowedTypes.includes(info.type)) continue;
+    const sel = (key === currentVal) ? ' selected' : '';
+    select.innerHTML += `<option value="${escapeHtml(key)}"${sel}>${escapeHtml(key)} (${info.type})</option>`;
+  }
+  if (select.options.length > 0 && !select.value) select.value = select.options[0].value;
+  if (!currentVal && select.options.length > 0) select.value = select.options[0].value;
+  else if (currentVal) select.value = currentVal;
+}
+
+function populateCCVarSelect() {
+  const project = state.active;
+  if (!project) return;
+  const meta = project.metadata;
+
+  // 监控变量（分类/二分类/有序，仅已勾选的分析变量）
+  const ccVarSel = document.getElementById('ccVar');
+  const prevCCVar = ccVarSel.value;
+  ccVarSel.innerHTML = '';
+  for (const [key, info] of Object.entries(meta)) {
+    if (info.type === 'categorical' || info.type === 'binary' || info.type === 'ordinal') {
+      if (!project.selectedVars.has(key)) continue;
+      ccVarSel.innerHTML += `<option value="${escapeHtml(key)}">${escapeHtml(key)}</option>`;
+    }
+  }
+  if (prevCCVar) ccVarSel.value = prevCCVar;
+
+  // 中心编号列（分类/id/连续变量，且唯一值 < 总记录数的 50%）
+  const ccSiteSel = document.getElementById('ccSiteCol');
+  const prevSite = ccSiteSel.value;
+  ccSiteSel.innerHTML = '';
+  for (const [key, info] of Object.entries(meta)) {
+    if (info.type === 'empty') continue;
+    // 适合作为中心列的变量：分类型、id型（但有重复值）、字符型
+    if (info.nUnique < info.nTotal && info.nTotal > 0) {
+      const sel = (key === prevSite) ? ' selected' : '';
+      ccSiteSel.innerHTML += `<option value="${escapeHtml(key)}"${sel}>${escapeHtml(key)}</option>`;
+    }
+  }
+  // 回退：选第一个有重复值的变量
+  if (!prevSite || !ccSiteSel.querySelector('option[selected]')) {
+    // 优先匹配常见的中心列名
+    const preferred = ['SITEID', '中心编号', 'SITE', '中心', 'SITENUM'];
+    for (const p of preferred) {
+      if (meta[p] && meta[p].nUnique < meta[p].nTotal) {
+        ccSiteSel.value = p;
+        break;
+      }
+    }
+  }
+
+  // 受试者编号列（任意非空变量，优先唯一标识符）
+  const ccSubjSel = document.getElementById('ccSubjCol');
+  const prevSubj = ccSubjSel.value;
+  ccSubjSel.innerHTML = '';
+  for (const [key, info] of Object.entries(meta)) {
+    if (info.type === 'empty') continue;
+    const sel = (key === prevSubj) ? ' selected' : '';
+    ccSubjSel.innerHTML += `<option value="${escapeHtml(key)}"${sel}>${escapeHtml(key)}</option>`;
+  }
+  if (!prevSubj || !ccSubjSel.querySelector('option[selected]')) {
+    const preferred = ['SUBJID', '受试者编号', 'USUBJID', 'SUBJECT', '受试者', '编号'];
+    for (const p of preferred) {
+      if (meta[p]) { ccSubjSel.value = p; break; }
+    }
+  }
+
+  updateCCLevelSelect();
+}
+
+function updateCCLevelSelect() {
+  const project = state.active;
+  if (!project) return;
+  const varName = document.getElementById('ccVar').value;
+  const meta = project.metadata[varName];
+  const select = document.getElementById('ccLevel');
+  select.innerHTML = '';
+  if (meta && meta.levels) {
+    for (const lvl of meta.levels) {
+      select.innerHTML += `<option value="${escapeHtml(String(lvl))}">${escapeHtml(String(lvl))}</option>`;
+    }
+  }
+}
+
+function renderCCChart() {
+  const project = state.active;
+  if (!project) return;
+  const varName = document.getElementById('ccVar').value;
+  const levelName = document.getElementById('ccLevel').value;
+  const siteCol = document.getElementById('ccSiteCol').value;
+  const subjCol = document.getElementById('ccSubjCol').value;
+  const minN = parseInt(document.getElementById('ccMinN').value) || 1;
+  if (!varName || levelName === '') return;
+
+  const filtered = getFilteredRecords(project);
+  const ccData = calcControlChart(filtered, varName, levelName, minN, siteCol);
+  renderControlChart(ccData, varName, levelName, 'chartControl');
+
+  // Summary
+  const ooc = ccData.outOfControl;
+  let summaryHtml = `<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);">中心差异分析 — Funnel Plot</div>`;
+  summaryHtml += `<div style="padding:0.75rem 1.25rem;font-size:0.82rem;">`;
+  summaryHtml += `<strong>总中心数:</strong> ${ccData.sites.length} &nbsp;|&nbsp; <strong>总例数:</strong> ${ccData.totalN} &nbsp;|&nbsp; <strong>整体发生率:</strong> ${(ccData.overallP*100).toFixed(1)}%`;
+  summaryHtml += ` &nbsp;|&nbsp; <strong>阈值:</strong> N ≥ ${ccData.minNThreshold}`;
+  if (ooc.length > 0) {
+    summaryHtml += `<br><span style="color:#c0504d;"><strong>异常中心 (N≥${ccData.minNThreshold} & 超出 99% CI):</strong></span> `;
+    summaryHtml += ooc.map(s => `${s.siteId}: ${s.nPos}/${s.n}=${(s.rate*100).toFixed(1)}%`).join(', ');
+  } else {
+    summaryHtml += `<br><span style="color:#4caf90;"><strong>N≥${ccData.minNThreshold} 的所有中心均在 99% 控制限内</strong></span>`;
+  }
+  summaryHtml += '</div></div>';
+  document.getElementById('ccSummary').innerHTML = summaryHtml;
+
+  // 受试者层级明细表（按中心分组排序）
+  const subjBySite = {};
+  for (const r of filtered) {
+    const site = String(r[siteCol] || 'Unknown');
+    if (!subjBySite[site]) subjBySite[site] = [];
+    subjBySite[site].push(r);
+  }
+  // 按各中心例数排序（与漏斗图一致）
+  const sortedSites = Object.entries(subjBySite).sort((a,b) => a[1].length - b[1].length);
+
+  // 明细表列：受试者编号、中心编号
+  const detailCols = [subjCol, siteCol].filter(c => c);
+  let dtHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击散点筛选中心）</small></span></div>';
+  dtHtml += '<span style="font-size:0.7rem;color:var(--ink-muted);">N=' + filtered.length + '</span></div>';
+  dtHtml += '<table><thead><tr><th>#</th><th>中心</th>'
+    + detailCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('')
+    + '<th>' + escapeHtml(varName) + '</th>'
+    + '<th>状态</th></tr></thead><tbody>';
+  let ridx = 0;
+  for (const [site, recs] of sortedSites) {
+    for (const r of recs) {
+      ridx++;
+      const val = r[varName];
+      const isPos = String(val) === String(levelName);
+      dtHtml += '<tr data-site="' + escapeHtml(site) + '" class="' + (isPos ? 'highlight-row' : '') + '">';
+      dtHtml += '<td>' + ridx + '</td><td><strong>' + escapeHtml(site) + '</strong></td>';
+      for (const c of detailCols) dtHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+      dtHtml += '<td>' + escapeHtml(String(val ?? '')) + '</td>';
+      dtHtml += '<td style="font-weight:600;">' + (isPos ? '阳性' : '-') + '</td>';
+      dtHtml += '</tr>';
+    }
+  }
+  dtHtml += '</tbody></table></div>';
+  document.getElementById('detailControl').innerHTML = dtHtml;
+
+  // 点击漏斗图散点筛选对应中心
+  const chartEl2 = document.getElementById('chartControl');
+  chartEl2.removeAllListeners('plotly_click');
+  chartEl2.on('plotly_click', function(edata) {
+    if (!edata || !edata.points || edata.points.length === 0) return;
+    const pt = edata.points[0];
+    let siteId = '';
+
+    // 优先从原始 text 数组提取（不含 hovertemplate 前缀包装）
+    if (pt.data && pt.data.text && pt.data.text[pt.pointIndex]) {
+      siteId = String(pt.data.text[pt.pointIndex]).split('<br>')[0].trim();
+    }
+    // 备选：从 hover 文本提取（需去掉 "Site " 前缀）
+    if (!siteId && pt.text && typeof pt.text === 'string') {
+      const t = pt.text.split('<br>')[0].trim();
+      siteId = t.replace(/^Site\s+/i, '');
+    }
+    if (!siteId) {
+      // 通过 x (N值) 和 y (rate) 反查
+      const cx = pt.x, cy = pt.y;
+      for (const s of ccData.sites) {
+        if (Math.abs(s.n - cx) < 0.01 && Math.abs(s.rate - cy) < 0.001) {
+          siteId = s.siteId; break;
+        }
+      }
+    }
+    if (!siteId) return;
+
+    const tbody = document.getElementById('detailControl').querySelector('tbody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+    // 如果当前已筛选到该站点 → 恢复显示全部
+    const alreadyFiltered = chartEl2._filteredSite === siteId;
+    rows.forEach(tr => {
+      const match = tr.dataset.site === siteId;
+      tr.style.display = (alreadyFiltered || match) ? '' : 'none';
+      tr.classList.toggle('highlight-row', match && !alreadyFiltered);
+    });
+    chartEl2._filteredSite = alreadyFiltered ? null : siteId;
+  });
+}
+
+function renderProjectTabs() {
+  const container = document.getElementById('projectTabs');
+  let html = `<button class="btn-add-project" id="btnAddProject" title="添加新项目"><i class="bi bi-plus"></i></button>`;
+  for (const [id, proj] of state.projects) {
+    const activeClass = id === state.activeId ? ' active' : '';
+    html += `<div class="project-tab${activeClass}" data-proj="${id}"><span class="dot"></span>${escapeHtml(proj.name)}<span class="close-btn" data-close="${id}">&times;</span></div>`;
+  }
+  container.innerHTML = html;
+
+  // Re-bind events
+  document.getElementById('btnAddProject').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+  container.querySelectorAll('.project-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      if (e.target.classList.contains('close-btn')) return;
+      const projId = tab.dataset.proj;
+      state.activeId = projId;
+      refreshAll();
+    });
+  });
+  container.querySelectorAll('.close-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const projId = btn.dataset.close;
+      state.projects.delete(projId);
+      if (state.activeId === projId) {
+        state.activeId = state.projects.keys().next().value || null;
+      }
+      refreshAll();
+    });
+  });
+}
+
+function getFilteredRecords(project) {
+  if (!project || !project.filters || project.filters.length === 0) return project.records;
+  return project.records.filter(r => {
+    for (const f of project.filters) {
+      const raw = r[f.var];
+      const val = raw === null || raw === undefined ? '' : String(raw);
+      const fv = f.val;
+      const numVal = parseFloat(val), numFv = parseFloat(fv);
+      const isNumeric = !isNaN(numVal) && !isNaN(numFv);
+      switch (f.op) {
+        case '=':  if (isNumeric ? numVal !== numFv : val !== fv) return false; break;
+        case '!=': if (isNumeric ? numVal === numFv : val === fv) return false; break;
+        case '>':  if (!(numVal > numFv)) return false; break;
+        case '<':  if (!(numVal < numFv)) return false; break;
+        case '>=': if (!(numVal >= numFv)) return false; break;
+        case '<=': if (!(numVal <= numFv)) return false; break;
+      }
+    }
+    return true;
+  });
+}
+
+function refreshAll() {
+  renderProjectTabs();
+  const project = state.active;
+  if (project) {
+    renderSidebar(project);
+    renderActiveTab();
+    const filtered = getFilteredRecords(project);
+    const totalN = project.records.length;
+    const nGroups = project.groupVar ? (project.refGroup && project.refLevels && project.refLevels.length > 0 ? 2 : [...new Set(filtered.map(r => r[project.groupVar]).filter(v => v !== null && v !== ''))].length) : 0;
+    updateNavStatus(`${project.name} — ${filtered.length}/${totalN} 例受试者${project.filters.length>0 ? ' (已筛选)' : ''}${project.groupVar ? ', 分组: '+project.groupVar+(project.refGroup&&project.refLevels&&project.refLevels.length>0?' (二分类对照)':'')+' ('+nGroups+'组)' : ''}`);
+  } else {
+    document.getElementById('basicVarList').innerHTML = '<div class="text-muted" style="font-size:0.78rem;">暂无数据，请先上传文件</div>';
+    document.getElementById('analysisVarList').innerHTML = '<div class="text-muted" style="font-size:0.78rem;">暂无数据，请先上传文件</div>';
+    document.getElementById('groupSelect').innerHTML = '<option value="">不分组 (Overall)</option>';
+    document.getElementById('groupSelect').disabled = true;
+    document.getElementById('projectInfo').innerHTML = '尚未加载数据';
+    document.getElementById('emptyState').style.display = 'flex';
+    ['panelTable1','panelDistribution','panelCorrelation','panelControlChart'].forEach(id => document.getElementById(id).style.display='none');
+    updateNavStatus('就绪 — 请上传 JSON 数据文件');
+  }
+}
+
+function loadProject(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const { records, keys } = parseJSONFile(e.target.result);
+      const metadata = classifyAllColumns(keys, records);
+      const id = generateId();
+      // 项目名称优先取 STUDYID，回退取文件名
+      const studyIdCol = detectStudyId(records);
+      const projName = studyIdCol ? String(records[0][studyIdCol] ?? file.name.replace(/\.json$/i, '')) : file.name.replace(/\.json$/i, '');
+      const nSubjects = records.length;
+
+      state.projects.set(id, {
+        id, name: projName, fileName: file.name,
+        records, metadata, groupVar: '', refGroup: false, refLevels: [], filters: [],
+        selectedVars: new Set(),
+        sankeyPositions: {},
+        enrollmentNodes: [{id:1,name:'筛选',variable:'',condition:'notnull',value:'',isTerminal:false,parentId:null,mergeParentId:null},
+                          {id:2,name:'筛选失败',variable:'',condition:'equals',value:'',isTerminal:true,parentId:1,mergeParentId:1},
+                          {id:3,name:'随机',variable:'',condition:'notnull',value:'',isTerminal:false,parentId:1,mergeParentId:null},
+                          {id:4,name:'用药',variable:'',condition:'notnull',value:'',isTerminal:false,parentId:3,mergeParentId:null}]
+      });
+      state.activeId = id;
+      // 先尝试恢复已保存的方案（含桑基图位置），再渲染界面 —— 顺序不可调换
+      const restored = loadEnrollmentScheme();
+      refreshAll();
+      // 如果当前在入组分析 tab 且恢复了方案/位置，重新渲染桑基图以应用保存的位置
+      const activeTab = document.querySelector('.content-tab.active')?.dataset?.tab;
+      if (activeTab === 'enrollment' && (restored || (state.active.sankeyPositions && Object.keys(state.active.sankeyPositions).length > 0))) {
+        renderEnrollmentCharts();
+      }
+      showToast(`已加载「${projName}」— ${nSubjects} 例受试者，${keys.length} 个变量` + (restored ? '（已恢复方案）' : ''));
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ======================================================================
+//  RTF Export — 中文顶刊三线表格式
+// ======================================================================
+// RTF Unicode 转义：非 ASCII 字符 → \uNNNN? 格式（RTF 标准方式，纯 ASCII 输出）
+function toRtf(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const code = ch.charCodeAt(0);
+    if (code === 0x5C) out += '\\\\';      // backslash
+    else if (code === 0x7B) out += '\\{';  // {
+    else if (code === 0x7D) out += '\\}';  // }
+    else if (code === 0x0A) out += '\\line\n';
+    else if (code < 128) out += ch;
+    else out += '\\u' + code + '?';         // RTF Unicode escape
+  }
+  return out;
+}
+
+function exportRTF(tableEl, title) {
+  const A4_W = 11900;
+
+  // ansicpg1252 + \u Unicode escapes: 纯 ASCII 输出，兼容所有 Word 版本
+  const rtfHead =
+    '{\\rtf1\\ansi\\ansicpg1252\\deff0\n' +
+    '{\\fonttbl' +
+    '{\\f0\\fnil\\fcharset134 SimSun;}' +
+    '{\\f1\\fnil\\fcharset134 SimHei;}' +
+    '}\n' +
+    '{\\colortbl;\\red0\\green0\\blue0;}\n' +
+    '\\paperw' + A4_W + '\\paperh16840' +
+    '\\margl1134\\margr1134\\margt1134\\margb1134\n' +
+    '\\fs18\n' +
+    `{\\f1\\fs22\\qc ${toRtf(title)} \\par}\\par\n`;
+
+  let rtfBody = '';
+  const allThs = tableEl.querySelectorAll('thead th');
+  const nCols = allThs.length;
+  const firstW = Math.floor((A4_W - 2268) * 2 / (nCols + 1));
+  const restW = Math.floor((A4_W - 2268) / (nCols + 1));
+  const cellX = [1134 + firstW];
+  for (let i = 1; i < nCols; i++) cellX.push(cellX[i-1] + restW);
+
+  function rowStart(isHeader, isLast, noBorders) {
+    let r = '{\\trowd\\trgaph40\\trleft1134\n';
+    for (let i = 0; i < nCols; i++) {
+      let brdr = '';
+      if (noBorders) {
+        brdr = '';
+      } else if (isHeader) {
+        brdr = '\\clbrdrt\\brdrs\\brdrw30\\clbrdrb\\brdrs\\brdrw20';
+      } else if (isLast) {
+        brdr = '\\clbrdrb\\brdrs\\brdrw30';
+      }
+      r += `\\clbrdrl\\brdrnone\\clbrdrr\\brdrnone${brdr}\\cellx${cellX[i]}\n`;
+    }
+    r += noBorders ? '\\trrh120\n' : '\\trrh280\n';
+    return r;
+  }
+
+  if (allThs.length > 0) {
+    rtfBody += rowStart(true, false, false);
+    for (const th of allThs) {
+      rtfBody += `{\\f1\\fs18 ${toRtf(th.textContent.trim())}}\\cell\n`;
+    }
+    rtfBody += '\\row}\n';
+  }
+
+  const rows = tableEl.querySelectorAll('tbody tr');
+  const totalRows = rows.length;
+  let rowIdx = 0;
+  let prevWasVar = false;
+  for (const tr of rows) {
+    rowIdx++;
+    const isLast = rowIdx === totalRows;
+    const isVarRow = tr.classList.contains('var-row');
+    const isMissing = tr.classList.contains('missing-row');
+    const tds = tr.querySelectorAll('td');
+
+    if (isVarRow && prevWasVar) {
+      rtfBody += rowStart(false, false, true);
+      for (let i = 0; i < nCols; i++) rtfBody += ' \\cell\n';
+      rtfBody += '\\row}\n';
+    }
+
+    rtfBody += rowStart(false, isLast, false);
+
+    for (let i = 0; i < nCols; i++) {
+      const td = tds[i];
+      const text = td ? td.textContent.trim() : '';
+      if (isVarRow) {
+        rtfBody += `{\\b\\f1\\fs18 ${toRtf(text)}}\\cell\n`;
+      } else if (isMissing) {
+        rtfBody += `{\\fs16 ${toRtf(text)}}\\cell\n`;
+      } else {
+        rtfBody += `{\\f0\\fs18 ${toRtf(text)}}\\cell\n`;
+      }
+    }
+    rtfBody += '\\row}\n';
+
+    if (isVarRow) prevWasVar = true;
+  }
+
+  // 纯 ASCII RTF，无需特殊编码处理
+  const rtf = rtfHead + rtfBody + '}';
+  const blob = new Blob([rtf], { type: 'application/rtf' });
+  const link = document.createElement('a');
+  link.download = 'Table1.rtf';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showToast('Table 1 已导出为 RTF（三线表）');
+}
+
+// ======================================================================
+//  Event Bindings
+// ======================================================================
+// 保存方案到 localStorage（全局作用域，供按钮事件和 loadProject 调用）
+function saveEnrollmentScheme() {
+  const project = state.active;
+  if (!project) return;
+  const studyIdCol = detectStudyId(project.records);
+  const studyId = studyIdCol ? String(project.records[0][studyIdCol] ?? '').trim() : (project.name || 'default');
+  if (!studyId) { showToast('无法识别 STUDYID', 'warning'); return; }
+  const key = 'bct_' + studyId;
+  const data = JSON.stringify({
+    enrollmentNodes: project.enrollmentNodes,
+    sankeyPositions: project.sankeyPositions || {},
+    savedAt: Date.now()
+  });
+  const hasPositions = project.sankeyPositions && Object.keys(project.sankeyPositions).length > 0;
+  try {
+    localStorage.setItem(key, data);
+    if (localStorage.getItem(key) === data) {
+      showToast('方案已保存: ' + studyId + (hasPositions ? '（含桑基图位置）' : ''));
+      // 同步更新"已保存"状态标签
+      const saveStatus = document.getElementById('enrollSaveStatus');
+      if (saveStatus) {
+        saveStatus.style.display = '';
+        saveStatus.textContent = '已保存';
+        clearTimeout(saveStatus._timeout);
+        saveStatus._timeout = setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
+      }
+    } else {
+      showToast('保存验证失败', 'error');
+    }
+  } catch(e) { showToast('保存失败: ' + e.message, 'error'); }
+}
+
+function loadEnrollmentScheme() {
+  const project = state.active;
+  if (!project) return false;
+  const studyIdCol = detectStudyId(project.records);
+  const studyId = studyIdCol ? String(project.records[0][studyIdCol] ?? '').trim() : (project.name || 'default');
+  if (!studyId) return false;
+  const key = 'bct_' + studyId;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    let restored = false;
+    // 恢复节点配置
+    if (data && data.enrollmentNodes && data.enrollmentNodes.length > 0) {
+      project.enrollmentNodes = data.enrollmentNodes;
+      restored = true;
+    }
+    // 恢复桑基图位置（即使节点配置未保存也能单独恢复位置）
+    if (data && data.sankeyPositions && Object.keys(data.sankeyPositions).length > 0) {
+      project.sankeyPositions = data.sankeyPositions;
+      restored = true;
+    }
+    return restored;
+  } catch(e) { /* 静默失败 */ }
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof Plotly === 'undefined') {
+    document.getElementById('cdnError').style.display = 'block';
+    document.getElementById('emptyState').innerHTML = '<i class="bi bi-exclamation-triangle" style="color:#c0504d;"></i><h5>Plotly.js 未加载</h5><p>图表库加载失败，请检查网络连接后刷新页面</p>';
+    return;
+  }
+  try {
+  // Sidebar toggle
+  let sidebarCollapsed = false;
+  document.getElementById('btnToggleSidebar').addEventListener('click', () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('btnToggleSidebar');
+    const icon = btn.querySelector('i');
+    sidebar.classList.toggle('collapsed', sidebarCollapsed);
+    btn.classList.toggle('collapsed', sidebarCollapsed);
+    icon.className = sidebarCollapsed ? 'bi bi-chevron-double-right' : 'bi bi-chevron-double-left';
+    // 触发 Plotly 图表 resize
+    setTimeout(() => { Plotly.Plots.resize(document.querySelectorAll('.js-plotly-plot')); }, 300);
+  });
+
+  // Content tab switching
+  document.getElementById('contentTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.content-tab');
+    if (!tab) return;
+    document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderActiveTab();
+  });
+
+  // File input
+  const fileInput = document.getElementById('fileInput');
+  const uploadZone = document.getElementById('uploadZone');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      loadProject(fileInput.files[0]);
+      fileInput.value = '';
+    }
+  });
+
+  // Drag and drop
+  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('drag-over'); });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].name.endsWith('.json')) {
+      loadProject(files[0]);
+    } else {
+      showToast('请上传 .json 文件', 'warning');
+    }
+  });
+
+  // Sidebar: 分析变量 checkboxes
+  document.getElementById('analysisVarList').addEventListener('change', (e) => {
+    const cb = e.target.closest('.var-checkbox');
+    if (!cb) return;
+    const project = state.active;
+    if (!project) return;
+    const key = cb.dataset.key;
+    if (cb.checked) project.selectedVars.add(key);
+    else project.selectedVars.delete(key);
+    // 变量选择变更时刷新当前活动标签页
+    renderActiveTab();
+  });
+
+  document.getElementById('btnSelectAll').addEventListener('click', () => {
+    const project = state.active;
+    if (!project) return;
+    document.querySelectorAll('#analysisVarList .var-checkbox').forEach(cb => {
+      cb.checked = true;
+      project.selectedVars.add(cb.dataset.key);
+    });
+    renderActiveTab();
+  });
+  document.getElementById('btnDeselectAll').addEventListener('click', () => {
+    const project = state.active;
+    if (!project) return;
+    document.querySelectorAll('#analysisVarList .var-checkbox').forEach(cb => {
+      cb.checked = false;
+      project.selectedVars.delete(cb.dataset.key);
+    });
+    renderActiveTab();
+  });
+  document.getElementById('btnInvertSel').addEventListener('click', () => {
+    const project = state.active;
+    if (!project) return;
+    document.querySelectorAll('#analysisVarList .var-checkbox').forEach(cb => {
+      cb.checked = !cb.checked;
+      if (cb.checked) project.selectedVars.add(cb.dataset.key);
+      else project.selectedVars.delete(cb.dataset.key);
+    });
+    renderActiveTab();
+  });
+
+  // Group select
+  document.getElementById('groupSelect').addEventListener('change', () => {
+    const project = state.active;
+    if (!project) return;
+    project.groupVar = document.getElementById('groupSelect').value;
+    project.refGroup = false;
+    project.refLevels = [];
+    renderActiveTab();
+    setTimeout(() => renderSidebar(project), 0);
+  });
+
+  // Reference group checkbox
+  document.getElementById('chkRefGroup').addEventListener('change', function() {
+    const project = state.active;
+    if (!project) return;
+    project.refGroup = this.checked;
+    if (!this.checked) {
+      project.refLevels = [];
+      document.getElementById('refLevelPanel').style.display = 'none';
+    } else {
+      document.getElementById('refLevelPanel').style.display = 'block';
+    }
+    renderActiveTab();
+  });
+
+  // Reference level checkboxes (event delegation on refLevelPanel)
+  document.getElementById('refLevelPanel').addEventListener('change', function(e) {
+    if (!e.target.classList.contains('ref-level-cb')) return;
+    const project = state.active;
+    if (!project) return;
+    // Collect all checked values
+    const cbs = this.querySelectorAll('.ref-level-cb:checked');
+    project.refLevels = Array.from(cbs).map(cb => cb.value);
+    renderActiveTab();
+  });
+
+  // Filter variable change → populate operators and values
+  document.getElementById('filterVar').addEventListener('change', function() {
+    const project = state.active;
+    if (!project) return;
+    const key = this.value;
+    const opSel = document.getElementById('filterOp');
+    const valSel = document.getElementById('filterVal');
+    const btnAdd = document.getElementById('btnAddFilter');
+    if (!key) {
+      opSel.disabled = true; valSel.disabled = true; btnAdd.disabled = true;
+      return;
+    }
+    const info = project.metadata[key];
+    const isNum = info.type === 'continuous';
+    // Operators
+    opSel.innerHTML = isNum
+      ? '<option value="=">=</option><option value="!=">≠</option><option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">≥</option><option value="<=">≤</option>'
+      : '<option value="=">=</option><option value="!=">≠</option>';
+    opSel.disabled = false;
+    // Values: for categorical, show levels; for continuous, free text
+    if (isNum) {
+      valSel.innerHTML = '<option value="">自定义...</option>';
+      valSel.innerHTML += '<option value="input">输入数值</option>';
+      valSel.disabled = false;
+      valSel.value = '';
+      // Create a text input for numeric value
+      const existing = document.getElementById('filterValInput');
+      if (existing) existing.remove();
+      const input = document.createElement('input');
+      input.type = 'text'; input.id = 'filterValInput'; input.placeholder = '输入数值';
+      input.className = 'form-control form-control-sm';
+      input.style.cssText = 'width:35%;margin-top:0.15rem;';
+      valSel.parentNode.insertBefore(input, valSel.nextSibling);
+      input.addEventListener('input', function() { btnAdd.disabled = !this.value.trim(); });
+    } else {
+      const existing = document.getElementById('filterValInput');
+      if (existing) existing.remove();
+      const levels = info.levels || [];
+      valSel.innerHTML = '<option value="">选择值</option>';
+      for (const lv of levels) {
+        valSel.innerHTML += `<option value="${escapeHtml(String(lv))}">${escapeHtml(String(lv))}</option>`;
+      }
+      valSel.disabled = false;
+    }
+  });
+
+  // Filter value select → enable add button
+  document.getElementById('filterVal').addEventListener('change', function() {
+    const btnAdd = document.getElementById('btnAddFilter');
+    const isNumInput = document.getElementById('filterValInput');
+    if (isNumInput) {
+      btnAdd.disabled = !isNumInput.value.trim();
+    } else {
+      btnAdd.disabled = !this.value;
+    }
+  });
+
+  // Add filter
+  document.getElementById('btnAddFilter').addEventListener('click', function() {
+    const project = state.active;
+    if (!project) return;
+    const key = document.getElementById('filterVar').value;
+    const op = document.getElementById('filterOp').value;
+    const isNum = project.metadata[key] && project.metadata[key].type === 'continuous';
+    let val = document.getElementById('filterVal').value;
+    const numInput = document.getElementById('filterValInput');
+    if (isNum && numInput) val = numInput.value.trim();
+    if (!key || !op || !val) return;
+    const opLabel = { '=': '=', '!=': '≠', '>': '>', '<': '<', '>=': '≥', '<=': '≤' }[op] || op;
+    const label = key + ' ' + opLabel + ' ' + val;
+    if (!project.filters) project.filters = [];
+    // Avoid duplicate
+    if (!project.filters.some(f => f.var === key && f.op === op && f.val === val)) {
+      project.filters.push({ var: key, op, val, label });
+      refreshAll();
+    }
+  });
+
+  // Clear all filters
+  document.getElementById('btnClearFilters').addEventListener('click', function() {
+    const project = state.active;
+    if (!project) return;
+    project.filters = [];
+    const existing = document.getElementById('filterValInput');
+    if (existing) existing.remove();
+    refreshAll();
+  });
+
+  // 特征分布面板 — 变量选择（自动检测图表类型）
+  document.getElementById('distVar').addEventListener('change', () => {
+    if (!state.active) return;
+    autoSetDistChartType();
+    renderCurrentDistChart();
+  });
+
+  // 特征分布面板 — 分箱数滑块（仅直方图模式生效）
+  document.getElementById('distBins').addEventListener('input', () => {
+    const v = document.getElementById('distBins').value;
+    document.getElementById('distBinsLabel').textContent = v;
+    if (!state.active) return;
+    if (currentDistChartType === 'hist') renderCurrentDistChart();
+  });
+
+  // 特征分布面板 — 图表类型切换
+  document.getElementById('distChartToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-dist-chart]');
+    if (!btn) return;
+    document.querySelectorAll('#distChartToggle .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const newType = btn.dataset.distChart;
+    currentDistChartType = newType;
+    // 仅直方图显示分箱控件；箱线图和云雨图均隐藏
+    document.getElementById('distBinControls').style.display = newType === 'hist' ? 'flex' : 'none';
+    renderCurrentDistChart();
+  });
+
+  // 相关性分析控制
+  document.getElementById('btnCorrUpdate').addEventListener('click', renderCorrelationCharts);
+  document.getElementById('corrVarX').addEventListener('change', renderCorrelationCharts);
+  document.getElementById('corrVarY').addEventListener('change', renderCorrelationCharts);
+  document.getElementById('corrThreshold').addEventListener('change', renderCorrelationCharts);
+
+  // 桑基图节点明细折叠
+  window.toggleSankeyDetail = function() {
+    var body = document.getElementById('sankeyDetailBody');
+    var toggle = document.getElementById('sankeyDetailToggle');
+    if (!body || !toggle) return;
+    if (body.style.display === 'none') {
+      body.style.display = '';
+      toggle.textContent = '（点击收起）';
+      // 展开后触发图表 resize
+      setTimeout(function() { Plotly.Plots.resize(document.querySelectorAll('.js-plotly-plot')); }, 200);
+    } else {
+      body.style.display = 'none';
+      toggle.textContent = '（点击展开）';
+    }
+  };
+
+  // 入组分析控制 — 节点配置折叠
+  let nodeConfigVisible = true;
+  document.getElementById('nodeConfigHeader').addEventListener('click', () => {
+    nodeConfigVisible = !nodeConfigVisible;
+    document.getElementById('nodeConfigBody').style.display = nodeConfigVisible ? 'block' : 'none';
+    document.getElementById('nodeConfigToggle').textContent = nodeConfigVisible ? '（点击收起）' : '（点击展开）';
+    if (nodeConfigVisible) {
+      // 展开后触发图表 resize
+      setTimeout(() => { Plotly.Plots.resize(document.querySelectorAll('.js-plotly-plot')); }, 200);
+    }
+  });
+  document.getElementById('btnAddNode').addEventListener('click', () => {
+    const project = state.active;
+    if (!project) return;
+    const nodes = project.enrollmentNodes || [];
+    const maxId = nodes.length > 0 ? Math.max(...nodes.map(n => n.id)) : 0;
+    nodes.push({ id: maxId + 1, name: '节点' + (nodes.length + 1), variable: '', condition: 'notnull', value: '', isTerminal: false, parentId: null, mergeParentId: null });
+    renderNodeConfig();
+  });
+  // 保存/加载入组方案（按 STUDYID）—— 复用全局函数
+  document.getElementById('btnEnrollSave').addEventListener('click', saveEnrollmentScheme);
+  document.getElementById('btnEnrollUpdate').addEventListener('click', renderEnrollmentCharts);
+
+  // Control chart controls
+  document.getElementById('ccVar').addEventListener('change', () => {
+    updateCCLevelSelect();
+  });
+  document.getElementById('btnCCUpdate').addEventListener('click', renderCCChart);
+
+  // Export Table 1 as PNG — 临时解除高度限制防止截断
+  document.getElementById('btnExportPNG').addEventListener('click', () => {
+    const tableEl = document.getElementById('table1Container');
+    if (!tableEl || !tableEl.innerHTML) return;
+    if (typeof html2canvas === 'undefined') { showToast('html2canvas 未加载', 'error'); return; }
+
+    const origMaxH = tableEl.style.maxHeight;
+    const origOverflow = tableEl.style.overflow;
+    tableEl.style.maxHeight = 'none';
+    tableEl.style.overflow = 'visible';
+
+    html2canvas(tableEl, { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(canvas => {
+      tableEl.style.maxHeight = origMaxH;
+      tableEl.style.overflow = origOverflow;
+      const link = document.createElement('a');
+      link.download = 'Table1.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Table 1 已导出为 PNG');
+    }).catch(e => {
+      tableEl.style.maxHeight = origMaxH;
+      tableEl.style.overflow = origOverflow;
+      showToast('PNG 导出失败: ' + e.message, 'error');
+    });
+  });
+
+  // Export Table 1 as RTF
+  document.getElementById('btnExportRTF').addEventListener('click', () => {
+    const tableEl = document.getElementById('table1Container');
+    if (!tableEl || !tableEl.innerHTML) return;
+    const project = state.active;
+    const title = project ? project.name : 'Table 1';
+    exportRTF(tableEl, title);
+  });
+
+  // Export Distribution chart as PNG — 使用 Plotly.toImage
+  document.getElementById('btnExportDistPNG').addEventListener('click', () => {
+    const chartEl = document.getElementById('chartDistribution');
+    if (!chartEl || !chartEl.innerHTML) return;
+    const label = currentDistChartType === 'box' ? '箱线图' : currentDistChartType === 'kde' ? '云雨图' : '直方图/条形图';
+    Plotly.toImage(chartEl, {
+      format: 'png', width: 1200, height: 700, scale: 2,
+      background: '#ffffff'
+    }).then(dataUrl => {
+      const link = document.createElement('a');
+      link.download = '特征分布_' + label + '.png';
+      link.href = dataUrl;
+      link.click();
+      showToast(label + '已导出为 PNG');
+    }).catch(e => showToast('PNG 导出失败: ' + e.message, 'error'));
+  });
+
+  // Export Sankey as PNG
+  document.getElementById('btnExportSankeyPNG').addEventListener('click', () => {
+    const el = document.getElementById('chartSankey');
+    if (!el || !el._fullData) return;
+    Plotly.toImage(el, { format:'png', width:1400, height:800, scale:2, background:'#ffffff' })
+      .then(dataUrl => { const a=document.createElement('a'); a.download='桑基图_受试者流向.png'; a.href=dataUrl; a.click(); showToast('桑基图已导出'); })
+      .catch(e => showToast('导出失败: '+e.message, 'error'));
+  });
+
+  // Export 研究入组进度 as PNG
+  document.getElementById('btnExportStudyPNG').addEventListener('click', () => {
+    const el = document.getElementById('chartStudyEnroll');
+    if (!el || !el._fullData) return;
+    Plotly.toImage(el, { format:'png', width:1000, height:500, scale:2, background:'#ffffff' })
+      .then(dataUrl => { const a=document.createElement('a'); a.download='研究入组进度.png'; a.href=dataUrl; a.click(); showToast('研究入组进度已导出'); })
+      .catch(e => showToast('导出失败: '+e.message, 'error'));
+  });
+
+  // Export 筛选进度 as PNG
+  document.getElementById('btnExportScreenPNG').addEventListener('click', () => {
+    const el = document.getElementById('chartScreenEnroll');
+    if (!el || !el._fullData) return;
+    Plotly.toImage(el, { format:'png', width:1000, height:500, scale:2, background:'#ffffff' })
+      .then(dataUrl => { const a=document.createElement('a'); a.download='筛选进度.png'; a.href=dataUrl; a.click(); showToast('筛选进度已导出'); })
+      .catch(e => showToast('导出失败: '+e.message, 'error'));
+  });
+
+  // Export 中心入组进度 as PNG
+  document.getElementById('btnExportSitePNG').addEventListener('click', () => {
+    const el = document.getElementById('chartSiteEnroll');
+    if (!el || !el._fullData) return;
+    Plotly.toImage(el, { format:'png', width:1200, height:500, scale:2, background:'#ffffff' })
+      .then(dataUrl => { const a=document.createElement('a'); a.download='中心入组进度.png'; a.href=dataUrl; a.click(); showToast('中心入组进度已导出'); })
+      .catch(e => showToast('导出失败: '+e.message, 'error'));
+  });
+
+  // Initial render
+  refreshAll();
+  } catch(e) {
+    console.error('Init error:', e);
+    document.getElementById('emptyState').innerHTML = `<i class="bi bi-bug" style="color:#c0504d;"></i><h5>初始化错误</h5><p>${e.message}</p>`;
+    document.getElementById('emptyState').style.display = 'flex';
+  }
+});
+
+/* 自动加载项目数据（支持 ?project=A 参数） */
+(function autoLoad(){
+  var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
+  fetch('./data/' + project + '/adsl.json')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(text){
+      var file = new File([text], 'adsl.json', {type:'application/json'});
+      loadProject(file);
+    })
+    .catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
+})();
+</script>
+</body>
+</html>

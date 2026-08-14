@@ -1,0 +1,3389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多元离群与内值监测工具</title>
+<style>
+/* ============ CSS VARIABLES ============ */
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #d4d4d4;
+  --text: #2c2c2c;
+  --text-secondary: #666666;
+  --primary: #2c3e50;
+  --primary-light: #ecf0f1;
+  --sidebar-width: 300px;
+  --header-height: 48px;
+  --status-height: 32px;
+  --radius: 2px;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+  --transition: 0.15s ease;
+
+  /* Classification colors — muted, publication-quality */
+  --c-severe-outlier: #c0392b;
+  --c-moderate-outlier: #d35400;
+  --c-normal: #7f8c8d;
+  --c-moderate-inlier: #2980b9;
+  --c-severe-inlier: #1a5276;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5;
+  overflow: hidden; height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ HEADER ============ */
+#header {
+  height: var(--header-height); background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100;
+}
+#header .logo { font-size: 14px; font-weight: 600; color: var(--primary); white-space: nowrap; letter-spacing: .3px; }
+#header .study { font-size: 11px; color: var(--text-secondary); }
+#header .badge { font-size: 10px; padding: 2px 8px; border-radius: 2px; background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+#sidebar-toggle {
+  background: none; border: 1px solid var(--border); border-radius: 2px;
+  cursor: pointer; font-size: 16px; padding: 2px 8px; color: var(--text-secondary); line-height: 1;
+  transition: var(--transition);
+}
+#sidebar-toggle:hover { color: var(--text); border-color: #999; }
+
+/* ============ LAYOUT ============ */
+#app { display: flex; height: calc(100vh - var(--header-height) - var(--status-height)); }
+#sidebar {
+  width: var(--sidebar-width); min-width: var(--sidebar-width);
+  background: var(--surface); border-right: 1px solid var(--border);
+  overflow-y: auto; overflow-x: hidden; padding: 10px 0;
+  transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease, opacity 0.25s ease;
+}
+#sidebar.collapsed {
+  width: 0; min-width: 0; padding: 0; opacity: 0;
+  border-right: none; overflow: hidden;
+}
+#main {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ============ SIDEBAR ============ */
+.side-section { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.side-section h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: .8px; }
+.side-section .info-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+.side-section .info-row .val { font-weight: 600; }
+
+/* domain groups */
+.domain-group { margin-bottom: 6px; }
+.domain-header {
+  display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+  padding: 3px 0; cursor: pointer; user-select: none;
+}
+.domain-header:hover { color: var(--primary); }
+.domain-header .arrow { font-size: 10px; transition: transform .15s; }
+.domain-header .arrow.open { transform: rotate(90deg); }
+.domain-vars { display: flex; flex-wrap: wrap; gap: 2px; padding-left: 12px; }
+.domain-vars label {
+  font-size: 11px; display: flex; align-items: center; gap: 3px; cursor: pointer;
+  padding: 1px 4px; border-radius: 2px; white-space: nowrap;
+}
+.domain-vars label:hover { background: var(--primary-light); }
+.domain-vars input[type=checkbox] { width: 12px; height: 12px; }
+
+/* custom domain chips */
+.custom-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 10px; padding: 2px 6px; border-radius: 10px;
+  background: #eaf2f8; border: 1px solid #aed6f1; color: #1a5276;
+  cursor: default;
+}
+.custom-chip .remove { cursor: pointer; font-weight: bold; margin-left: 2px; opacity: 0.6; }
+.custom-chip .remove:hover { opacity: 1; color: #c0392b; }
+
+/* threshold */
+.threshold-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 12px; }
+.threshold-row input { width: 70px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 2px; font-size: 12px; }
+
+/* buttons */
+.btn {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
+  font-size: 12px; font-weight: 500; transition: var(--transition); background: var(--surface); color: var(--text);
+}
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); width: 100%; }
+.btn-primary:hover { background: #1a252f; }
+.btn-outline { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: #f5f5f5; }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-group { display: flex; gap: 6px; margin-top: 8px; }
+
+/* ============ TABS ============ */
+#tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 12px; }
+.tab-btn {
+  padding: 10px 18px; border: none; background: none; cursor: pointer;
+  font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  border-bottom: 2px solid transparent; transition: var(--transition); letter-spacing: .2px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.tab-num { font-size: 10px; color: var(--text-secondary); margin-right: 2px; }
+
+#layer-bar { display: flex; padding: 6px 12px; gap: 6px; background: #fafafa; border-bottom: 1px solid var(--border); }
+.layer-btn {
+  padding: 4px 14px; border: 1px solid var(--border); border-radius: 2px;
+  background: var(--surface); cursor: pointer; font-size: 11px; transition: var(--transition);
+}
+.layer-btn:hover { border-color: var(--primary); color: var(--primary); }
+.layer-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ============ PANELS ============ */
+#panel-container { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.panel { display: none; }
+.panel.active { display: flex; flex-direction: column; gap: 16px; }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px;
+}
+.chart-card h4 { font-size: 12px; font-weight: 600; margin-bottom: 10px; color: var(--text); letter-spacing: .3px; }
+.chart-container { width: 100%; min-height: 350px; }
+.chart-container .cursor-crosshair,
+.chart-container .cursor-pointer { cursor: default !important; }
+.js-plotly-plot .draglayer { cursor: default !important; }
+
+/* 2-column grid for side-by-side charts */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.chart-grid .chart-card { min-height: 380px; }
+
+/* ============ TABLES ============ */
+.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.data-table th { background: #fafafa; padding: 7px 8px; text-align: left; font-weight: 600; border-bottom: 1px solid #999; position: sticky; top: 0; letter-spacing: .2px; }
+.data-table td { padding: 5px 8px; border-bottom: 1px solid #e8e8e8; }
+.data-table tr:hover td { background: #f8f8f8; }
+.table-wrap { max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+
+/* classification badges */
+.badge-severe-outlier { background: #fdf2f2; color: #922b21; padding: 1px 6px; border-radius: 2px; font-weight: 600; }
+.badge-moderate-outlier { background: #fef5e7; color: #935116; padding: 1px 6px; border-radius: 2px; font-weight: 600; }
+.badge-normal { background: #f2f3f4; color: #566573; padding: 1px 6px; border-radius: 2px; }
+.badge-moderate-inlier { background: #eaf2f8; color: #21618c; padding: 1px 6px; border-radius: 2px; font-weight: 600; }
+.badge-severe-inlier { background: #e8eaf6; color: #1a3c6e; padding: 1px 6px; border-radius: 2px; font-weight: 600; }
+
+/* Subject link in action table */
+.subject-link {
+  cursor: pointer;
+  color: var(--primary);
+  text-decoration: underline;
+  transition: color 0.15s;
+}
+.subject-link:hover { color: #1a5276; }
+
+/* ============ STATUS BAR ============ */
+#status-bar {
+  height: var(--status-height); background: var(--surface); border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 14px; font-size: 11px; color: var(--text-secondary); gap: 16px;
+}
+#status-bar .stat { display: flex; align-items: center; gap: 4px; }
+#status-bar .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ============ WARNINGS / EMPTY ============ */
+.warning-box {
+  padding: 12px 16px; border-radius: var(--radius); font-size: 12px;
+  background: #fef9e7; border: 1px solid #f9e79f; color: #7d6608;
+}
+.info-box {
+  padding: 12px 16px; border-radius: var(--radius); font-size: 12px;
+  background: #eaf2f8; border: 1px solid #aed6f1; color: #1a5276;
+}
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 300px; color: var(--text-secondary); gap: 8px;
+}
+.empty-state .icon { font-size: 40px; color: #bbb; }
+.loading { display: flex; align-items: center; gap: 8px; color: var(--primary); font-size: 13px; }
+
+/* ============ SELECT / FORM ELEMENTS ============ */
+select.form-select {
+  padding: 4px 8px; border: 1px solid var(--border); border-radius: 2px; font-size: 12px; background: var(--surface);
+}
+input[type=text].form-select, input.form-select {
+  padding: 4px 8px; border: 1px solid var(--border); border-radius: 2px; font-size: 12px;
+}
+textarea.form-textarea {
+  width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 2px;
+  font-size: 12px; resize: vertical; min-height: 50px;
+}
+
+/* ============ LOADING OVERLAY ============ */
+#loading-overlay {
+  position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+}
+#loading-overlay .spinner {
+  width: 32px; height: 32px; border: 2px solid #e0e0e0; border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-overlay .text { font-size: 13px; color: var(--text-secondary); }
+#loading-overlay.hidden { display: none; }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1024px) {
+  #sidebar { width: 240px; min-width: 240px; }
+  .chart-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  #sidebar { display: none; position: absolute; z-index: 200; height: 100%; }
+  #sidebar.open { display: block; width: 280px; }
+  .chart-grid { grid-template-columns: 1fr; }
+}
+
+/* ============ PRINT ============ */
+@media print {
+  #sidebar, #header, #status-bar, #tab-bar, #layer-bar, .btn { display: none !important; }
+  #main { overflow: visible; }
+  #panel-container { overflow: visible; }
+  body { overflow: visible; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== LOADING OVERLAY ==================== -->
+<div id="loading-overlay" class="hidden">
+  <div class="spinner"></div>
+  <div class="text" id="loading-text">正在加载数据...</div>
+</div>
+
+<!-- ==================== HEADER ==================== -->
+<div id="header">
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#x2630;</button>
+  <span class="logo">Multivariate Outlier and Inlier Detection</span>
+  <span class="study" id="header-study" style="display:none"></span>
+  <span class="badge" id="header-badge" style="display:none">已分析</span>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <div id="sidebar">
+    <!-- File upload -->
+    <div class="side-section">
+      <h3>Data File</h3>
+      <div id="upload-zone" style="border:2px dashed #ccc;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:border-color .2s">
+        <div style="font-size:24px"><span style="font-size:18px">+</span></div>
+        <div style="font-size:11px;color:var(--text-secondary)">拖拽 JSON 文件到此处<br>或点击选择文件</div>
+        <input type="file" id="file-input" accept=".json" style="display:none">
+      </div>
+      <div id="file-info" style="font-size:11px;margin-top:4px;color:var(--primary);display:none"></div>
+    </div>
+
+    <!-- Data summary -->
+    <div class="side-section">
+      <h3>Data Summary</h3>
+      <div id="data-summary">
+        <div class="info-row"><span>状态</span><span class="val" style="color:var(--text-secondary)">等待加载</span></div>
+      </div>
+    </div>
+
+    <!-- Variable selection -->
+    <div class="side-section">
+      <h3>Variable Selection</h3>
+      <div style="margin-bottom:4px">
+        <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="select-all" checked> 全选/取消</label>
+      </div>
+      <div id="domain-groups"></div>
+    </div>
+
+    <!-- Custom Domain -->
+    <div class="side-section">
+      <h3>自定义域</h3>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <input type="text" id="custom-var-input" class="form-select" list="custom-var-list" placeholder="搜索变量..." style="flex:1">
+        <datalist id="custom-var-list"></datalist>
+        <button class="btn btn-outline btn-sm" onclick="addCustomVar()" title="添加变量">+</button>
+      </div>
+      <div id="custom-var-chips" style="display:flex;flex-wrap:wrap;gap:3px;min-height:20px"></div>
+      <div style="font-size:10px;color:var(--text-secondary);margin-top:2px" id="custom-var-count"></div>
+    </div>
+
+    <!-- Thresholds -->
+    <div class="side-section">
+      <h3>Thresholds</h3>
+      <div class="threshold-row">
+        <span>中度 &alpha;:</span>
+        <input type="number" id="alpha-mod" value="0.025" step="0.001" min="0.001" max="0.5">
+      </div>
+      <div class="threshold-row">
+        <span>重度 &alpha;:</span>
+        <input type="number" id="alpha-severe" value="0.0015" step="0.0001" min="0.0001" max="0.1">
+      </div>
+      <div class="threshold-row" style="margin-top:4px">
+        <span>特征类型:</span>
+        <select id="feature-type" class="form-select" style="flex:1">
+          <option value="B_" selected>基线</option>
+          <option value="A_">均值</option>
+          <option value="M_">最大值</option>
+          <option value="V_">变异系数</option>
+        </select>
+      </div>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border)">
+        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="drop-high-missing" checked onchange="document.getElementById('missing-threshold').disabled=!this.checked">
+          删除高缺失变量 (&gt;
+          <input type="number" id="missing-threshold" value="5" step="0.5" min="0" max="100"
+            style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:2px;font-size:11px">
+          %)
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="side-section">
+      <h3>Actions</h3>
+      <button class="btn btn-primary" id="btn-run" onclick="runAnalysis()">Run Analysis</button>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="resetAll()">Reset</button>
+        <button class="btn btn-outline btn-sm" onclick="exportReport()">Export Report</button>
+      <button class="btn btn-outline btn-sm" onclick="console.log('Domain Map:', JSON.stringify(state._domainMap, null, 2)); alert('已输出到 Console (F12)')" title="诊断域匹配">&#9432;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN ========== -->
+  <div id="main">
+    <!-- Step Tabs -->
+    <div id="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(1)">Data Profiling</button>
+      <button class="tab-btn" onclick="switchTab(2)">Anomaly Summary</button>
+      <button class="tab-btn" onclick="switchTab(3)">Multivariate Screening</button>
+      <button class="tab-btn" onclick="switchTab(4)">Contribution Attribution</button>
+    </div>
+
+    <!-- Layer Tabs -->
+    <div id="layer-bar">
+      <button class="layer-btn active" onclick="switchLayer('global')">Global</button>
+      <button class="layer-btn" onclick="switchLayer('domain')">By Domain</button>
+      <span id="domain-selector-wrap" style="display:none;margin-left:8px;">
+        域: <select id="domain-selector" class="form-select" onchange="switchDomain()"></select>
+      </span>
+    </div>
+
+    <!-- Panel Container -->
+    <div id="panel-container">
+      <!-- Step 1 panels -->
+      <div class="panel active" id="panel-step1">
+        <div class="warning-box" id="missing-warn" style="display:none"></div>
+        <div class="chart-card">
+          <h4>Data Preview (first 10 rows)</h4>
+          <div class="table-wrap" id="preview-table"></div>
+        </div>
+        <div class="chart-card">
+          <h4>Missing Rate Assessment</h4>
+          <div class="chart-container" id="chart-missing"></div>
+        </div>
+      </div>
+
+      <!-- Step 2 panels -->
+      <div class="panel" id="panel-step3">
+        <div style="display:grid;grid-template-columns:3fr 1fr;gap:14px">
+          <div class="chart-card">
+            <h4>MD by Site</h4>
+            <div class="chart-container" id="chart-md-hist"></div>
+          </div>
+          <div class="chart-card">
+            <h4>Classification Summary</h4>
+            <div class="chart-container" id="chart-class-pie"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h4>MD Box Plot by Site</h4>
+          <div class="chart-container" id="chart-md-box"></div>
+        </div>
+      </div>
+
+      <!-- Step 3 panels -->
+      <div class="panel" id="panel-step4">
+        <div class="chart-card">
+          <h4>Contribution Heatmap</h4>
+          <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px">中心:</span>
+            <select id="heatmap-site" class="form-select" onchange="renderHeatmap()"></select>
+            <span style="font-size:11px;color:var(--text-secondary)" id="heatmap-info"></span>
+          </div>
+          <div class="chart-container" id="chart-heatmap" style="min-height:600px"></div>
+        </div>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h4>Pareto — Selected Subject</h4>
+            <div style="margin-bottom:6px">
+              受试者: <select id="subject-pareto-select" class="form-select" onchange="updatePareto()"></select>
+            </div>
+            <div class="chart-container" id="chart-pareto"></div>
+          </div>
+          <div class="chart-card">
+            <h4>Variable Distribution <span id="contrib-box-var-name" style="font-weight:400;color:var(--text-secondary)"></span></h4>
+
+            <div class="chart-container" id="chart-contrib-box"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h4>Bivariate Regression</h4>
+          <div style="margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            X: <input type="text" id="reg-x" class="form-select" list="reg-vars-list" oninput="renderRegression()" style="width:110px" placeholder="搜索变量...">
+            Y: <input type="text" id="reg-y" class="form-select" list="reg-vars-list" oninput="renderRegression()" style="width:110px" placeholder="搜索变量...">
+            <datalist id="reg-vars-list"></datalist>
+            <button class="btn btn-outline btn-sm" onclick="exportEllipseOutliers()" title="导出95%密度椭圆外的点">导出椭圆外点</button>
+          </div>
+          <div class="chart-container" id="chart-regression" style="min-height:400px"></div>
+        </div>
+      </div>
+
+      <!-- Step 2 panels -->
+      <div class="panel" id="panel-step2">
+        <!-- <div class="info-box" id="summary-text"></div> -->
+        <div class="chart-card">
+          <h4>Domain-level Flagged Subjects</h4>
+          <div class="chart-container" id="chart-domain-comp" style="min-height:300px"></div>
+        </div>
+        <div class="chart-card">
+          <h4>Subject Detail and Disposition</h4>
+          <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="filter-subject" class="form-select" placeholder="搜索受试者ID..." oninput="renderActionTable()" style="width:180px">
+            <select id="filter-domain" class="form-select" onchange="renderActionTable()">
+              <option value="all">全部域</option>
+            </select>
+            <select id="filter-class" class="form-select" onchange="renderActionTable()">
+              <option value="all">全部分类</option>
+              <option value="重度离群">重度离群</option>
+              <option value="中度离群">中度离群</option>
+              <option value="重度趋同">重度趋同</option>
+              <option value="中度趋同">中度趋同</option>
+            </select>
+          </div>
+          <div class="table-wrap" id="action-table" style="max-height:500px"></div>
+        </div>
+      </div>
+
+      <!-- Empty state (shown before analysis) -->
+      <div class="empty-state" id="empty-state">
+        <div class="icon">Search</div>
+        <div>请选择变量并点击「运行分析」开始</div>
+        <div style="font-size:11px;color:#adb5bd">数据将自动从 advs.json 加载</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATUS BAR ==================== -->
+<div id="status-bar">
+  <span class="stat" id="stat-status"><span class="dot" style="background:var(--text-secondary)"></span>就绪</span>
+  <span class="stat" id="stat-subjects"></span>
+  <span class="stat" id="stat-vars"></span>
+  <span class="stat" id="stat-outliers"></span>
+  <span class="stat" id="stat-time"></span>
+</div>
+
+<!-- Core: immediate UI setup + parallel CDN loader -->
+<script>
+// ---- Mini runtime: only UI status + CDN loader, no DOM event binding ----
+function showLoading(msg){var ov=document.getElementById('loading-overlay');ov.classList.remove('hidden');document.getElementById('loading-text').textContent=msg||'处理中...'}
+function hideLoading(){document.getElementById('loading-overlay').classList.add('hidden')}
+function setStatus(state,msg){var el=document.getElementById('stat-status');var c={ready:'var(--text-secondary)',running:'#2c3e50',done:'#1e8449',error:'#c0392b'};el.innerHTML='<span class=dot style=background:'+(c[state]||c.ready)+'></span>'+msg}
+document.getElementById('btn-run').disabled = true;
+document.getElementById('btn-run').textContent = 'Loading components...';
+setStatus('ready','正在加载分析组件（约需10-30秒）...');
+
+// ---- Parallel CDN loader ----
+var CDN_SCRIPTS = [
+  'lib/math.js',
+  'lib/jstat.min.js',
+  'lib/plotly.min.js'
+];
+var _loaded = 0;
+function _onCdnLoad() {
+  _loaded++;
+  document.getElementById('btn-run').textContent = 'Loading ('+_loaded+'/'+CDN_SCRIPTS.length+')';
+  if (_loaded >= CDN_SCRIPTS.length) {
+    // Inject main app
+    var s = document.createElement('script');
+    s.textContent = document.getElementById('app-code').textContent;
+    document.body.appendChild(s);
+  }
+}
+CDN_SCRIPTS.forEach(function(url) {
+  var s = document.createElement('script');
+  s.src = url;
+  s.onload = _onCdnLoad;
+  s.onerror = function(){ setStatus('error','加载失败: '+url); };
+  document.body.appendChild(s);
+});
+</script>
+<!-- Main app code: injected after all CDN libs ready -->
+<script id="app-code" type="text/plain">
+// =====================================================================
+// SECTION A: CONFIGURATION & DOMAIN DEFINITIONS
+// =====================================================================
+
+const CONFIG = {
+  alpha_mod: 0.025,
+  alpha_severe: 0.0015,
+  missingThreshold: 0.05
+};
+
+// Canonical field-name mapping for case-insensitive JSON key matching
+// Keys are lowercase; values are the canonical (expected) field name.
+const FIELD_ALIASES = {
+  usubjid: 'USUBJID', subjid: 'USUBJID', subjectid: 'USUBJID', subject: 'USUBJID',
+  siteid: 'SITEID', site: 'SITEID', sitenum: 'SITEID', centernum: 'SITEID', centerno: 'SITEID',
+  paramcd: 'PARAMCD', param: 'PARAM', paramn: 'PARAMCD', testcd: 'PARAMCD', test: 'PARAM',
+  aval: 'AVAL', value: 'AVAL', result: 'AVAL',
+  ady: 'ADY', studyday: 'ADY', visitdy: 'ADY', visitnum: 'ADY',
+  studyid: 'STUDYID', study: 'STUDYID', protocol: 'STUDYID',
+  domain: 'DOMAIN', avisit: 'AVISIT', adt: 'ADT'
+};
+
+// Normalize field names of a single record to canonical uppercase names.
+// Preserves existing canonical keys; adds canonical aliases for non-canonical keys.
+function normalizeFieldNames(rec) {
+  const keys = Object.keys(rec);
+  for (const k of keys) {
+    const lower = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const canonical = FIELD_ALIASES[lower];
+    if (canonical && canonical !== k && !(canonical in rec)) {
+      rec[canonical] = rec[k];
+    }
+  }
+  return rec;
+}
+
+
+// Domain fuzzy-match rules: keywords matched against PARAMCD + PARAM (case-insensitive)
+// Includes both English keywords and Chinese clinical terms
+const DOMAIN_RULES = [
+  {
+    name: '生命体征',
+    keywords: ['DIABP','SYSBP','PULSE','TEMP','RESP','WEIGHT','BMI',
+               'DIASTOLIC','SYSTOLIC','TEMPERATURE','RESPIRATORY',
+               '血压','舒张压','收缩压','脉搏','体温','呼吸','体重','心率',
+               '身高','BMI','体质指数']
+  },
+  {
+    name: '心电图',
+    keywords: ['EGHR','PRAG','QRSAG','QTAG','QTC',
+               'QRS','QT ','QTc','PR ','RR ','INTERVAL',
+               'HEART RATE','ECG','EKG',
+               '心电图','心率','间期','导联','ST段','T波','P波']
+  },
+  {
+    name: '肝功能',
+    keywords: ['ALT','AST','ALP','GGT','LDH','BILI','ALB',
+               'ALANINE','ASPARTATE','ALKALINE','BILIRUBIN','ALBUMIN',
+               'TRANSAMINASE','DEHYDROGENASE','TRANSFERASE',
+               '丙氨酸氨基转移酶','门冬氨酸氨基转移酶','谷丙','谷草','转氨酶',
+               '碱性磷酸酶','谷氨酰转肽酶','谷氨酰','乳酸脱氢酶',
+               '胆红素','总胆红素',
+               '白蛋白','肝'],
+    exclude: ['BILDIR','BILIND','PROT','GLOBUL','GLOBULIN',
+              '直接胆红素','间接胆红素','总蛋白','球蛋白']
+  },
+  {
+    name: '肾功能',
+    keywords: ['CREAT','UREA','UREAN','URATE','URIC','BUN',
+               'CREATININE','CYSTATIN','EGFR',
+               '肌酐','尿素','尿酸','尿素氮','胱抑素','肾小球滤过率','肾']
+  },
+  {
+    name: '电解质',
+    keywords: ['SODIUM','POTASSIUM','CHLORIDE','MAGNESIUM','PHOSPHATE','CALCIUM',
+               '钠','钾','氯','镁','磷','钙','电解质']
+  },
+  {
+    name: '血糖/血脂',
+    keywords: ['GLUC','CHOL','HDL','LDL','TRIG',
+               'GLUCOSE','CHOLESTEROL','TRIGLYCERIDE','LIPOPROTEIN','APOA','APOB',
+               '血糖','葡萄糖','胆固醇','甘油三酯','脂蛋白',
+               '高密度','低密度','载脂蛋白','血脂']
+  },
+  {
+    name: '血常规',
+    keywords: ['BASO','BRBC','BWBC','EOS','HCT','HGB','LYM','MONO','NEUT','PLAT',
+               'BASOPHIL','ERYTHROCYTE','LEUKOCYTE','EOSINOPHIL','HEMATOCRIT',
+               'HEMOGLOBIN','LYMPHOCYTE','MONOCYTE','NEUTROPHIL','PLATELET',
+               'RBC','WBC','MCV','MCH','MCHC','RDW','MPV','RETICULOCYTE',
+               '嗜碱','红细胞','白细胞','嗜酸','红细胞压积','血红蛋白',
+               '淋巴','单核','中性粒','血小板','平均红细胞体积',
+               '平均血红蛋白','网织红','血常规','血细胞']
+  },
+  {
+    name: '免疫学',
+    keywords: ['CD16','CD19','CD3','CD4','CD8','CD56','CD4CD8',
+               'T CELL','B CELL','NK CELL','LYMPHOCYTE SUBSET','IMMUNOGLOBULIN',
+               'IGG','IGA','IGM','IGE','COMPLEMENT','C3','C4','CYTOKINE',
+               '免疫','T细胞','B细胞','NK细胞','淋巴细胞亚群',
+               '免疫球蛋白','补体','细胞因子','白介素','IL-','TNF']
+  },
+  {
+    name: '凝血功能',
+    keywords: ['PT','APTT','INR','FIBRINOGEN','D DIMER','THROMBIN',
+               'PROTHROMBIN','COAGULATION','BLEEDING','CLOTTING',
+               '凝血','凝血酶原','纤维蛋白原','D二聚体','活化部分凝血活酶',
+               '国际标准化','出血时间','PT','APTT','INR']
+  },
+  {
+    name: '尿常规',
+    keywords: ['URINE','PH_','SG_','PRO_','GLU_','KET','BIL_','URO','NIT','LEU',
+               'URINARY','PROTEINURIA','HEMATURIA','GLYCOSURIA',
+               '尿液','尿','比重','尿蛋白','尿糖','酮体','尿胆原',
+               '亚硝酸盐','尿白细胞','尿沉渣']
+  },
+  {
+    name: '问卷',
+    keywords: ['QS_','QR_','QUESTIONNAIRE','SCORE','SCALE','SURVEY',
+               'ASSESS','RATING','CGI','PANSS','MADRS','HAM','YMRS',
+               '量表','问卷','评分','评估','总分','条目']
+  }
+];
+
+// Fuzzy match a PARAMCD + PARAM to a domain. Returns domain name or '其他'.
+function fuzzyMatchDomain(paramcd, param) {
+  const target = ((paramcd || '') + ' ' + (param || '')).toUpperCase().replace(/_/g, ' ');
+  for (const rule of DOMAIN_RULES) {
+    // Check exclusions first (e.g. BILDIR contains 'BILI' but should not match 肝功能)
+    if (rule.exclude) {
+      let excluded = false;
+      for (const ex of rule.exclude) {
+        if (target.includes(ex.toUpperCase())) { excluded = true; break; }
+      }
+      if (excluded) continue;
+    }
+    for (const kw of rule.keywords) {
+      if (target.includes(kw.toUpperCase())) return rule.name;
+    }
+  }
+  return '其他';
+}
+
+// Build dynamic domain→params mapping from loaded param list
+function buildDomainMap(paramList, rawData) {
+  const map = {};
+  const paramToDomain = {}; // cache
+  for (const p of paramList) {
+    // Find PARAM for this PARAMCD from raw data
+    const rec = rawData.find(r => r.PARAMCD === p || r.PARAM === p);
+    const param = rec ? (rec.PARAM || rec.PARAMCD || p) : p;
+    const domain = fuzzyMatchDomain(p, param);
+    paramToDomain[p] = domain;
+    if (!map[domain]) map[domain] = [];
+    map[domain].push(p);
+  }
+  // Store for sidebar use
+  state._domainMap = map;
+  state._paramToDomain = paramToDomain;
+  // Diagnostic: log domain assignment summary
+  console.log('=== Domain Assignment ===');
+  for (const [domain, params] of Object.entries(map)) {
+    console.log(`  ${domain} (${params.length}): ${params.join(', ')}`);
+  }
+  var unmatched = paramList.filter(p => !paramToDomain[p] || paramToDomain[p] === '其他');
+  if (unmatched.length) console.warn('Unmatched params:', unmatched.join(', '));
+  console.log('=========================');
+  return map;
+}
+
+const CLASS_COLORS = {
+  '重度离群': '#c0392b',
+  '中度离群': '#d35400',
+  '正常': '#7f8c8d',
+  '中度趋同': '#2980b9',
+  '重度趋同': '#1a5276'
+};
+
+// =====================================================================
+// GLOBAL STATE
+// =====================================================================
+
+const state = {
+  rawData: [],
+  paramList: [],
+  siteList: [],
+  subjectIds: [],
+  // Wide table
+  wideTable: [],
+  featureNames: [],
+  discardedVars: [],
+  missingReport: {},
+  // Z-standardized
+  zMatrix: [],
+  n: 0, p: 0,
+  // Classification
+  mahalanobisDist: [],
+  mahalanobisDistSq: [],
+  U_997: 0, U_95: 0, L_95: 0, L_997: 0,
+  classification: [],
+  flag: [],
+  // Contribution
+  eigenvalues: [],
+  eigenvectors: [],
+  contributionMatrix: [],
+  contributionSquared: [],
+  // UI state
+  currentTab: 1,
+  currentLayer: 'global',
+  currentDomain: null,
+  // Domain analysis cache
+  domainResults: {},
+  // Custom domain
+  _customVars: [],
+  // Action tracking
+  actions: {}
+};
+
+// =====================================================================
+// SECTION B: BETA DISTRIBUTION (via jStat CDN)
+// =====================================================================
+
+function scaledBetaThreshold(n, p, alpha) {
+  // jStat.beta.inv(p, alpha, beta) — Beta quantile (inverse CDF)
+  const a = p / 2;
+  const b = (n - p - 1) / 2;
+  if (b <= 0) return NaN;
+  const sc = (n - 1) * (n - 1) / n;
+  const q = jStat.beta.inv(alpha, a, b);
+  const result = Math.sqrt(sc * q);
+  return isNaN(result) ? 0 : result;
+}
+
+// =====================================================================
+// SECTION C: DATA PROCESSING ENGINE
+// =====================================================================
+
+function showLoading(msg) {
+  const ov = document.getElementById('loading-overlay');
+  ov.classList.remove('hidden');
+  document.getElementById('loading-text').textContent = msg || '处理中...';
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+function setStudyId(studyId) {
+  if (!studyId) return;
+  const el = document.getElementById('header-study');
+  if (el) { el.textContent = '| Study: ' + studyId; el.style.display = ''; }
+  document.title = '多元离群与内值监测工具 — ' + studyId;
+}
+
+function loadData(file, callback) {
+  if (!file) return;
+  showLoading('正在解析文件...');
+
+  function processWide(wideArr) {
+    if (!wideArr || !wideArr.length) { alert('数据为空'); hideLoading(); return; }
+    // Step 0: normalize field names first
+    for (const r of wideArr) normalizeFieldNames(r);
+    // Normalize key identifier values in wide table
+    for (const r of wideArr) {
+      if (r.USUBJID != null) r.USUBJID = String(r.USUBJID).trim().toUpperCase();
+      if (r.SITEID  != null) r.SITEID  = String(r.SITEID).trim().toUpperCase();
+    }
+    state.wideTable = wideArr;
+    // Try to extract STUDYID from wide table
+    var sid = wideArr[0].STUDYID || wideArr[0].studyId || wideArr[0].STUDY || '';
+    setStudyId(sid);
+    state.n = wideArr.length;
+    state.subjectIds = wideArr.map(r => r.USUBJID).sort();
+    state.siteList = [...new Set(wideArr.map(r => r.SITEID))].sort();
+    const paramKeys = Object.keys(wideArr[0]).filter(k => k.startsWith('B_'));
+    state.paramList = paramKeys.map(k => k.replace('B_', '')).sort();
+    state.rawData = [];
+    buildDomainMap(state.paramList, []);
+    updateSidebarSummary();
+    buildDomainGroups();
+    populateCustomVarList();
+    hideLoading();
+    if (callback) callback();
+    setStatus('ready', '数据就绪 — 请选择变量并运行分析');
+  }
+
+  function processRaw(data) {
+    if (!Array.isArray(data)) { alert('JSON 格式错误：需要数组 [{...}, ...]'); hideLoading(); return; }
+    // Step 0: normalize field names first (before any field access)
+    for (const r of data) normalizeFieldNames(r);
+    // Step 1: filter by AVAL > 0
+    let filtered = data.filter(r => r.AVAL > 0);
+    // Step 2: normalize key identifier values
+    for (const r of filtered) {
+      if (r.USUBJID != null) r.USUBJID = String(r.USUBJID).trim().toUpperCase();
+      if (r.SITEID  != null) r.SITEID  = String(r.SITEID).trim().toUpperCase();
+      if (r.PARAMCD != null) r.PARAMCD = String(r.PARAMCD).trim().toUpperCase();
+      if (r.DOMAIN === 'QR') { const t = r.PARAMCD; r.PARAMCD = r.PARAM; r.PARAM = t; }
+    }
+    // Set study ID from first record
+    if (filtered.length > 0) setStudyId(filtered[0].STUDYID || '');
+    state.rawData = filtered;
+    state.paramList = [...new Set(state.rawData.map(r => r.PARAMCD))].sort();
+    state.siteList = [...new Set(state.rawData.map(r => r.SITEID))].sort();
+    state.subjectIds = [...new Set(state.rawData.map(r => r.USUBJID))].sort();
+    // Per-subject visit count (for hover info)
+    const vcMap = {};
+    for (const r of state.rawData) {
+      if (!vcMap[r.USUBJID]) vcMap[r.USUBJID] = new Set();
+      vcMap[r.USUBJID].add(r.ADY);
+    }
+    state._subjVisits = {};
+    for (const subj of state.subjectIds) {
+      state._subjVisits[subj] = (vcMap[subj] || new Set()).size;
+    }
+    // Baseline record lookup: USUBJID|PARAMCD → {PARAM, AVISIT, ADT, AVAL}
+    const baseRec = {};
+    for (const r of state.rawData) {
+      const key = r.USUBJID + '|' + r.PARAMCD;
+      const old = baseRec[key];
+      if (!old || r.ADY < old.ADY) baseRec[key] = r;
+    }
+    state._baselineRec = baseRec;
+    buildDomainMap(state.paramList, state.rawData);
+    updateSidebarSummary();
+    buildDomainGroups();
+    populateCustomVarList();
+    hideLoading();
+    if (callback) callback();
+    setStatus('ready', '数据已加载 — 请选择变量并运行分析');
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data)) {
+        processRaw(data);
+      } else if (data.wide && Array.isArray(data.wide)) {
+        processWide(data.wide);
+      } else {
+        alert('JSON 格式错误：需要 [{...}] 数组或 {wide:[...]} 宽表');
+        hideLoading(); return;
+      }
+      document.getElementById('file-info').style.display = 'block';
+      document.getElementById('file-info').style.color = 'var(--primary)';
+      document.getElementById('file-info').textContent = '' + file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
+    } catch (err) {
+      alert('JSON 解析失败：' + err.message);
+      hideLoading();
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function longToWide(prefixes) {
+  // prefixes: array like ['B_'] or ['B_','M_','A_','S_']
+  // Only compute what's requested to avoid wasted work
+  const subjects = state.subjectIds;
+  const params = state.paramList;
+  const data = state.rawData;
+  const needB = prefixes.includes('B_'), needE = prefixes.includes('E_');
+  const needM = prefixes.includes('M_');
+  const needS = prefixes.includes('S_'), needV = prefixes.includes('V_');
+  const needSL = prefixes.includes('SL_');
+  // V_ (变异系数) depends on A_ (均值) for computation
+  const needA = prefixes.includes('A_') || needV;
+
+  // Pre-index: for each subject x param, collect all AVAL and ADY
+  // Use plain object with arrays for speed
+  const idx = {};
+  for (let i = 0; i < data.length; i++) {
+    const r = data[i];
+    const key = (r.USUBJID || '').toUpperCase() + '|' + (r.PARAMCD || '').toUpperCase();
+    let entry = idx[key];
+    if (!entry) { entry = { avals: [], adys: [] }; idx[key] = entry; }
+    entry.avals.push(r.AVAL);
+    entry.adys.push(r.ADY);
+  }
+
+  // Build subject→site lookup (one pass, fast)
+  const subjSiteMap = {};
+  for (let i = 0; i < data.length; i++) {
+    const r = data[i];
+    const uid = (r.USUBJID || '').toUpperCase();
+    if (!subjSiteMap[uid]) subjSiteMap[uid] = (r.SITEID || '').toUpperCase();
+  }
+
+  const wide = [];
+  const nSubj = subjects.length;
+  const nParam = params.length;
+
+  for (let si = 0; si < nSubj; si++) {
+    const subj = subjects[si];
+    const row = { USUBJID: subj, SITEID: subjSiteMap[subj] || '??' };
+
+    for (let pi = 0; pi < nParam; pi++) {
+      const p = params[pi];
+      const key = subj + '|' + p;
+      const rec = idx[key];
+      if (!rec || rec.avals.length === 0) {
+        if (needB) row['B_' + p] = null;
+        if (needE) row['E_' + p] = null;
+        if (needM) row['M_' + p] = null;
+        if (needA) row['A_' + p] = null;
+        if (needS) row['S_' + p] = null;
+        if (needV) row['V_' + p] = null;
+        if (needSL) row['SL_' + p] = null;
+        continue;
+      }
+      const avals = rec.avals;
+      const adys = rec.adys;
+
+      // Find min/max ADY once
+      let minAdy = adys[0], maxAdy = adys[0];
+      let minIdx = 0, maxIdx = 0;
+      for (let k = 1; k < adys.length; k++) {
+        if (adys[k] < minAdy) { minAdy = adys[k]; minIdx = k; }
+        if (adys[k] > maxAdy) { maxAdy = adys[k]; maxIdx = k; }
+      }
+      const span = maxAdy - minAdy;
+
+      // Compute base stats once
+      let sum = 0, maxA = avals[0], sumSq = 0;
+      for (let k = 0; k < avals.length; k++) {
+        const v = avals[k];
+        sum += v;
+        if (v > maxA) maxA = v;
+      }
+      const meanA = sum / avals.length;
+
+      if (needB) row['B_' + p] = avals[minIdx];
+      if (needE) row['E_' + p] = avals[maxIdx];
+      if (needM) row['M_' + p] = maxA;
+      if (needA) {
+        row['A_' + p] = meanA;
+        // Need std for S, V
+        for (let k = 0; k < avals.length; k++) sumSq += (avals[k] - meanA) ** 2;
+      }
+      if (needS) {
+        const stdv = avals.length > 1 ? Math.sqrt(sumSq / (avals.length - 1)) : 0;
+        row['S_' + p] = isNaN(stdv) ? 0 : stdv;
+      }
+      if (needV) {
+        const sVal = needS ? row['S_' + p] : (avals.length > 1 ? Math.sqrt(sumSq / (avals.length - 1)) : 0);
+        row['V_' + p] = meanA !== 0 ? (sVal || 0) / meanA : null;
+      }
+      if (needSL) {
+        row['SL_' + p] = span > 0 ? (avals[maxIdx] - avals[minIdx]) / span : null;
+        // Compute meanA if not already done (needed only for consistency, actually not)
+      }
+    }
+    wide.push(row);
+  }
+  state.wideTable = wide;
+  state.n = wide.length;
+}
+
+function selectFeatures() {
+  // Get selected feature type (same prefixes as longToWide)
+  const ftype = document.getElementById('feature-type').value;
+  const prefixes = [ftype];
+  const checkboxes = document.querySelectorAll('#domain-groups input.var-checkbox');
+  const selectedParams = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) selectedParams.push(cb.value);
+  });
+
+  console.log('selectFeatures: ' + checkboxes.length + ' checkboxes total, ' + selectedParams.length + ' checked');
+  var vsParams = ['DIABP','PULSE','RESP','SYSBP','TEMP','weight'];
+  console.log('  VS checkboxes found: ' + vsParams.map(p => {
+    var cb = document.querySelector('#domain-groups input.var-checkbox[value=\"' + p + '\"]');
+    return p + '=' + (cb ? (cb.checked ? 'checked' : 'UNCHECKED') : 'MISSING');
+  }).join(', '));
+
+  if (selectedParams.length === 0) {
+    alert('请至少选择一个变量！');
+    return false;
+  }
+
+  // Build feature names — only those that were actually generated by longToWide
+  let features = [];
+  for (const p of selectedParams) {
+    for (const pref of prefixes) {
+      features.push(pref + p);
+    }
+  }
+
+  // Keep only features that exist and have low missing rate
+  state.discardedVars = [];
+  state.missingReport = {};
+  state.featureNames = [];
+
+  for (const f of features) {
+    const vals = state.wideTable.map(r => r[f]);
+    const nValid = vals.filter(v => v !== null && v !== undefined && !isNaN(v)).length;
+    const missingRate = (state.n - nValid) / state.n;
+    state.missingReport[f] = missingRate;
+    // Use user-configured missing threshold if checkbox checked
+    const dropHigh = document.getElementById('drop-high-missing').checked;
+    const missThresh = dropHigh ? (parseFloat(document.getElementById('missing-threshold').value) || 5) / 100 : 1;
+    if (missingRate <= missThresh && nValid > 1) {
+      state.featureNames.push(f);
+    } else if (missingRate > missThresh) {
+      state.discardedVars.push({ name: f, missingRate });
+    }
+  }
+
+  state.p = state.featureNames.length;
+  if (state.p < 2) {
+    alert('筛选后有效变量少于2个，请调整选择！');
+    return false;
+  }
+  if (state.n < 3 * state.p) {
+    document.getElementById('missing-warn').style.display = 'block';
+    document.getElementById('missing-warn').textContent =
+      `Warning：样本量 (n=${state.n}) 相对变量数 (p=${state.p}) 不足（建议 n ≥ 3×p），结果可能不可靠。建议使用分域分析。`;
+  } else {
+    document.getElementById('missing-warn').style.display = 'none';
+  }
+  return true;
+}
+
+function imputeAndStandardize() {
+  // Mean imputation + Z-score standardization
+  const n = state.n, p = state.p;
+  const mat = [];
+
+  // Build raw matrix
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (const f of state.featureNames) {
+      const v = state.wideTable[i][f];
+      row.push((v !== null && v !== undefined && !isNaN(v)) ? v : NaN);
+    }
+    mat.push(row);
+  }
+
+  // Compute column means for imputation
+  const colMeans = [];
+  for (let j = 0; j < p; j++) {
+    let sum = 0, cnt = 0;
+    for (let i = 0; i < n; i++) {
+      if (!isNaN(mat[i][j])) { sum += mat[i][j]; cnt++; }
+    }
+    colMeans.push(cnt > 0 ? sum / cnt : 0);
+  }
+
+  // Impute
+  const imputed = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < p; j++) {
+      row.push(isNaN(mat[i][j]) ? colMeans[j] : mat[i][j]);
+    }
+    imputed.push(row);
+  }
+
+  // Standardize
+  const colStds = [];
+  for (let j = 0; j < p; j++) {
+    let sumSq = 0;
+    const m = colMeans[j];
+    for (let i = 0; i < n; i++) sumSq += (imputed[i][j] - m) ** 2;
+    colStds.push(Math.sqrt(sumSq / (n - 1)) || 1);
+  }
+
+  state.zMatrix = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < p; j++) {
+      row.push((imputed[i][j] - colMeans[j]) / colStds[j]);
+    }
+    state.zMatrix.push(row);
+  }
+
+  // Store the colMeans and colStds for later use (e.g. Step 4 box plots)
+  state._colMeans = colMeans;
+  state._colStds = colStds;
+  setStatus('ready', `标准化完成: ${n}×${p}`);
+}
+
+// =====================================================================
+// SECTION D: STATISTICS ENGINE
+// =====================================================================
+
+function computeMahalanobis() {
+  const Z = state.zMatrix;
+  const n = state.n, p = state.p;
+  try {
+
+    // Build covariance matrix directly from raw data (matches SAS PROC IML)
+    // Σ = (X-μ)'(X-μ) / (n-1), then invert
+    // This is equivalent to Z'Z/(n-1) but avoids extra Z-score ops
+    const rawMat = [];
+    for (let i = 0; i < n; i++) {
+      const row = [];
+      for (let j = 0; j < p; j++) {
+        // De-standardize: raw = z*σ + μ
+        row.push(Z[i][j] * state._colStds[j] + state._colMeans[j]);
+      }
+      rawMat.push(row);
+    }
+
+    // Compute covariance S = (X-μ_bar)'(X-μ_bar) / (n-1)
+    const colMeans = state._colMeans;
+    const Sarr = Array.from({length: p}, () => new Array(p).fill(0));
+    for (let j = 0; j < p; j++) {
+      for (let k = j; k < p; k++) {
+        let sum = 0;
+        for (let i = 0; i < n; i++) {
+          sum += (rawMat[i][j] - colMeans[j]) * (rawMat[i][k] - colMeans[k]);
+        }
+        Sarr[j][k] = sum / (n - 1);
+        Sarr[k][j] = Sarr[j][k];
+      }
+    }
+
+    // Check conditioning via eigenvalues before inversion
+    const Smat = math.matrix(Sarr);
+    const eigCheck = math.eigs(Smat);
+    const evals = (typeof eigCheck.values.toArray === 'function')
+      ? eigCheck.values.toArray().map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v))
+      : Array.from(eigCheck.values).map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v));
+    const condNum = Math.max(...evals) / Math.min(...evals.filter(v => v > 1e-14));
+    console.log('Covariance condition number:', condNum.toExponential(2),
+      '(p=' + p + ', n=' + n + ', n/p=' + (n/p).toFixed(1) + ')');
+
+    // Adaptive ridge: only if condition number > 1e10 (matches SAS sensitivity)
+    const ridgeApplied = condNum > 1e10;
+    if (ridgeApplied) {
+      const ridge = Math.max(...evals) * 1e-10;
+      console.warn('Applying adaptive ridge: ' + ridge.toExponential(2) +
+        ' (cond=' + condNum.toExponential(2) + ')');
+      for (let j = 0; j < p; j++) Sarr[j][j] += ridge;
+    }
+
+    // Invert covariance
+    let Sinv;
+    try {
+      Sinv = math.inv(ridgeApplied ? math.matrix(Sarr) : Smat);
+    } catch (e) {
+      console.warn('Inversion failed, increasing ridge');
+      for (let j = 0; j < p; j++) Sarr[j][j] += Math.max(...evals) * 1e-8;
+      Sinv = math.inv(math.matrix(Sarr));
+    }
+
+    // MD² = (x_i - μ)' Σ⁻¹ (x_i - μ) — SAS-compatible formula
+    const MD2 = [], MD = [];
+    const SinvArr = Sinv.toArray();
+    for (let i = 0; i < n; i++) {
+      let d2 = 0;
+      for (let j = 0; j < p; j++) {
+        const dj = rawMat[i][j] - colMeans[j];
+        let sum = 0;
+        for (let k = 0; k < p; k++) {
+          sum += (rawMat[i][k] - colMeans[k]) * SinvArr[k][j];
+        }
+        d2 += sum * dj;
+      }
+      MD2.push(Math.max(0, d2));
+      MD.push(Math.sqrt(Math.max(0, d2)));
+    }
+
+    state.mahalanobisDistSq = MD2;
+    state.mahalanobisDist = MD;
+    state._Smat = Sarr;
+    state._SinvArr = SinvArr;
+    state._ridgeApplied = ridgeApplied;
+    state._condNum = condNum;
+  } catch (err) {
+    console.error('Mahalanobis computation failed:', err);
+    state.mahalanobisDistSq = new Array(n).fill(0);
+    state.mahalanobisDist = new Array(n).fill(0);
+    state._Smat = [];
+    state._SinvArr = [];
+  }
+}
+
+function computeThresholdsAndClassify() {
+  const n = state.n, p = state.p;
+  const am = parseFloat(document.getElementById('alpha-mod').value) || 0.025;
+  const as = parseFloat(document.getElementById('alpha-severe').value) || 0.0015;
+
+  const U_95 = scaledBetaThreshold(n, p, 1 - am);
+  const U_997 = scaledBetaThreshold(n, p, 1 - as);
+  const L_95 = scaledBetaThreshold(n, p, am);
+  const L_997 = scaledBetaThreshold(n, p, as);
+
+  state.U_95 = U_95; state.U_997 = U_997;
+  state.L_95 = L_95; state.L_997 = L_997;
+
+  state.classification = [];
+  state.flag = [];
+  for (let i = 0; i < n; i++) {
+    const md = state.mahalanobisDist[i];
+    let cls;
+    if (md > U_997) cls = '重度离群';
+    else if (md > U_95) cls = '中度离群';
+    else if (md < L_997) cls = '重度趋同';
+    else if (md < L_95) cls = '中度趋同';
+    else cls = '正常';
+    state.classification.push(cls);
+    state.flag.push(cls !== '正常');
+  }
+}
+
+function decomposeContributions() {
+  const Z = state.zMatrix;
+  const n = state.n, p = state.p;
+  if (!n || !p || !state._Smat || !state._Smat.length) {
+    console.warn('decomposeContributions: bad input n='+n+' p='+p);
+    state.contributionMatrix = Array.from({length: n||0}, () => new Array(p||0).fill(0));
+    return;
+  }
+  try {
+    const Sarr = state._Smat;
+    console.log('decompose: n='+n+' p='+p+' smat='+Sarr.length+'x'+(Sarr[0]||[]).length);
+
+    // Eigenvalue decomposition of covariance
+    const Smat = math.matrix(Sarr);
+    const eig = math.eigs(Smat);
+
+    // ---- Extract eigenvalues (always to plain array) ----
+    const rawVals = eig.values;
+    let eigenvalues;
+    if (typeof rawVals.toArray === 'function') {
+      eigenvalues = rawVals.toArray().map(v => (typeof v === 'object') ? v.re : v);
+    } else if (Array.isArray(rawVals)) {
+      eigenvalues = rawVals.map(v => (typeof v === 'object') ? v.re : v);
+    } else {
+      throw new Error('eig.values: unknown type ' + typeof rawVals);
+    }
+    console.log('eigs: '+eigenvalues.length+' evals, first 3:', eigenvalues.slice(0,3));
+
+    // ---- Extract eigenvectors (handle 3 formats) ----
+    const rawVecs = eig.eigenvectors || eig.vectors;
+    let E;
+    if (!rawVecs) {
+      throw new Error('No eigenvectors in eigs result. keys: ' + Object.keys(eig).join(','));
+    }
+    // Format 1: Matrix (has .toArray())
+    if (typeof rawVecs.toArray === 'function') {
+      E = rawVecs.toArray();
+      if (Array.isArray(E[0])) {
+        // 2D array: rows=components, cols=eigenvectors
+        E = E.map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+      }
+    }
+    // Format 2: Array of {value, vector: Matrix}
+    else if (Array.isArray(rawVecs) && rawVecs[0] && rawVecs[0].vector && typeof rawVecs[0].vector.toArray === 'function') {
+      eigenvalues = rawVecs.map(item => item.value); // eigenvalues bundled in
+      E = rawVecs.map(item => item.vector.toArray());
+      E = E.map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+    }
+    // Format 3: Already a plain 2D array
+    else if (Array.isArray(rawVecs) && Array.isArray(rawVecs[0])) {
+      E = rawVecs.map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+    }
+    else {
+      throw new Error('Cannot parse eigenvectors. Type: ' + (Array.isArray(rawVecs)?'array':'?') + ' keys:' + Object.keys(rawVecs||{}).join(','));
+    }
+    console.log('E matrix: '+E.length+'x'+(E[0]||[]).length);
+
+  state.eigenvalues = eigenvalues;
+  state.eigenvectors = E;
+
+  // D^(-1/2) * E^T
+  const DinvHalf = [];
+  for (let j = 0; j < p; j++) {
+    const ev = eigenvalues[j];
+    DinvHalf.push(ev > 1e-10 ? 1 / Math.sqrt(ev) : 0);
+  }
+
+  // C = Z * E * D^(-1/2) * E^T
+  // Step 1: Z * E (n x p)
+  const ZE = Array.from({length: n}, () => new Array(p).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < p; j++) {
+      let s = 0;
+      for (let k = 0; k < p; k++) s += Z[i][k] * E[k][j];
+      ZE[i][j] = s;
+    }
+  }
+
+  // Step 2: ZE * D^(-1/2) (row-wise DinvHalf)
+  const ZED = ZE.map(row => row.map((v, j) => v * DinvHalf[j]));
+
+  // Step 3: ZED * E^T
+  const C = Array.from({length: n}, () => new Array(p).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < p; j++) {
+      let s = 0;
+      for (let k = 0; k < p; k++) s += ZED[i][k] * E[j][k]; // E[j][k] = E^T[k][j]
+      C[i][j] = s;
+    }
+  }
+
+  // CC = C^2
+  const CC = C.map(row => row.map(v => v * v));
+  state.contributionSquared = CC;
+
+  // CON = CC / rowSum
+  const CON = CC.map(row => {
+    const rs = row.reduce((a, b) => a + b, 0);
+    return row.map(v => rs > 0 ? v / rs : 0);
+  });
+  state.contributionMatrix = CON;
+  } catch (err) {
+    console.error('Contribution decomposition failed:', err.message || err);
+    state.eigenvalues = new Array(p).fill(0);
+    state.eigenvectors = [];
+    state.contributionSquared = Array.from({length: n}, () => new Array(p).fill(0));
+    state.contributionMatrix = Array.from({length: n}, () => new Array(p).fill(0));
+    setStatus('error', '贡献度分解失败: ' + (err.message || '未知错误') + ' (查看F12控制台)');
+  }
+}
+
+// =====================================================================
+// SECTION E: DOMAIN-LEVEL ANALYSIS
+// =====================================================================
+
+function runDomainAnalysis() {
+  state.domainResults = {};
+  const domainMap = state._domainMap || {};
+  for (const [domainName, params] of Object.entries(domainMap)) {
+    try {
+      if (params.length < 2) { console.log('  Skip ' + domainName + ': <2 params in domain map'); continue; }
+      // Get features for selected feature type
+      const ftype = (document.getElementById('feature-type') || {}).value || 'B_';
+      const features = params.map(p => ftype + p).filter(f => state.featureNames.includes(f));
+      if (features.length < 2) {
+        console.warn('  Skip ' + domainName + ': only ' + features.length + ' features (need >=2).');
+        console.warn('    Domain params: ' + params.join(', '));
+        console.warn('    Expected B_ cols: ' + params.map(p => 'B_'+p).join(', '));
+        console.warn('    In state.featureNames? ' + params.map(p => state.featureNames.includes('B_'+p)).join(', '));
+        var wideCols = state.wideTable.length ? Object.keys(state.wideTable[0]).filter(k => k.startsWith('B_')).slice(0,10) : [];
+        console.warn('    First 10 B_ cols in wide: ' + wideCols.join(', '));
+        continue;
+      }
+
+      // Extract Z submatrix and de-standardize to raw values
+      const indices = features.map(f => state.featureNames.indexOf(f));
+      const Zsub = state.zMatrix.map(row => indices.map(j => row[j]));
+      const n = Zsub.length, p = features.length;
+
+      // Reconstruct raw values from Z-scores: raw = z*σ + μ
+      const subMeans = indices.map(j => state._colMeans[j]);
+      const subStds = indices.map(j => state._colStds[j]);
+      const rawSub = Zsub.map(row => row.map((z, j) => z * subStds[j] + subMeans[j]));
+
+      // Covariance of raw sub-matrix: S = (X-μ)'(X-μ)/(n-1)
+      const Sarr = Array.from({length: p}, () => new Array(p).fill(0));
+      for (let j = 0; j < p; j++) {
+        for (let k = j; k < p; k++) {
+          let sum = 0;
+          for (let i = 0; i < n; i++) {
+            sum += (rawSub[i][j] - subMeans[j]) * (rawSub[i][k] - subMeans[k]);
+          }
+          Sarr[j][k] = sum / (n - 1);
+          Sarr[k][j] = Sarr[j][k];
+        }
+      }
+
+      // Adaptive ridge
+      const eigsDom = math.eigs(math.matrix(Sarr));
+      const evalsDom = (typeof eigsDom.values.toArray === 'function')
+        ? eigsDom.values.toArray().map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v))
+        : Array.from(eigsDom.values).map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v));
+      const condDom = Math.max(...evalsDom) / Math.min(...evalsDom.filter(v => v > 1e-14));
+      if (condDom > 1e10) {
+        const ridgeD = Math.max(...evalsDom) * 1e-10;
+        for (let j = 0; j < p; j++) Sarr[j][j] += ridgeD;
+      }
+
+      let Sinv;
+      try {
+        Sinv = math.inv(math.matrix(Sarr));
+      } catch(e) {
+        for (let j = 0; j < p; j++) Sarr[j][j] += Math.max(...evalsDom) * 1e-8;
+        Sinv = math.inv(math.matrix(Sarr));
+      }
+      const SinvArr = Sinv.toArray();
+      const MD = [];
+      for (let i = 0; i < n; i++) {
+        let d2 = 0;
+        for (let j = 0; j < p; j++) {
+          const dj = rawSub[i][j] - subMeans[j];
+          let s = 0;
+          for (let k = 0; k < p; k++) {
+            s += (rawSub[i][k] - subMeans[k]) * SinvArr[k][j];
+          }
+          d2 += s * dj;
+        }
+        MD.push(Math.sqrt(Math.max(0, d2)));
+      }
+
+      // Thresholds + classify
+      const U95 = scaledBetaThreshold(n, p, 1 - CONFIG.alpha_mod);
+      const U997 = scaledBetaThreshold(n, p, 1 - CONFIG.alpha_severe);
+      const L95 = scaledBetaThreshold(n, p, CONFIG.alpha_mod);
+      const L997 = scaledBetaThreshold(n, p, CONFIG.alpha_severe);
+
+      const cls = MD.map(md => {
+        if (md > U997) return '重度离群';
+        if (md > U95) return '中度离群';
+        if (md < L997) return '重度趋同';
+        if (md < L95) return '中度趋同';
+        return '正常';
+      });
+
+      // Contribution decomposition for this domain
+      let domainConMatrix = null;
+      try {
+        const eigsD = math.eigs(math.matrix(Sarr));
+        const rawValsD = eigsD.values;
+        const evalsD = (typeof rawValsD.toArray === 'function')
+          ? rawValsD.toArray().map(v => (typeof v === 'object') ? v.re : v)
+          : Array.from(rawValsD).map(v => (typeof v === 'object') ? v.re : v);
+        const rawVecsD = eigsD.eigenvectors || eigsD.vectors;
+        let ED;
+        if (typeof rawVecsD.toArray === 'function') {
+          ED = rawVecsD.toArray().map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+        } else if (Array.isArray(rawVecsD) && rawVecsD[0] && rawVecsD[0].vector) {
+          ED = rawVecsD.map(item => item.vector.toArray()).map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+        }
+        if (ED) {
+          const DinvHalfD = evalsD.map(v => v > 1e-10 ? 1/Math.sqrt(v) : 0);
+          const ZED_sub = Array.from({length: n}, () => new Array(p).fill(0));
+          for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) ZED_sub[i][j] += Zsub[i][k] * ED[k][j];
+          const ZEDD = ZED_sub.map(row => row.map((v, j) => v * DinvHalfD[j]));
+          const Csub = Array.from({length: n}, () => new Array(p).fill(0));
+          for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) Csub[i][j] += ZEDD[i][k] * ED[j][k];
+          const CCsub = Csub.map(row => row.map(v => v * v));
+          const rowSumsSub = CCsub.map(row => row.reduce((a,b)=>a+b, 0));
+          domainConMatrix = CCsub.map((row, i) => row.map(v => rowSumsSub[i] > 0 ? v/rowSumsSub[i] : 0));
+        }
+      } catch(e) {
+        console.warn('Domain contribution failed for '+domainName+':', e.message);
+      }
+
+      state.domainResults[domainName] = {
+        features, MD, U95, U997, L95, L997,
+        classification: cls,
+        contributionMatrix: domainConMatrix,
+        counts: {
+          '重度离群': cls.filter(c => c === '重度离群').length,
+          '中度离群': cls.filter(c => c === '中度离群').length,
+          '正常': cls.filter(c => c === '正常').length,
+          '中度趋同': cls.filter(c => c === '中度趋同').length,
+          '重度趋同': cls.filter(c => c === '重度趋同').length
+        }
+      };
+    } catch (err) {
+      console.warn('Domain analysis failed for', domainName, ':', err.message);
+      // Skip this domain, continue with others
+    }
+  }
+
+  // Custom domain: user-selected variable combination
+  const cVars = state._customVars || [];
+  if (cVars.length >= 2) {
+    try {
+      const ftype = (document.getElementById('feature-type') || {}).value || 'B_';
+      const features = cVars.map(p => ftype + p).filter(f => state.featureNames.includes(f));
+      if (features.length >= 2) {
+        const indices = features.map(f => state.featureNames.indexOf(f));
+        const Zsub = state.zMatrix.map(row => indices.map(j => row[j]));
+        const n = Zsub.length, p = features.length;
+        const subMeans = indices.map(j => state._colMeans[j]);
+        const subStds = indices.map(j => state._colStds[j]);
+        const rawSub = Zsub.map(row => row.map((z, j) => z * subStds[j] + subMeans[j]));
+
+        const Sarr = Array.from({length: p}, () => new Array(p).fill(0));
+        for (let j = 0; j < p; j++) {
+          for (let k = j; k < p; k++) {
+            let sum = 0;
+            for (let i = 0; i < n; i++) sum += (rawSub[i][j] - subMeans[j]) * (rawSub[i][k] - subMeans[k]);
+            Sarr[j][k] = sum / (n - 1); Sarr[k][j] = Sarr[j][k];
+          }
+        }
+        const eigsDom = math.eigs(math.matrix(Sarr));
+        const evalsDom = (typeof eigsDom.values.toArray === 'function')
+          ? eigsDom.values.toArray().map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v))
+          : Array.from(eigsDom.values).map(v => (typeof v === 'object') ? Math.abs(v.re) : Math.abs(v));
+        const condDom = Math.max(...evalsDom) / Math.min(...evalsDom.filter(v => v > 1e-14));
+        if (condDom > 1e10) { const ridgeD = Math.max(...evalsDom) * 1e-10; for (let j = 0; j < p; j++) Sarr[j][j] += ridgeD; }
+        let Sinv;
+        try { Sinv = math.inv(math.matrix(Sarr)); } catch(e) {
+          for (let j = 0; j < p; j++) Sarr[j][j] += Math.max(...evalsDom) * 1e-8;
+          Sinv = math.inv(math.matrix(Sarr));
+        }
+        const SinvArr = Sinv.toArray();
+        const MD = [];
+        for (let i = 0; i < n; i++) {
+          let d2 = 0;
+          for (let j = 0; j < p; j++) {
+            const dj = rawSub[i][j] - subMeans[j]; let s = 0;
+            for (let k = 0; k < p; k++) s += (rawSub[i][k] - subMeans[k]) * SinvArr[k][j];
+            d2 += s * dj;
+          }
+          MD.push(Math.sqrt(Math.max(0, d2)));
+        }
+        const U95 = scaledBetaThreshold(n, p, 1 - CONFIG.alpha_mod);
+        const U997 = scaledBetaThreshold(n, p, 1 - CONFIG.alpha_severe);
+        const L95 = scaledBetaThreshold(n, p, CONFIG.alpha_mod);
+        const L997 = scaledBetaThreshold(n, p, CONFIG.alpha_severe);
+        const cls = MD.map(md => {
+          if (md > U997) return '重度离群'; if (md > U95) return '中度离群';
+          if (md < L997) return '重度趋同'; if (md < L95) return '中度趋同';
+          return '正常';
+        });
+        // Contribution
+        let domainConMatrix = null;
+        try {
+          const eigsD = math.eigs(math.matrix(Sarr));
+          const rawValsD = eigsD.values;
+          const evalsD = (typeof rawValsD.toArray === 'function')
+            ? rawValsD.toArray().map(v => (typeof v === 'object') ? v.re : v)
+            : Array.from(rawValsD).map(v => (typeof v === 'object') ? v.re : v);
+          const rawVecsD = eigsD.eigenvectors || eigsD.vectors;
+          let ED;
+          if (typeof rawVecsD.toArray === 'function') {
+            ED = rawVecsD.toArray().map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+          } else if (Array.isArray(rawVecsD) && rawVecsD[0] && rawVecsD[0].vector) {
+            ED = rawVecsD.map(item => item.vector.toArray()).map(row => row.map(v => (typeof v === 'object') ? v.re : v));
+          }
+          if (ED) {
+            const DinvHalfD = evalsD.map(v => v > 1e-10 ? 1/Math.sqrt(v) : 0);
+            const ZED_sub = Array.from({length: n}, () => new Array(p).fill(0));
+            for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) ZED_sub[i][j] += Zsub[i][k] * ED[k][j];
+            const ZEDD = ZED_sub.map(row => row.map((v, j) => v * DinvHalfD[j]));
+            const Csub = Array.from({length: n}, () => new Array(p).fill(0));
+            for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) Csub[i][j] += ZEDD[i][k] * ED[j][k];
+            const CCsub = Csub.map(row => row.map(v => v * v));
+            const rowSumsSub = CCsub.map(row => row.reduce((a,b)=>a+b, 0));
+            domainConMatrix = CCsub.map((row, i) => row.map(v => rowSumsSub[i] > 0 ? v/rowSumsSub[i] : 0));
+          }
+        } catch(e) { console.warn('Custom domain contribution failed:', e.message); }
+        state.domainResults['自定义'] = {
+          features, MD, U95, U997, L95, L997,
+          classification: cls,
+          contributionMatrix: domainConMatrix,
+          counts: {
+            '重度离群': cls.filter(c => c === '重度离群').length,
+            '中度离群': cls.filter(c => c === '中度离群').length,
+            '正常': cls.filter(c => c === '正常').length,
+            '中度趋同': cls.filter(c => c === '中度趋同').length,
+            '重度趋同': cls.filter(c => c === '重度趋同').length
+          }
+        };
+      }
+    } catch (err) {
+      console.warn('Custom domain analysis failed:', err.message);
+    }
+  }
+}
+
+// =====================================================================
+// SECTION F: VISUALIZATION RENDERERS
+// =====================================================================
+
+const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
+const PLOTLY_LAYOUT_BASE = {
+  font: { family: 'Helvetica Neue, PingFang SC, Microsoft YaHei, sans-serif', size: 10, color: '#444' },
+  margin: { l: 55, r: 20, t: 10, b: 50 },
+  paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+  xaxis: { gridcolor: '#eee', zeroline: false, linecolor: '#ccc', linewidth: 1 },
+  yaxis: { gridcolor: '#eee', zeroline: false, linecolor: '#ccc', linewidth: 1 }
+};
+
+function renderMissingChart() {
+  const labels = state.featureNames;
+  if (!labels.length) return;
+  const rates = labels.map(f => (state.missingReport[f] || 0) * 100);
+  const maxRate = Math.max(...rates, 10);
+  const colors = rates.map(r => r > 5 ? '#c0392b' : '#2c3e50');
+
+  const trace = {
+    type: 'bar', x: labels, y: rates,
+    marker: { color: colors },
+    text: rates.map(r => r.toFixed(1) + '%'), textposition: 'outside',
+    hovertemplate: '%{x}<br>缺失率: %{y:.1f}%<extra></extra>'
+  };
+
+  safePlot('chart-missing', [trace], {
+    ...PLOTLY_LAYOUT_BASE,
+    yaxis: { title: '缺失率 (%)', ticksuffix: '%', range: [0, Math.ceil(maxRate/10)*10+2] },
+    xaxis: { tickangle: -45 },
+    shapes: [{
+      type: 'line', x0: -0.5, x1: labels.length - 0.5, y0: 5, y1: 5,
+      line: { color: '#c0392b', dash: 'dash', width: 1 }
+    }]
+  });
+}
+
+// Shared click handler: MD scatter point → jump to Pareto
+function _mdClickToPareto(gd) {
+  if (state._mdClickHandler) gd.removeListener('plotly_click', state._mdClickHandler);
+  state._mdClickHandler = function(data) {
+    if (!data.points || !data.points.length) return;
+    var cd = data.points[0].customdata;
+    if (!cd) return;
+    var subjIdx = cd[3]; // global subject index
+    // Store pending index so switchTab can restore it
+    state._pendingSubjectIdx = subjIdx;
+    // Switch to tab 4 — populateSubjectSelector inside render will reset, then we restore
+    switchTab(4);
+    // Restore selection after switchTab's re-render
+    var paretoSel = document.getElementById('subject-pareto-select');
+    if (paretoSel) {
+      for (var o = 0; o < paretoSel.options.length; o++) {
+        if (parseInt(paretoSel.options[o].value) === subjIdx) {
+          paretoSel.selectedIndex = o; break;
+        }
+      }
+    }
+    updatePareto();
+  };
+  gd.on('plotly_click', state._mdClickHandler);
+}
+
+// Safe Plotly render: waits for DOM layout, clears old chart
+function safePlot(id, traces, layout, onRendered) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  Plotly.purge(el);
+  // Delay one frame so the container has dimensions after display change
+  requestAnimationFrame(() => {
+    Plotly.newPlot(id, traces, layout, PLOTLY_CONFIG).then(function(gd) {
+      if (onRendered) onRendered(gd);
+    });
+  });
+}
+
+// Shared palette for site colors — muted, colorblind-friendly
+const SITE_PALETTE = ['#4c72b0','#dd8452','#55a868','#c44e52','#8172b2',
+  '#937860','#da8bc3','#8c8c8c','#ccb974','#64b5cd',
+  '#6d904f','#cb6c4a','#7b7bcd','#bc8f4f','#5b9e9e',
+  '#c07078','#6b8e6b','#b59e5e','#6889b8','#a0846c'];
+
+function getSiteColor(site) {
+  const idx = state.siteList.indexOf(site);
+  return SITE_PALETTE[idx >= 0 ? idx % SITE_PALETTE.length : 0];
+}
+
+// Deterministic jitter: same subject always gets same horizontal offset
+function stableJitter(idx, spread) {
+  const hash = (idx * 2654435761) >>> 0; // Knuth multiplicative hash → [0, 2^32)
+  return (hash / 4294967296 - 0.5) * spread;
+}
+
+// Look up baseline record detail for hover: PARAM, AVISIT, ADT, AVAL
+function hoverBaselineDetail(subjId, paramcd) {
+  if (!state._baselineRec) return '';
+  var rec = state._baselineRec[subjId + '|' + paramcd];
+  if (!rec) return '';
+  var lines = [];
+  if (rec.PARAM) lines.push('<br>参数: ' + rec.PARAM);
+  if (rec.AVISIT) lines.push('<br>访视: ' + rec.AVISIT);
+  if (rec.ADT)    lines.push('<br>日期: ' + rec.ADT);
+  lines.push('<br>值: ' + rec.AVAL);
+  return lines.join('');
+}
+
+function buildMdScatterTraces(mdArr, clsArr, allSites, pVar) {
+  // Pre-compute site index for each subject (fast single pass)
+  const subjSiteIdx = new Array(state.n);
+  const subjSite = new Array(state.n);
+  for (let i = 0; i < state.n; i++) {
+    const s = state.wideTable[i].SITEID;
+    subjSiteIdx[i] = allSites.indexOf(s);
+    subjSite[i] = s;
+  }
+
+  // Single trace: color by site/center, jitter horizontal, no legend
+  const jx = [], jy = [], info = [];
+  const ftype = (document.getElementById('feature-type') || {}).value || 'B_';
+  const ftypeLabel = ftype === 'B_' ? '基线' : ftype === 'A_' ? '均值' : ftype === 'M_' ? '最大值' : ftype === 'V_' ? '变异系数' : ftype;
+  for (let i = 0; i < state.n; i++) {
+    const si = subjSiteIdx[i];
+    if (si < 0) continue;
+    jx.push(si + stableJitter(i, 0.7));
+    jy.push(mdArr[i]);
+    const subjId = state.wideTable[i].USUBJID;
+    const nVisits = (state._subjVisits && state._subjVisits[subjId]) ? state._subjVisits[subjId] : '?';
+    info.push([subjId, clsArr[i], subjSite[i], i, pVar, nVisits, ftypeLabel]);
+  }
+  return [{
+    type: 'scatter', x: jx, y: jy, mode: 'markers',
+    marker: {
+      color: info.map(v => getSiteColor(v[2])),
+      size: 7, opacity: 0.7, line: { width: 0.5, color: '#333' }
+    },
+    customdata: info,
+    hovertemplate: '<b>%{customdata[0]}</b><br>中心: %{customdata[2]}<br>特征: %{customdata[6]}<br>MD: %{y:.2f}<br>分类: %{customdata[1]}<br>变量数: %{customdata[4]}<br>访视数: %{customdata[5]}<extra></extra>',
+    showlegend: false
+  }];
+}
+
+function makeMdThresholdShapes(U95, U997, L95, L997) {
+  return [
+    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: U997, y1: U997, line: { color: '#c0392b', dash: 'dash', width: 1 } },
+    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: U95, y1: U95, line: { color: '#d35400', dash: 'dash', width: 1 } },
+    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: L95, y1: L95, line: { color: '#2980b9', dash: 'dash', width: 1 } },
+    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: L997, y1: L997, line: { color: '#1a5276', dash: 'dash', width: 1 } }
+  ];
+}
+
+function makeMdThresholdAnnotations(U95, U997, L95, L997) {
+  return [
+    { x: 0, xref: 'paper', y: U997, text: 'U<sub>99.7%</sub>='+U997.toFixed(2)+' ', showarrow: false, font: { color: '#c0392b', size: 9 }, xanchor: 'right', yanchor: 'middle', ay: -6 },
+    { x: 0, xref: 'paper', y: U95, text: 'U<sub>95%</sub>='+U95.toFixed(2)+' ', showarrow: false, font: { color: '#d35400', size: 9 }, xanchor: 'right', yanchor: 'middle', ay: -6 },
+    { x: 0, xref: 'paper', y: L95, text: 'L<sub>95%</sub>='+L95.toFixed(2)+' ', showarrow: false, font: { color: '#2980b9', size: 9 }, xanchor: 'right', yanchor: 'middle', ay: 6 },
+    { x: 0, xref: 'paper', y: L997, text: 'L<sub>99.7%</sub>='+L997.toFixed(2)+' ', showarrow: false, font: { color: '#1a5276', size: 9 }, xanchor: 'right', yanchor: 'middle', ay: 6 }
+  ];
+}
+
+function mdMedianShape(mdArr) {
+  var sorted = mdArr.slice().sort(function(a,b){return a-b;});
+  var n = sorted.length;
+  var med = n % 2 ? sorted[(n-1)/2] : (sorted[n/2-1] + sorted[n/2]) / 2;
+  return { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: med, y1: med,
+    line: { color: '#555', dash: 'dot', width: 1.2 } };
+}
+function mdMedianAnnotation(mdArr) {
+  var sorted = mdArr.slice().sort(function(a,b){return a-b;});
+  var n = sorted.length;
+  var med = n % 2 ? sorted[(n-1)/2] : (sorted[n/2-1] + sorted[n/2]) / 2;
+  return { x: 0, xref: 'paper', y: med, text: ' Median='+med.toFixed(2)+' ', showarrow: false,
+    font: { color: '#555', size: 9 }, xanchor: 'right', yanchor: 'middle', ay: -6 };
+}
+
+function renderMdScatter() {
+  const md = state.mahalanobisDist;
+  if (!md.length) return;
+  const U95 = state.U_95, U997 = state.U_997, L95 = state.L_95, L997 = state.L_997;
+  const sites = state.siteList;
+
+  const traces = buildMdScatterTraces(md, state.classification, sites, state.p);
+  const shapes = makeMdThresholdShapes(U95, U997, L95, L997);
+  shapes.push(mdMedianShape(md));
+  const annotations = makeMdThresholdAnnotations(U95, U997, L95, L997);
+  annotations.push(mdMedianAnnotation(md));
+
+  safePlot('chart-md-hist', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: {
+      title: '中心 (Site)',
+      tickmode: 'array',
+      tickvals: sites.map((_, i) => i),
+      ticktext: sites.map(s => '中心 ' + s),
+      tickangle: -45,
+      range: [-0.6, sites.length - 0.4]  // padding so points don't touch axes
+    },
+    yaxis: { title: '马氏距离 (MD)', zeroline: false, showline: false },
+    shapes, annotations,
+    showlegend: false,
+    margin: { l: 75, r: 10, t: 30, b: 60 },
+    hovermode: 'closest'
+  }, _mdClickToPareto);
+}
+
+function renderMdScatterDomain(domainName) {
+  const dr = state.domainResults[domainName];
+  if (!dr) return;
+  const sites = state.siteList;
+  const traces = buildMdScatterTraces(dr.MD, dr.classification, sites, dr.features.length);
+  const shapes = makeMdThresholdShapes(dr.U95, dr.U997, dr.L95, dr.L997);
+  shapes.push(mdMedianShape(dr.MD));
+  const annotations = makeMdThresholdAnnotations(dr.U95, dr.U997, dr.L95, dr.L997);
+  annotations.push(mdMedianAnnotation(dr.MD));
+
+  safePlot('chart-md-hist', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: {
+      title: '中心 (Site) — ' + domainName,
+      tickmode: 'array',
+      tickvals: sites.map((_, i) => i),
+      ticktext: sites.map(s => '中心 ' + s),
+      tickangle: -45,
+      range: [-0.6, sites.length - 0.4]
+    },
+    yaxis: { title: '马氏距离 (MD)', zeroline: false, showline: false },
+    shapes, annotations,
+    showlegend: false,
+    margin: { l: 75, r: 10, t: 30, b: 60 },
+    hovermode: 'closest'
+  }, _mdClickToPareto);
+}
+
+function renderClassPie(data) {
+  // Horizontal bar chart: X=count, Y=category
+  const counts = data.counts;
+  const order = ['重度趋同','中度趋同','正常','中度离群','重度离群']; // bottom to top
+  const labels = order.filter(k => counts[k] !== undefined);
+  const values = labels.map(k => counts[k] || 0);
+  const colors = labels.map(k => CLASS_COLORS[k] || '#7f8c8d');
+  const total = data.n || values.reduce((a,b)=>a+b,0);
+
+  const trace = {
+    type: 'bar',
+    x: values,
+    y: labels,
+    orientation: 'h',
+    marker: { color: colors },
+    text: values.map(v => v + '人 (' + (v/total*100).toFixed(1) + '%)'),
+    textposition: 'outside',
+    hovertemplate: '%{y}: %{x}人<extra></extra>'
+  };
+
+  safePlot('chart-class-pie', [trace], {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { title: '受试者数', automargin: true },
+    yaxis: { automargin: true },
+    margin: { l: 10, r: 50, t: 10, b: 10 },
+    showlegend: false
+  });
+}
+
+function getGlobalClassData() {
+  const counts = {};
+  for (const c of state.classification) counts[c] = (counts[c] || 0) + 1;
+  return { counts, n: state.n, mdArr: state.mahalanobisDist, clsArr: state.classification };
+}
+
+function getDomainClassData(domainName) {
+  const dr = state.domainResults[domainName];
+  if (!dr) return null;
+  return { counts: dr.counts, n: state.n, mdArr: dr.MD, clsArr: dr.classification };
+}
+
+function renderMdBoxPlot(mdArr, titleExtra) {
+  if (!mdArr.length) return;
+  const sites = state.siteList;
+  const MIN_BOX_N = 5; // minimum subjects to draw a box
+  let U95, U997, L95, L997;
+  if (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain]) {
+    const dr = state.domainResults[state.currentDomain];
+    U95 = dr.U95; U997 = dr.U997; L95 = dr.L95; L997 = dr.L997;
+  } else {
+    U95 = state.U_95; U997 = state.U_997; L95 = state.L_95; L997 = state.L_997;
+  }
+
+  function siteCount(site) { let c=0; for (let i=0;i<state.n;i++) if(state.wideTable[i].SITEID===site) c++; return c; }
+  const traces = [];
+  for (let si = 0; si < sites.length; si++) {
+    const site = sites[si];
+    const vals = [], ids = [], idxs = [];
+    for (let i = 0; i < state.n; i++) {
+      if (state.wideTable[i].SITEID === site) { vals.push(mdArr[i]); ids.push(state.wideTable[i].USUBJID); idxs.push(i); }
+    }
+    if (!vals.length) continue;
+    if (vals.length >= MIN_BOX_N) {
+      // Box plot — no fill, Plotly auto-detected outliers colored by site
+      traces.push({
+        type: 'box', x: vals.map(() => si), y: vals, name: '中心 ' + site,
+        marker: { color: getSiteColor(site), size: 4 },
+        fillcolor: 'white',
+        line: { color: '#666', width: 0.8 },
+        width: 0.4,
+        boxpoints: 'outliers',
+        hovertemplate: '中心: ' + site + ' (n='+vals.length+')<br>%{y:.2f}<extra></extra>'
+      });
+    } else {
+      // Scatter — same x=si base, colored by site
+      const jx = vals.map((_, k) => si + stableJitter(idxs[k], 0.3));
+      traces.push({
+        type: 'scatter', x: jx, y: vals, mode: 'markers',
+        name: '中心 ' + site + ' (n='+vals.length+')',
+        marker: { color: getSiteColor(site), size: 8, symbol: 'x' },
+        customdata: ids,
+        hovertemplate: '<b>%{customdata}</b><br>中心: ' + site + ' (n='+vals.length+')<br>MD: %{y:.2f}<extra></extra>'
+      });
+    }
+  }
+
+  const shapes = makeMdThresholdShapes(U95, U997, L95, L997);
+  shapes.push(mdMedianShape(mdArr));
+  const annotations = makeMdThresholdAnnotations(U95, U997, L95, L997);
+  annotations.push(mdMedianAnnotation(mdArr));
+
+  safePlot('chart-md-box', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: {
+      title: '', tickangle: -45, tickfont: { size: 8 },
+      tickmode: 'array',
+      tickvals: sites.map((_, i) => i),
+      ticktext: sites.map(s => (siteCount(s) < MIN_BOX_N ? '中心 '+s+' *' : '中心 '+s))
+    },
+    yaxis: { title: '马氏距离 (MD)' + (titleExtra||''), zeroline: false, showline: false },
+    shapes, annotations,
+    showlegend: false,
+    margin: { l: 75, r: 10, t: 10, b: 60 }
+  });
+}
+
+function populateHeatmapSiteSelector() {
+  const sel = document.getElementById('heatmap-site');
+  if (!sel || sel.options.length > 0) return; // already populated
+  sel.innerHTML = '';
+  // "全部中心" option
+  const allOpt = document.createElement('option');
+  allOpt.value = '__all__'; allOpt.textContent = 'All Sites';
+  allOpt.selected = true;
+  sel.appendChild(allOpt);
+  for (const s of state.siteList) {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = '中心 ' + s;
+    sel.appendChild(opt);
+  }
+}
+
+function getActiveContribution() {
+  // Returns {matrix, featureNames} for current layer
+  if (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain]) {
+    const dr = state.domainResults[state.currentDomain];
+    if (dr.contributionMatrix) {
+      return { matrix: dr.contributionMatrix, featureNames: dr.features };
+    }
+  }
+  return { matrix: state.contributionMatrix, featureNames: state.featureNames };
+}
+
+function renderHeatmap() {
+  populateHeatmapSiteSelector();
+  const siteSel = document.getElementById('heatmap-site').value || '__all__';
+  const showAll = siteSel === '__all__';
+
+  // Use layer-appropriate classification (global vs domain)
+  const activeCls = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].classification : state.classification;
+  const activeFlag = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].classification.map(c => c !== '正常') : state.flag;
+
+  // Filter subjects by selected center — always compute for info text
+  const allSiteIdx = [];
+  for (let i = 0; i < state.n; i++) {
+    if (showAll || state.wideTable[i].SITEID === siteSel) allSiteIdx.push(i);
+  }
+
+  // Always update info text
+  if (allSiteIdx.length) {
+    const flaggedCount = allSiteIdx.filter(i => activeFlag[i]).length;
+    document.getElementById('heatmap-info').textContent =
+      (showAll ? '全部中心 — ' : '') + allSiteIdx.length + ' 受试者，' + flaggedCount + ' 异常';
+  } else {
+    document.getElementById('heatmap-info').textContent = '该中心无受试者';
+  }
+
+  // Only show 重度离群 subjects on heatmap X-axis
+  const siteIdx = allSiteIdx.filter(i => activeCls[i] === '重度离群');
+
+  // Chart rendering requires valid contribution matrix
+  const {matrix, featureNames} = getActiveContribution();
+  if (!matrix.length || !siteIdx.length) {
+    // Clear chart area but keep info text
+    var el2 = document.getElementById('chart-heatmap');
+    if (el2) Plotly.purge(el2);
+    return;
+  }
+
+  // Sort by MD descending
+  siteIdx.sort((a, b) => state.mahalanobisDist[b] - state.mahalanobisDist[a]);
+
+  // Build data: rows=variables, cols=subjects (transposed)
+  const nSubj = siteIdx.length;
+  const nVars = featureNames.length;
+  const z = Array.from({length: nVars}, () => new Array(nSubj));
+  const zText = Array.from({length: nVars}, () => new Array(nSubj));
+
+  for (let vi = 0; vi < nVars; vi++) {
+    for (let si = 0; si < nSubj; si++) {
+      const v = matrix[siteIdx[si]][vi];
+      z[vi][si] = v;
+      zText[vi][si] = (v * 100).toFixed(1) + '%';
+    }
+  }
+
+  // Classification markers: colored Unicode symbols
+  const CLS_MARKERS = { '重度离群':'●', '中度离群':'◉', '重度趋同':'◆', '中度趋同':'◇', '正常':'·' };
+  const xLabels = siteIdx.map(i => CLS_MARKERS[activeCls[i]] + ' ' + state.wideTable[i].USUBJID);
+
+  const yLabels = featureNames.map(f => f.replace(/^[A-Z]_/, ''));
+  const shortY = yLabels.map(f => f.length > 14 ? f.substring(0, 13) + '…' : f);
+
+  const trace = {
+    type: 'heatmap',
+    z: z,
+    x: xLabels,
+    y: shortY,
+    text: zText,
+    texttemplate: '',
+    hovertemplate: '受试者: %{x}<br>变量: %{y}<br>贡献: %{z:.1%}<extra></extra>',
+    colorscale: [
+      [0, '#ffffff'], [0.1, '#fff0f0'], [0.25, '#ffcccc'],
+      [0.4, '#ff9999'], [0.55, '#ff6666'], [0.7, '#ee3333'],
+      [0.85, '#bb0000'], [1, '#660000']
+    ],
+    showscale: true,
+    colorbar: {
+      title: { text: '贡献比例', font: { size: 10 } },
+      tickformat: '.0%',
+      thickness: 12,
+      len: 0.7
+    },
+    xgap: 0, ygap: 0
+  };
+
+  // Store for click handler
+  state._heatmapSiteIdx = siteIdx;
+
+  safePlot('chart-heatmap', [trace], {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { side: 'bottom', tickangle: -60, tickfont: { size: 8 }, title: { text: '受试者', font: { size: 10 } } },
+    yaxis: { automargin: true, tickfont: { size: 8 }, title: { text: '变量', font: { size: 10 } } },
+    height: Math.max(600, nVars * 22 + 100),
+    margin: { l: 130, r: 50, t: 10, b: 80 }
+  }, function(gd) {
+    // Remove previous listener to avoid duplicates
+    if (state._heatmapClickHandler) gd.removeListener('plotly_click', state._heatmapClickHandler);
+    state._heatmapClickHandler = function(data) {
+      if (!data.points || !data.points.length) return;
+      var colIdx = data.points[0].x; // x value = "● SUBJ-001" (marker + space + ID)
+      // Strip classification marker prefix to get raw subject ID
+      var subjId = colIdx.replace(/^[●◉◇◆·]\s*/, '');
+      // Find the global index for this subject
+      var globalIdx = -1;
+      var hmIdx = state._heatmapSiteIdx;
+      if (hmIdx) {
+        for (var k = 0; k < hmIdx.length; k++) {
+          if (state.wideTable[hmIdx[k]].USUBJID === subjId) {
+            globalIdx = hmIdx[k];
+            break;
+          }
+        }
+      }
+      if (globalIdx < 0) return;
+      // Update Pareto selector and re-render
+      var paretoSel = document.getElementById('subject-pareto-select');
+      if (paretoSel) {
+        for (var o = 0; o < paretoSel.options.length; o++) {
+          if (parseInt(paretoSel.options[o].value) === globalIdx) {
+            paretoSel.selectedIndex = o;
+            break;
+          }
+        }
+      }
+      renderPareto(globalIdx);
+      // Also refresh box plot and regression; auto-set top-2 contributors as X/Y
+      if (state._contribBoxVar) renderContribBoxPlot(state._contribBoxVar);
+      setRegressionTop2(globalIdx);
+    };
+    gd.on('plotly_click', state._heatmapClickHandler);
+  });
+}
+
+function renderPareto(subjectIdx) {
+  const {matrix, featureNames} = getActiveContribution();
+  if (!matrix.length) return;
+
+  if (subjectIdx === undefined || subjectIdx === null) {
+    const clsArr = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+      ? state.domainResults[state.currentDomain].classification : state.classification;
+    const fi = clsArr.findIndex(c => c !== '正常');
+    subjectIdx = fi >= 0 ? fi : 0;
+  }
+
+  const conRow = matrix[subjectIdx];
+  if (!conRow) return;
+
+  const pairs = featureNames.map((f, j) => ({
+    name: f.replace(/^[A-Z]_/, ''), fullName: f, value: conRow[j]
+  }));
+  pairs.sort((a, b) => b.value - a.value);
+
+  const names = pairs.map(p => p.name);
+  const values = pairs.map(p => p.value * 100);
+  const cumsum = [];
+  let cs = 0;
+  for (const v of values) { cs += v; cumsum.push(cs); }
+
+  const trace1 = {
+    type: 'bar', x: names, y: values, name: '贡献占比 (%)',
+    marker: { color: values.map(v => v > 20 ? '#c0392b' : v > 10 ? '#d35400' : '#2c3e50') },
+    hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
+  };
+  const trace2 = {
+    type: 'scatter', x: names, y: cumsum, name: '累计贡献 (%)',
+    mode: 'lines+markers', yaxis: 'y2',
+    line: { color: '#555', width: 1.5 },
+    marker: { size: 4, color: '#555' },
+    hovertemplate: '累计: %{y:.1f}%<extra></extra>'
+  };
+
+  safePlot('chart-pareto', [trace1, trace2], {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { tickangle: -45 },
+    yaxis: { title: '贡献占比 (%)', side: 'left' },
+    yaxis2: { title: '累计贡献 (%)', side: 'right', overlaying: 'y', range: [0, 105] },
+    shapes: [{
+      type: 'line', x0: -0.5, x1: names.length - 0.5, y0: 80, y1: 80,
+      yref: 'y2', line: { color: '#999', dash: 'dot', width: 1 }
+    }],
+    legend: { x: 1.02, y: 0.99, font: { size: 10 } }
+  }, function(gd) {
+    if (state._paretoClickHandler) gd.removeListener('plotly_click', state._paretoClickHandler);
+    state._paretoClickHandler = function(data) {
+      if (!data.points || !data.points.length) return;
+      // Only respond to bar clicks (trace 0), not the cumulative line
+      if (data.points[0].curveNumber !== 0) return;
+      var varName = data.points[0].x; // variable name from bar
+      state._contribBoxVar = varName;
+      document.getElementById('contrib-box-var-name').textContent = '— ' + varName;
+      renderContribBoxPlot(varName);
+    };
+    gd.on('plotly_click', state._paretoClickHandler);
+  });
+}
+
+function renderContribBoxPlot(varName) {
+  if (!varName) {
+    document.getElementById('contrib-box-var-name').textContent = '';
+    safePlot('chart-contrib-box', [], PLOTLY_LAYOUT_BASE);
+    return;
+  }
+
+  const ftype2 = (document.getElementById('feature-type') || {}).value || 'B_';
+  const colName = ftype2 + varName;
+  const clsArr = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].classification : state.classification;
+
+  // Collect all valid values with classification and site
+  const vals = [], clsList = [], ids = [], sites = [];
+  for (let i = 0; i < state.n; i++) {
+    const val = state.wideTable[i][colName];
+    if (val !== null && val !== undefined && !isNaN(val)) {
+      vals.push(val);
+      clsList.push(clsArr[i]);
+      ids.push(state.wideTable[i].USUBJID);
+      sites.push(state.wideTable[i].SITEID);
+    }
+  }
+
+  const traces = [];
+
+  // Single box for the variable
+  traces.push({
+    type: 'box',
+    x: vals.map(() => varName),
+    y: vals,
+    name: varName,
+    marker: { color: '#2c3e50' },
+    boxpoints: 'outliers',
+    hovertemplate: varName + '<br>%{y:.2f}<extra></extra>'
+  });
+
+  // Jittered scatter points colored by classification
+  const order = ['重度离群','中度离群','正常','中度趋同','重度趋同'];
+  for (let k = 0; k < order.length; k++) {
+    const cls = order[k];
+    const cx = [], cy = [], cid = [], csite = [];
+    for (let i = 0; i < vals.length; i++) {
+      if (clsList[i] === cls) { cx.push(varName); cy.push(vals[i]); cid.push(ids[i]); csite.push(sites[i]); }
+    }
+    if (!cx.length) continue;
+    const jx = cx.map(() => varName + ' '); // ensure categorical grouping
+    traces.push({
+      type: 'scatter',
+      x: jx, y: cy, mode: 'markers',
+      name: cls,
+      marker: { color: CLASS_COLORS[cls], size: 5, opacity: 0.6 },
+      text: cid.map((id, m) => '<b>' + id + '</b><br>中心: ' + csite[m] + hoverBaselineDetail(id, varName) + '<br>' + varName + ': ' + cy[m].toFixed(2)),
+      hovertemplate: '%{text}<extra></extra>',
+      showlegend: true
+    });
+  }
+
+  // Highlight currently selected subject
+  var selSubjIdx = parseInt(document.getElementById('subject-pareto-select').value);
+  if (!isNaN(selSubjIdx) && selSubjIdx >= 0 && selSubjIdx < state.n) {
+    var selSubjId = state.wideTable[selSubjIdx].USUBJID;
+    var selVal = state.wideTable[selSubjIdx][colName];
+    if (selVal !== null && selVal !== undefined && !isNaN(selVal)) {
+      var selCls = clsArr[selSubjIdx];
+      var selSite = state.wideTable[selSubjIdx].SITEID;
+      traces.push({
+        type: 'scatter',
+        x: [varName], y: [selVal], mode: 'markers+text',
+        name: '当前受试者',
+        marker: { color: CLASS_COLORS[selCls] || '#000', size: 16, symbol: 'star', line: { color: '#000', width: 2 } },
+        text: [selSubjId],
+        textposition: 'top center',
+        textfont: { size: 10, color: '#000' },
+        hovertemplate: '<b>' + selSubjId + '</b><br>中心: ' + selSite +
+          hoverBaselineDetail(selSubjId, varName) +
+          '<br>' + selCls + '<br>' + varName + ': ' + selVal.toFixed(2) + '<extra></extra>',
+        showlegend: true
+      });
+    }
+  }
+
+  safePlot('chart-contrib-box', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    yaxis: { title: varName + ' (原始值)', zeroline: false },
+    xaxis: { title: '' },
+    boxmode: 'group',
+    legend: { x: 1.02, y: 0.99, font: { size: 10 } },
+    margin: { l: 60, r: 20, t: 10, b: 50 }
+  });
+}
+
+function populateRegressionSelectors() {
+  const names = state.featureNames.map(f => f.replace(/^[A-Z]_/, ''));
+  // Populate datalist
+  const dl = document.getElementById('reg-vars-list');
+  if (dl && dl.options.length === 0) {
+    names.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      dl.appendChild(opt);
+    });
+  }
+  // Set defaults if empty
+  const xInp = document.getElementById('reg-x');
+  const yInp = document.getElementById('reg-y');
+  if (xInp && !xInp.value && names.length > 0) xInp.value = names[0];
+  if (yInp && !yInp.value && names.length > 1) yInp.value = names[1];
+}
+
+// Set regression X/Y to top-2 contributing variables for a subject
+function setRegressionTop2(subjIdx) {
+  const {matrix, featureNames} = getActiveContribution();
+  const row = matrix[subjIdx];
+  if (!row || !featureNames.length) return;
+  const pairs = featureNames.map((f, j) => ({
+    name: f.replace(/^[A-Z]_/, ''), value: row[j]
+  }));
+  pairs.sort((a, b) => b.value - a.value);
+  populateRegressionSelectors();
+  const xInp = document.getElementById('reg-x');
+  const yInp = document.getElementById('reg-y');
+  if (xInp && pairs.length > 0) { xInp.value = pairs[0].name; state._regLastKey = null; }
+  if (yInp && pairs.length > 1) { yInp.value = pairs[1].name; state._regLastKey = null; }
+  // Defer to let DOM settle, then render (debounce guard cleared above)
+  setTimeout(function(){ renderRegression(subjIdx); }, 0);
+}
+
+function renderRegression(forceSubjIdx) {
+  const xVar = document.getElementById('reg-x').value.trim();
+  const yVar = document.getElementById('reg-y').value.trim();
+  // Read selected subject: explicit arg > dropdown value
+  var selSubjIdx = (forceSubjIdx !== undefined) ? forceSubjIdx
+    : parseInt(document.getElementById('subject-pareto-select').value);
+  if (isNaN(selSubjIdx)) selSubjIdx = -1;
+  // Debounce: skip if same X/Y AND same selected subject
+  var key = xVar + '|' + yVar + '|' + selSubjIdx;
+  if (state._regLastKey === key) return;
+  state._regLastKey = key;
+  // Validate: use active layer's feature names
+  const {featureNames: activeFeat} = getActiveContribution();
+  const validNames = new Set((activeFeat || state.featureNames).map(f => f.replace(/^[A-Z]_/, '')));
+  if (!validNames.has(xVar) || !validNames.has(yVar) || xVar === yVar) {
+    safePlot('chart-regression', [], PLOTLY_LAYOUT_BASE);
+    return;
+  }
+
+  const ftype3 = (document.getElementById('feature-type') || {}).value || 'B_';
+  const colX = ftype3 + xVar, colY = ftype3 + yVar;
+  const clsArr = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].classification : state.classification;
+
+  // Collect paired valid values with subject IDs
+  const xs = [], ys = [], ids = [], regSites = [], globalIdx = [];
+  for (let i = 0; i < state.n; i++) {
+    const x = state.wideTable[i][colX], y = state.wideTable[i][colY];
+    if (x != null && !isNaN(x) && y != null && !isNaN(y)) {
+      xs.push(x); ys.push(y); ids.push(state.wideTable[i].USUBJID);
+      regSites.push(state.wideTable[i].SITEID);
+      globalIdx.push(i);
+    }
+  }
+  if (xs.length < 3) return;
+
+  // Linear regression: y = a*x + b
+  const n = xs.length;
+  let sx = 0, sy = 0;
+  for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; }
+  const mx = sx / n, my = sy / n;
+  let ssxy = 0, ssxx = 0, sstot = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    ssxy += dx * dy; ssxx += dx * dx; sstot += dy * dy;
+  }
+  const slope = ssxx > 0 ? ssxy / ssxx : 0;
+  const intercept = my - slope * mx;
+
+  // R-squared
+  let ssres = 0;
+  for (let i = 0; i < n; i++) {
+    const yPred = slope * xs[i] + intercept;
+    ssres += (ys[i] - yPred) ** 2;
+  }
+  const r2 = sstot > 0 ? 1 - ssres / sstot : 0;
+
+  // Standard error of regression
+  const seReg = n > 2 ? Math.sqrt(ssres / (n - 2)) : 0;
+
+  // t-value for 95% CI (use jStat if available, else fallback to normal approx)
+  var t95 = 1.96;
+  try { if (typeof jStat !== 'undefined' && jStat.studentt) t95 = jStat.studentt.inv(0.975, n - 2); } catch(e) {}
+
+  // Build traces: scatter + highlighted subject + CI band + PI lines + fitted line
+  const traces = [];
+
+  // All scatter points in gray
+  const hoverTexts = ids.map((id, i) => '<b>' + id + '</b><br>中心: ' + regSites[i] +
+    '<br>← X: ' + xVar + hoverBaselineDetail(id, xVar) +
+    '<br>← Y: ' + yVar + hoverBaselineDetail(id, yVar) +
+    '<br>' + xVar + ': ' + xs[i].toFixed(2) + '<br>' + yVar + ': ' + ys[i].toFixed(2));
+  traces.push({
+    type: 'scatter', x: xs, y: ys, mode: 'markers', name: '受试者',
+    marker: { color: '#adb5bd', size: 6, opacity: 0.55 },
+    text: hoverTexts,
+    hovertemplate: '%{text}<extra></extra>',
+    showlegend: true
+  });
+
+  // Highlight selected subject
+  if (selSubjIdx >= 0 && selSubjIdx < state.n) {
+    var selX = state.wideTable[selSubjIdx][colX], selY = state.wideTable[selSubjIdx][colY];
+    if (selX != null && !isNaN(selX) && selY != null && !isNaN(selY)) {
+      var selCls = clsArr[selSubjIdx];
+      var selId = state.wideTable[selSubjIdx].USUBJID;
+      var selSite = state.wideTable[selSubjIdx].SITEID;
+      traces.push({
+        type: 'scatter', x: [selX], y: [selY], mode: 'markers+text',
+        name: '选中: ' + selId,
+        marker: { color: CLASS_COLORS[selCls] || '#c0392b', size: 16, symbol: 'star',
+          line: { color: '#000', width: 2 } },
+        text: [selId], textposition: 'top center', cliponaxis: false,
+        textfont: { size: 10, color: '#000' },
+        hovertemplate: '<b>' + selId + '</b><br>中心: ' + selSite +
+          '<br>← X: ' + xVar + hoverBaselineDetail(selId, xVar) +
+          '<br>← Y: ' + yVar + hoverBaselineDetail(selId, yVar) +
+          '<br>分类: ' + selCls + '<br>' + xVar + ': ' + selX.toFixed(2) + '<br>' + yVar + ': ' + selY.toFixed(2) + '<extra></extra>',
+        showlegend: true
+      });
+    }
+  }
+
+  // Confidence band & prediction interval: 50-point grid across X range
+  // CI = mean confidence interval (lclm/uclm), PI = individual prediction interval (lcl/ucl)
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const xGrid = [], ciUpper = [], ciLower = [], piUpper = [], piLower = [];
+  const nPts = 50;
+  for (let g = 0; g <= nPts; g++) {
+    const xg = xMin + (xMax - xMin) * g / nPts;
+    const yPred = slope * xg + intercept;
+    const seMean = seReg * Math.sqrt(1 / n + (xg - mx) ** 2 / ssxx);       // CI: mean confidence interval
+    const sePred = seReg * Math.sqrt(1 + 1 / n + (xg - mx) ** 2 / ssxx);   // PI: individual prediction interval
+    xGrid.push(xg);
+    ciUpper.push(yPred + t95 * seMean);
+    ciLower.push(yPred - t95 * seMean);
+    piUpper.push(yPred + t95 * sePred);
+    piLower.push(yPred - t95 * sePred);
+  }
+
+  // PI band (filled area, light blue) — 95% 个体预测区间
+  traces.push({
+    type: 'scatter',
+    x: xGrid.concat(xGrid.slice().reverse()),
+    y: piUpper.concat(piLower.slice().reverse()),
+    fill: 'toself',
+    fillcolor: 'rgba(173,216,230,0.25)',
+    line: { width: 0 },
+    name: '95% 预测区间',
+    showlegend: true,
+    hoverinfo: 'skip'
+  });
+
+  // CI band (filled area) — 95% 置信区间
+  traces.push({
+    type: 'scatter',
+    x: xGrid.concat(xGrid.slice().reverse()),
+    y: ciUpper.concat(ciLower.slice().reverse()),
+    fill: 'toself',
+    fillcolor: 'rgba(44,62,80,0.12)',
+    line: { width: 0 },
+    name: '95% 置信区间',
+    showlegend: true,
+    hoverinfo: 'skip'
+  });
+
+  // Regression line
+  traces.push({
+    type: 'scatter',
+    x: [xMin, xMax],
+    y: [slope * xMin + intercept, slope * xMax + intercept],
+    mode: 'lines', name: '回归线',
+    line: { color: '#2c3e50', width: 1.5 },
+    hovertemplate: 'y = ' + slope.toFixed(3) + 'x + ' + intercept.toFixed(2) + '<extra></extra>'
+  });
+
+  // ---- 95% Density Ellipse (equivalent to SAS: ellipse x=pulse y=temp / type=predicted alpha=0.05) ----
+  // Prediction ellipse for bivariate normal: (x-μ)' S⁻¹ (x-μ) = χ²_{2, 1-α}
+  var chi2Crit = 5.9915; // χ²_{2, 0.95}
+  try { if (typeof jStat !== 'undefined' && jStat.chisquare) chi2Crit = jStat.chisquare.inv(0.95, 2); } catch(e) {}
+
+  // 2×2 covariance matrix
+  var covXX = ssxx / (n - 1);
+  var covYY = sstot / (n - 1);
+  var covXY = ssxy / (n - 1);
+
+  // Eigen-decomposition of 2×2 covariance (closed-form)
+  var traceCov = covXX + covYY;
+  var detCov = covXX * covYY - covXY * covXY;
+  var disc = Math.sqrt(Math.max(0, traceCov * traceCov - 4 * detCov));
+  var lambda1 = (traceCov + disc) / 2;  // larger eigenvalue
+  var lambda2 = (traceCov - disc) / 2;  // smaller eigenvalue
+
+  // Eigenvectors
+  var v1x, v1y;
+  if (Math.abs(covXY) > 1e-14) {
+    v1x = lambda1 - covYY;
+    v1y = covXY;
+    var norm1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    v1x /= norm1; v1y /= norm1;
+  } else {
+    // Axis-aligned
+    v1x = covXX >= covYY ? 1 : 0;
+    v1y = covXX >= covYY ? 0 : 1;
+  }
+  var v2x = -v1y, v2y = v1x;  // orthogonal direction (second eigenvector)
+
+  // Semi-axis lengths: sqrt(χ² × λ)
+  var a = Math.sqrt(chi2Crit * Math.max(0, lambda1));
+  var b = Math.sqrt(chi2Crit * Math.max(0, lambda2));
+
+  // Generate ellipse points (100-point smooth curve)
+  var nEllipse = 100;
+  var ellipseX = [], ellipseY = [];
+  for (var ei = 0; ei <= nEllipse; ei++) {
+    var angle = 2 * Math.PI * ei / nEllipse;
+    ellipseX.push(mx + a * Math.cos(angle) * v1x + b * Math.sin(angle) * v2x);
+    ellipseY.push(my + a * Math.cos(angle) * v1y + b * Math.sin(angle) * v2y);
+  }
+
+  traces.push({
+    type: 'scatter',
+    x: ellipseX, y: ellipseY,
+    mode: 'lines',
+    name: '95% 密度椭圆',
+    line: { color: '#c0392b', width: 1.2, dash: 'dashdot' },
+    hovertemplate: '95% 密度椭圆<extra></extra>',
+    showlegend: true
+  });
+
+  // ---- Compute 2D Mahalanobis distance for each point, flag ellipse outliers ----
+  var detC = covXX * covYY - covXY * covXY;
+  var invXX = covYY / detC, invXY = -covXY / detC, invYY = covXX / detC;
+  var ellipseOutliers = [];
+  for (var oi = 0; oi < n; oi++) {
+    var dx = xs[oi] - mx, dy = ys[oi] - my;
+    var md2_2d = dx * dx * invXX + 2 * dx * dy * invXY + dy * dy * invYY;
+    if (md2_2d > chi2Crit) {
+      ellipseOutliers.push({
+        USUBJID: ids[oi], SITEID: regSites[oi],
+        X: xs[oi], Y: ys[oi], MD2_2D: md2_2d,
+        X_Var: xVar, Y_Var: yVar
+      });
+    }
+  }
+  state._regEllipseOutliers = ellipseOutliers;
+  state._regOutlierCount = '(' + ellipseOutliers.length + '/' + n + ' 在椭圆外)';
+
+
+  safePlot('chart-regression', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { title: xVar + ' (原始值)' },
+    yaxis: { title: yVar + ' (原始值)' },
+    legend: { x: 1.02, y: 0.99, font: { size: 10 } },
+    margin: { l: 60, r: 20, t: 10, b: 50 }
+  });
+}
+
+function renderBoxPlot() {
+  const varIdx = parseInt(document.getElementById('boxplot-var').value) || 0;
+  if (!state.zMatrix.length || varIdx >= state.p) return;
+
+  const groups = {
+    '重度离群': [], '中度离群': [], '正常': [],
+    '中度趋同': [], '重度趋同': []
+  };
+
+  for (let i = 0; i < state.n; i++) {
+    const cls = state.classification[i];
+    if (groups[cls]) groups[cls].push(state.zMatrix[i][varIdx]);
+  }
+
+  const order = ['重度离群','中度离群','正常','中度趋同','重度趋同'];
+  const traces = [];
+  const colors = ['#c0392b','#d35400','#7f8c8d','#2980b9','#1a5276'];
+
+  for (let k = 0; k < order.length; k++) {
+    const cls = order[k];
+    if (groups[cls].length === 0) continue;
+    traces.push({
+      type: 'box', y: groups[cls], name: cls,
+      marker: { color: colors[k] },
+      boxpoints: 'outliers',
+      jitter: 0,
+      hovertemplate: 'Z值: %{y:.2f}<br>分类: ' + cls + '<extra></extra>'
+    });
+  }
+
+  // Add jittered scatter overlay for flagged subjects
+  for (let k = 0; k < order.length; k++) {
+    const cls = order[k];
+    if (cls === '正常' || groups[cls].length === 0) continue;
+    traces.push({
+      type: 'scatter',
+      y: groups[cls],
+      x: groups[cls].map(() => cls + ' '),
+      mode: 'markers',
+      marker: { color: colors[k], size: 4, opacity: 0.5 },
+      showlegend: false,
+      hovertemplate: 'Z值: %{y:.2f}<extra></extra>'
+    });
+  }
+
+  safePlot('chart-boxplot', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    yaxis: { title: '标准化值 (Z-score)', zeroline: true },
+    boxmode: 'group'
+  });
+}
+
+function renderScatter() {
+  const xIdx = parseInt(document.getElementById('scatter-x').value) || 0;
+  const yIdx = parseInt(document.getElementById('scatter-y').value) || (Math.min(1, state.p - 1));
+  if (!state.zMatrix.length) return;
+
+  const order = ['重度离群','中度离群','正常','中度趋同','重度趋同'];
+  const traces = [];
+
+  for (const cls of order) {
+    const xv = [], yv = [], ids = [], scSites = [], mds = [];
+    for (let i = 0; i < state.n; i++) {
+      if (state.classification[i] === cls) {
+        xv.push(state.zMatrix[i][xIdx]);
+        yv.push(state.zMatrix[i][yIdx]);
+        ids.push(state.wideTable[i].USUBJID);
+        scSites.push(state.wideTable[i].SITEID);
+        mds.push(state.mahalanobisDist[i].toFixed(2));
+      }
+    }
+    if (xv.length === 0) continue;
+    traces.push({
+      type: 'scatter', x: xv, y: yv, mode: 'markers', name: cls,
+      marker: { color: CLASS_COLORS[cls], size: cls === '正常' ? 5 : 8,
+        opacity: cls === '正常' ? 0.4 : 0.8,
+        line: cls !== '正常' ? { width: 1, color: '#333' } : undefined },
+      text: ids.map((id, k) => '<b>' + id + '</b><br>中心: ' + scSites[k] + '<br>MD: ' + mds[k]),
+      hovertemplate: '%{text}<br>X: %{x:.2f}<br>Y: %{y:.2f}<extra></extra>'
+    });
+  }
+
+  safePlot('chart-scatter', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { title: state.featureNames[xIdx].replace(/^[A-Z]_/, '') + ' (Z)' },
+    yaxis: { title: state.featureNames[yIdx].replace(/^[A-Z]_/, '') + ' (Z)' }
+  });
+}
+
+function renderDomainComparison() {
+  const domainNames = Object.keys(state.domainResults);
+  if (domainNames.length === 0) return;
+
+  const traces = [];
+  const order = ['重度离群','中度离群','中度趋同','重度趋同'];
+  const colors = ['#c0392b','#d35400','#2980b9','#1a5276'];
+
+  for (let k = 0; k < order.length; k++) {
+    traces.push({
+      type: 'bar', x: domainNames, y: domainNames.map(d => state.domainResults[d].counts[order[k]] || 0),
+      name: order[k], marker: { color: colors[k] },
+      hovertemplate: '%{x}<br>' + order[k] + ': %{y}人<extra></extra>'
+    });
+  }
+
+  safePlot('chart-domain-comp', traces, {
+    ...PLOTLY_LAYOUT_BASE,
+    barmode: 'stack',
+    xaxis: { tickangle: -30 },
+    yaxis: { title: '受试者数' },
+    legend: { x: 0.01, y: 0.99 }
+  }, function(gd) {
+    if (state._domainCompClickHandler) gd.removeListener('plotly_click', state._domainCompClickHandler);
+    state._domainCompClickHandler = function(data) {
+      if (!data.points || !data.points.length) return;
+      var domainName = data.points[0].x;
+      var clsIdx = data.points[0].curveNumber;
+      var clsNames = order;
+      var clickedCls = clsNames[clsIdx];
+
+      // Set filter dropdowns
+      var domainFilter = document.getElementById('filter-domain');
+      if (domainFilter) {
+        for (var o = 0; o < domainFilter.options.length; o++) {
+          if (domainFilter.options[o].value === domainName) {
+            domainFilter.selectedIndex = o; break;
+          }
+        }
+      }
+      var classFilter = document.getElementById('filter-class');
+      if (classFilter) {
+        for (var o = 0; o < classFilter.options.length; o++) {
+          if (classFilter.options[o].value === clickedCls) {
+            classFilter.selectedIndex = o; break;
+          }
+        }
+      }
+      renderActionTable();
+    };
+    gd.on('plotly_click', state._domainCompClickHandler);
+  });
+}
+
+// =====================================================================
+// SECTION G: UI CONTROLLER
+// =====================================================================
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function switchTab(step) {
+  state.currentTab = step;
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', i + 1 === step));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-step' + step);
+  if (panel) panel.classList.add('active');
+
+  // Hide empty state
+  document.getElementById('empty-state').style.display = 'none';
+
+  // Render appropriate content
+  if (step === 1) { updatePreviewTable(); if (state.featureNames.length > 0) renderMissingChart(); }
+  if (step === 2 && Object.keys(state.domainResults).length > 0) {
+    // renderSummaryText();
+    renderDomainComparison();
+    renderActionTable();
+  }
+  if (step === 3 && state.mahalanobisDist.length > 0) {
+    if (state.currentLayer === 'domain') {
+      if (state.currentDomain && state.domainResults[state.currentDomain]) {
+        const dd = getDomainClassData(state.currentDomain);
+        if (dd) {
+          renderMdScatterDomain(state.currentDomain);
+          renderClassPie(dd);
+          renderMdBoxPlot(dd.mdArr, ' — ' + (state.currentDomain||''));
+        }
+      }
+    } else {
+      renderMdScatter();
+      renderClassPie(getGlobalClassData());
+      renderMdBoxPlot(state.mahalanobisDist, '');
+    }
+  }
+  if (step === 4 && state.contributionMatrix.length > 0) {
+    renderHeatmap();
+    populateSubjectSelector();
+    updatePareto();
+    renderContribBoxPlot(state._contribBoxVar || null);
+    populateRegressionSelectors();
+    renderRegression();
+  }
+}
+
+function switchLayer(layer) {
+  state.currentLayer = layer;
+  document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.layer-btn').forEach(b => {
+    const l = b.textContent.includes('全局') ? 'global' : 'domain';
+    if (l === layer) b.classList.add('active');
+  });
+
+  // Show/hide domain selector
+  document.getElementById('domain-selector-wrap').style.display = layer === 'domain' ? 'inline' : 'none';
+
+  if (layer === 'domain') {
+    populateDomainSelector();
+    switchDomain();
+  }
+
+  // Refresh current tab
+  switchTab(state.currentTab);
+}
+
+function switchDomain() {
+  const sel = document.getElementById('domain-selector').value;
+  state.currentDomain = sel;
+  renderDomainComparison();
+  const dr = state.domainResults[sel];
+  if (!dr) return;
+  if (state.currentTab === 3) {
+    const dd = getDomainClassData(sel);
+    if (dd) {
+      renderMdScatterDomain(sel);
+      renderClassPie(dd);
+      renderMdBoxPlot(dd.mdArr, ' — ' + (state.currentDomain||''));
+    }
+  }
+  if (state.currentTab === 4) {
+    renderHeatmap();
+    populateSubjectSelector();
+    updatePareto();
+    renderContribBoxPlot(state._contribBoxVar || null);
+    populateRegressionSelectors();
+    renderRegression();
+  }
+}
+
+function updatePreviewTable() {
+  if (state.wideTable.length === 0) {
+    document.getElementById('preview-table').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">请先运行分析</div>';
+    return;
+  }
+  const rows = state.wideTable.slice(0, 10);
+  const cols = ['USUBJID', 'SITEID', ...state.featureNames.slice(0, 15)];
+  let html = '<table class="data-table"><thead><tr>';
+  for (const c of cols) html += `<th>${c}</th>`;
+  html += '<th>...</th></tr></thead><tbody>';
+  for (const row of rows) {
+    html += '<tr>';
+    for (const c of cols) {
+      const v = row[c];
+      html += `<td>${v !== null && v !== undefined ? (typeof v === 'number' ? v.toFixed(2) : v) : '·'}</td>`;
+    }
+    html += '<td>...</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('preview-table').innerHTML = html;
+}
+
+function populateSubjectSelector() {
+  const sel = document.getElementById('subject-pareto-select');
+  sel.innerHTML = '';
+  const clsArr = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].classification : state.classification;
+  const mdArr = (state.currentLayer === 'domain' && state.currentDomain && state.domainResults[state.currentDomain])
+    ? state.domainResults[state.currentDomain].MD : state.mahalanobisDist;
+  for (let i = 0; i < state.n; i++) {
+    if (clsArr[i] !== '正常') {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${state.wideTable[i].USUBJID} — ${clsArr[i]} (MD=${mdArr[i].toFixed(2)})`;
+      sel.appendChild(opt);
+    }
+  }
+  // Default to first
+  if (sel.options.length > 0) sel.selectedIndex = 0;
+}
+
+function updatePareto() {
+  const sel = document.getElementById('subject-pareto-select');
+  const idx = sel.value !== '' ? parseInt(sel.value) : null;
+  renderPareto(idx);
+  if (state._contribBoxVar) renderContribBoxPlot(state._contribBoxVar);
+  if (idx !== null && idx >= 0) setRegressionTop2(idx); else renderRegression(-1);
+}
+
+function populateVariableSelectors() {
+  const names = state.featureNames.map(f => f.replace(/^[A-Z]_/, ''));
+  ['boxplot-var', 'scatter-x', 'scatter-y'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '';
+    names.forEach((n, j) => {
+      const opt = document.createElement('option');
+      opt.value = j;
+      opt.textContent = n;
+      sel.appendChild(opt);
+    });
+    if (id === 'scatter-y' && names.length > 1) sel.selectedIndex = 1;
+  });
+}
+
+function updateBoxPlot() { renderBoxPlot(); }
+function updateScatter() { renderScatter(); }
+
+function renderSummaryText() {
+  const flagged = state.flag.filter(f => f).length;
+  const severeOut = state.classification.filter(c => c === '重度离群').length;
+  const modOut = state.classification.filter(c => c === '中度离群').length;
+  const severeIn = state.classification.filter(c => c === '重度趋同').length;
+  const modIn = state.classification.filter(c => c === '中度趋同').length;
+  const total = state.n;
+
+  document.getElementById('summary-text').innerHTML = `
+    <strong>Analysis Summary</strong><br>
+    总受试者: <strong>${total}</strong> |
+    异常受试者: <strong>${flagged}</strong> (${(flagged/total*100).toFixed(1)}%)<br>
+    •  重度离群: <strong>${severeOut}</strong> |
+    •  中度离群: <strong>${modOut}</strong> |
+    •  重度趋同: <strong>${severeIn}</strong> |
+    •  中度趋同: <strong>${modIn}</strong><br>
+    阈值: U₉₉.₇=${state.U_997.toFixed(2)} | U₉₅=${state.U_95.toFixed(2)} | L₉₅=${state.L_95.toFixed(2)} | L₉₉.₇=${state.L_997.toFixed(2)}
+  `;
+}
+
+function navigateToSubjectContribution(subjIdx, domainName) {
+  // Switch to the appropriate layer
+  if (domainName && domainName !== 'all') {
+    state.currentLayer = 'domain';
+    document.querySelectorAll('.layer-btn').forEach(function(b) {
+      var l = b.textContent.indexOf('全局') >= 0 ? 'global' : 'domain';
+      b.classList.toggle('active', l === 'domain');
+    });
+    document.getElementById('domain-selector-wrap').style.display = 'inline';
+    populateDomainSelector();
+    var domainSel = document.getElementById('domain-selector');
+    if (domainSel) {
+      for (var o = 0; o < domainSel.options.length; o++) {
+        if (domainSel.options[o].value === domainName) {
+          domainSel.selectedIndex = o; break;
+        }
+      }
+    }
+    state.currentDomain = domainName;
+  } else {
+    state.currentLayer = 'global';
+    document.querySelectorAll('.layer-btn').forEach(function(b) {
+      var l = b.textContent.indexOf('全局') >= 0 ? 'global' : 'domain';
+      b.classList.toggle('active', l === 'global');
+    });
+    document.getElementById('domain-selector-wrap').style.display = 'none';
+    state.currentDomain = null;
+  }
+
+  // Switch to Tab 4 (Contribution Attribution)
+  switchTab(4);
+
+  // Restore the subject selection after switchTab re-renders
+  var paretoSel = document.getElementById('subject-pareto-select');
+  if (paretoSel) {
+    for (var o2 = 0; o2 < paretoSel.options.length; o2++) {
+      if (parseInt(paretoSel.options[o2].value) === subjIdx) {
+        paretoSel.selectedIndex = o2; break;
+      }
+    }
+  }
+  updatePareto();
+}
+
+function renderActionTable() {
+  const domainNames = Object.keys(state.domainResults);
+  if (domainNames.length === 0) {
+    document.getElementById('action-table').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">请先运行分析</div>';
+    return;
+  }
+
+  // Populate domain filter
+  const domainFilter = document.getElementById('filter-domain');
+  if (domainFilter && domainFilter.options.length <= 1) {
+    domainNames.forEach(dn => {
+      const opt = document.createElement('option');
+      opt.value = dn; opt.textContent = dn;
+      domainFilter.appendChild(opt);
+    });
+  }
+
+  const filterText = (document.getElementById('filter-subject').value || '').toUpperCase();
+  const filterClass = document.getElementById('filter-class').value;
+  const filterDomain = document.getElementById('filter-domain').value;
+
+  const clsMap = {
+    '重度离群': 'badge-severe-outlier', '中度离群': 'badge-moderate-outlier',
+    '中度趋同': 'badge-moderate-inlier', '重度趋同': 'badge-severe-inlier'
+  };
+  const priorityMap = { '重度离群': 'High', '中度离群': 'Med-High', '重度趋同': 'Medium', '中度趋同': 'Low' };
+
+  // Build rows: one per flagged subject per domain
+  const rows = [];
+  for (const domainName of domainNames) {
+    if (filterDomain !== 'all' && filterDomain !== domainName) continue;
+    const dr = state.domainResults[domainName];
+    if (!dr || !dr.classification) continue;
+    const conMatrix = dr.contributionMatrix;
+    const features = dr.features;
+
+    for (let i = 0; i < state.n; i++) {
+      const cls = dr.classification[i];
+      if (cls === '正常') continue;
+      if (filterClass !== 'all' && filterClass !== cls) continue;
+      const subjId = state.wideTable[i].USUBJID;
+      if (filterText && !subjId.includes(filterText)) continue;
+
+      // Find top contributing variable
+      let topVar = '—', topVal = '—', maxContrib = 0;
+      if (conMatrix && conMatrix[i]) {
+        let maxV = -1, maxJ = -1;
+        for (let j = 0; j < conMatrix[i].length; j++) {
+          if (conMatrix[i][j] > maxV) { maxV = conMatrix[i][j]; maxJ = j; }
+        }
+        if (maxJ >= 0) {
+          maxContrib = maxV;
+          topVar = features[maxJ].replace(/^[A-Z]_/, '');
+          const rawVal = state.wideTable[i][features[maxJ]];
+          topVal = (rawVal != null && !isNaN(rawVal)) ? rawVal.toFixed(2) : '—';
+        }
+      }
+
+      const actionKey = subjId + '|' + domainName;
+      const action = state.actions[actionKey] || { disposition: '', notes: '' };
+
+      rows.push({
+        priority: priorityMap[cls] || '—',
+        domain: domainName,
+        SITEID: state.wideTable[i].SITEID,
+        USUBJID: subjId,
+        idx: i,
+        topVar, topVal, cls, maxContrib,
+        disposition: action.disposition,
+        notes: action.notes,
+        actionKey
+      });
+    }
+  }
+
+  // Sort by USUBJID, then by maxContrib descending
+  rows.sort((a, b) => a.USUBJID.localeCompare(b.USUBJID) || b.maxContrib - a.maxContrib);
+
+  let html = `<table class="data-table"><thead><tr>
+    <th>优先级</th><th>域</th><th>SITEID</th><th>USUBJID</th>
+    <th>最大贡献检查项</th><th>检查值</th><th>处置</th><th>备注</th>
+  </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    html += `<tr>
+      <td>${r.priority}</td>
+      <td style="font-size:11px">${r.domain}</td>
+      <td>${r.SITEID}</td>
+      <td><strong class="subject-link" onclick="navigateToSubjectContribution(${r.idx},'${r.domain.replace(/'/g,"\\'")}')" title="点击跳转到贡献图">${r.USUBJID}</strong></td>
+      <td>${r.topVar}</td>
+      <td>${r.topVal}</td>
+      <td>
+        <select onchange="updateAction('${r.actionKey}','disposition',this.value)" style="font-size:11px;padding:2px">
+          <option value="">—</option>
+          <option value="自然变异" ${r.disposition==='自然变异'?'selected':''}>自然变异</option>
+          <option value="数据错误" ${r.disposition==='数据错误'?'selected':''}>数据错误</option>
+          <option value="方案偏离" ${r.disposition==='方案偏离'?'selected':''}>方案偏离</option>
+          <option value="无法解释" ${r.disposition==='无法解释'?'selected':''}>无法解释</option>
+        </select>
+      </td>
+      <td>
+        <input type="text" value="${escapeHtml(r.notes)}"
+          onchange="updateAction('${r.actionKey}','notes',this.value)"
+          style="font-size:11px;width:100px;padding:2px;border:1px solid var(--border);border-radius:3px"
+          placeholder="备注...">
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('action-table').innerHTML = rows.length ? html : '<div style="padding:20px;text-align:center;color:var(--text-secondary)">无匹配结果</div>';
+}
+
+function getTop3Contributors(idx) {
+  const row = state.contributionMatrix[idx];
+  if (!row) return '—';
+  const pairs = state.featureNames.map((f, j) => ({
+    name: f.replace(/^[A-Z]_/, ''), value: row[j]
+  }));
+  pairs.sort((a, b) => b.value - a.value);
+  return pairs.slice(0, 3).map(p => `${p.name}(${(p.value*100).toFixed(0)}%)`).join(', ');
+}
+
+function updateAction(usubjid, field, value) {
+  if (!state.actions[usubjid]) state.actions[usubjid] = { disposition: '', notes: '' };
+  state.actions[usubjid][field] = value;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// =====================================================================
+// MAIN ANALYSIS PIPELINE
+// =====================================================================
+
+// Yield to browser: allows DOM updates (loading overlay) to render
+function yieldToBrowser(ms = 15) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function runAnalysis() {
+  const t0 = performance.now();
+  showLoading('正在处理数据...');
+
+  try {
+    await yieldToBrowser();
+
+    // Read threshold settings
+    CONFIG.alpha_mod = parseFloat(document.getElementById('alpha-mod').value) || 0.025;
+    CONFIG.alpha_severe = parseFloat(document.getElementById('alpha-severe').value) || 0.0015;
+
+    // Step 1: Data processing
+    const ftype = document.getElementById('feature-type').value;
+    const prefixes = [ftype];
+
+    console.time('longToWide');
+    longToWide(prefixes);
+    console.timeEnd('longToWide');
+
+    if (!selectFeatures()) { hideLoading(); setStatus('error', '变量选择无效'); return; }
+
+    console.time('impute');
+    imputeAndStandardize();
+    console.timeEnd('impute');
+
+    showLoading('正在计算马氏距离...');
+    await yieldToBrowser();
+
+    // Step 2: Mahalanobis + classification
+    console.time('mahalanobis');
+    computeMahalanobis();
+    console.timeEnd('mahalanobis');
+
+    console.time('thresholds');
+    computeThresholdsAndClassify();
+    console.timeEnd('thresholds');
+
+    showLoading('正在进行贡献度分解...');
+    await yieldToBrowser();
+
+    // Step 3: Contribution decomposition
+    console.time('decompose');
+    decomposeContributions();
+    console.timeEnd('decompose');
+
+    // Domain analysis
+    console.time('domainAnalysis');
+    runDomainAnalysis();
+    console.timeEnd('domainAnalysis');
+
+    const t1 = performance.now();
+    const elapsed = ((t1 - t0) / 1000).toFixed(2);
+
+    // Update UI
+    const flagged = state.flag.filter(f => f).length;
+    const sevOut = state.classification.filter(c => c === '重度离群').length;
+    const modOut = state.classification.filter(c => c === '中度离群').length;
+    const sevIn = state.classification.filter(c => c === '重度趋同').length;
+    const modIn = state.classification.filter(c => c === '中度趋同').length;
+
+    setStatus('done', '分析完成');
+    document.getElementById('stat-subjects').textContent = `受试者: ${state.n}`;
+    document.getElementById('stat-vars').textContent = `变量: ${state.p}`;
+    document.getElementById('stat-outliers').textContent = `异常: ${flagged} (• ${sevOut} • ${modOut} • ${sevIn} • ${modIn})`;
+    document.getElementById('stat-time').textContent = `耗时: ${elapsed}s`;
+
+    document.getElementById('header-badge').style.display = 'inline';
+    document.getElementById('empty-state').style.display = 'none';
+
+    hideLoading();
+    await yieldToBrowser();
+
+    switchTab(state.currentTab);
+    updateSidebarSummary();
+
+  } catch (err) {
+    console.error('Analysis error:', err);
+    hideLoading();
+    setStatus('error', '分析出错: ' + err.message);
+    alert('分析过程中出错：' + err.message + '\n请检查浏览器控制台了解详情。');
+  }
+}
+
+function resetAll() {
+  state.wideTable = []; state.featureNames = []; state.discardedVars = [];
+  state.missingReport = {}; state.zMatrix = [];
+  state.mahalanobisDist = []; state.mahalanobisDistSq = [];
+  state.classification = []; state.flag = [];
+  state.contributionMatrix = []; state.contributionSquared = [];
+  state.domainResults = {};
+  state.actions = {};
+  state._customVars = [];
+  state.n = 0; state.p = 0;
+  renderCustomChips();
+
+  hideLoading();
+  document.getElementById('header-badge').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('preview-table').innerHTML = '';
+  document.getElementById('action-table').innerHTML = '';
+  document.getElementById('stat-subjects').textContent = '';
+  document.getElementById('stat-vars').textContent = '';
+  document.getElementById('stat-outliers').textContent = '';
+  document.getElementById('stat-time').textContent = '';
+
+  setStatus('ready', '已重置');
+}
+
+function setStatus(state, msg) {
+  const el = document.getElementById('stat-status');
+  const colors = { ready: 'var(--text-secondary)', running: '#2c3e50', done: '#1e8449', error: '#c0392b' };
+  el.innerHTML = `<span class="dot" style="background:${colors[state]||colors.ready}"></span>${msg}`;
+}
+
+function updateSidebarSummary() {
+  const div = document.getElementById('data-summary');
+  if (state.rawData.length === 0) {
+    div.innerHTML = '<div class="info-row"><span>状态</span><span class="val" style="color:var(--text-secondary)">未加载</span></div>';
+    return;
+  }
+  let html = `
+    <div class="info-row"><span>记录数</span><span class="val">${state.rawData.length.toLocaleString()}</span></div>
+    <div class="info-row"><span>受试者</span><span class="val">${state.subjectIds.length}</span></div>
+    <div class="info-row"><span>中心</span><span class="val">${state.siteList.length}</span></div>
+    <div class="info-row"><span>参数</span><span class="val">${state.paramList.length}</span></div>
+  `;
+  if (state.n > 0) {
+    const flagged = state.flag.filter(f => f).length;
+    html += `<div class="info-row"><span>分析: n×p</span><span class="val">${state.n}×${state.p}</span></div>`;
+    html += `<div class="info-row"><span>异常数</span><span class="val" style="color:${flagged>0?'#c0392b':'#1e8449'}">${flagged}</span></div>`;
+  }
+  div.innerHTML = html;
+}
+
+function buildDomainGroups() {
+  const container = document.getElementById('domain-groups');
+  container.innerHTML = '';
+  const selectAll = document.getElementById('select-all');
+
+  const domainMap = state._domainMap || {};
+  for (const [domainName, params] of Object.entries(domainMap)) {
+    const group = document.createElement('div');
+    group.className = 'domain-group';
+
+    const header = document.createElement('div');
+    header.className = 'domain-header';
+    header.innerHTML = `<span class="arrow">▸ </span> ${domainName} (${params.length})`;
+    header.onclick = function() {
+      const vars = this.nextElementSibling;
+      const arrow = this.querySelector('.arrow');
+      const opening = vars.style.display === 'none';
+      vars.style.display = opening ? 'flex' : 'none';
+      arrow.classList.toggle('open', opening);
+    };
+
+    const varsDiv = document.createElement('div');
+    varsDiv.className = 'domain-vars';
+    varsDiv.style.display = 'none';
+
+    for (const p of params) {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'var-checkbox'; cb.value = p; cb.checked = true;
+      cb.onchange = function() {
+        const all = document.querySelectorAll('.var-checkbox');
+        const allChecked = [...all].every(c => c.checked);
+        document.getElementById('select-all').checked = allChecked;
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(p));
+      varsDiv.appendChild(label);
+    }
+
+    group.appendChild(header);
+    group.appendChild(varsDiv);
+    container.appendChild(group);
+  }
+
+  // Select-all handler
+  document.getElementById('select-all').onchange = function() {
+    const checked = this.checked;
+    document.querySelectorAll('.var-checkbox').forEach(cb => cb.checked = checked);
+  };
+}
+
+function populateDomainSelector() {
+  const sel = document.getElementById('domain-selector');
+  sel.innerHTML = '';
+  const domains = Object.keys(state.domainResults);
+  if (domains.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = '请先运行分析';
+    sel.appendChild(opt);
+    return;
+  }
+  domains.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d + ` (${state.domainResults[d].counts['重度离群']+state.domainResults[d].counts['中度离群']}异常)`;
+    sel.appendChild(opt);
+  });
+}
+
+function populateCustomVarList() {
+  const dl = document.getElementById('custom-var-list');
+  if (!dl || !state.paramList.length) return;
+  dl.innerHTML = '';
+  state.paramList.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p;
+    dl.appendChild(opt);
+  });
+}
+
+function addCustomVar() {
+  var inp = document.getElementById('custom-var-input');
+  var val = (inp.value || '').trim();
+  if (!val) return;
+  if (state.paramList.indexOf(val) < 0) { alert('变量不存在: ' + val); return; }
+  if (state._customVars.indexOf(val) >= 0) { inp.value = ''; return; } // already added
+  state._customVars.push(val);
+  inp.value = '';
+  renderCustomChips();
+}
+
+function removeCustomVar(param) {
+  var idx = state._customVars.indexOf(param);
+  if (idx >= 0) state._customVars.splice(idx, 1);
+  renderCustomChips();
+}
+
+function renderCustomChips() {
+  var container = document.getElementById('custom-var-chips');
+  var countEl = document.getElementById('custom-var-count');
+  if (!container) return;
+  container.innerHTML = '';
+  state._customVars.forEach(function(p) {
+    var chip = document.createElement('span');
+    chip.className = 'custom-chip';
+    chip.innerHTML = p + '<span class=remove onclick=\"removeCustomVar(\\\'' + p + '\\\')\">×</span>';
+    container.appendChild(chip);
+  });
+  var n = state._customVars.length;
+  countEl.textContent = n > 0 ? '已选 ' + n + ' 个变量' + (n < 2 ? ' (需 ≥2 个)' : '') : '';
+}
+
+function exportEllipseOutliers() {
+  var outliers = state._regEllipseOutliers;
+  if (!outliers || outliers.length === 0) {
+    alert('没有椭圆外的点，或请先在 Bivariate Regression 中选择 X 和 Y 变量。');
+    return;
+  }
+  var xVar = outliers[0].X_Var, yVar = outliers[0].Y_Var;
+  var csv = 'USUBJID,SITEID,' + xVar + ',' + yVar + ',MD2_2D,Chi2_Crit_95\n';
+  for (var i = 0; i < outliers.length; i++) {
+    var o = outliers[i];
+    csv += o.USUBJID + ',' + o.SITEID + ',' + o.X.toFixed(4) + ',' + o.Y.toFixed(4) + ',' + o.MD2_2D.toFixed(4) + ',5.9915\n';
+  }
+  var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'ellipse_outliers_' + xVar + '_vs_' + yVar + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportReport() {
+  if (state.classification.length === 0) {
+    alert('请先运行分析！');
+    return;
+  }
+
+  // Generate CSV of flagged subjects
+  const lines = [];
+  lines.push('USUBJID,SITEID,MD,MD2,分类,Top3贡献变量,处置,备注');
+
+  for (let i = 0; i < state.n; i++) {
+    if (!state.flag[i]) continue;
+    const row = state.wideTable[i];
+    const action = state.actions[row.USUBJID] || { disposition: '', notes: '' };
+    const top3 = getTop3Contributors(i);
+    lines.push([
+      '"' + row.USUBJID + '"', '"' + row.SITEID + '"',
+      state.mahalanobisDist[i].toFixed(3),
+      state.mahalanobisDistSq[i].toFixed(3),
+      state.classification[i],
+      `"${top3}"`,
+      action.disposition,
+      `"${action.notes}"`
+    ].join(','));
+  }
+
+  const csv = lines.join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '异常受试者报告.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setStatus('done', '报告已导出');
+}
+
+// =====================================================================
+// SECTION H: INITIALIZATION
+// =====================================================================
+
+function setupFileUpload() {
+  const zone = document.getElementById('upload-zone');
+  const input = document.getElementById('file-input');
+
+  // Click to browse
+  zone.addEventListener('click', () => input.click());
+
+  // File selected via browse
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      loadData(file);
+      // Reset analysis state for new file
+      resetAll();
+    }
+  });
+
+  // Drag and drop
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.style.borderColor = 'var(--primary)';
+    zone.style.background = 'var(--primary-light)';
+  });
+  zone.addEventListener('dragleave', () => {
+    zone.style.borderColor = '#ccc';
+    zone.style.background = '';
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.style.borderColor = '#ccc';
+    zone.style.background = '';
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.json')) {
+      loadData(file);
+      resetAll();
+    } else if (file) {
+      alert('请上传 .json 格式文件');
+    }
+  });
+}
+
+// Activate upload + run button
+setupFileUpload();
+document.getElementById('btn-run').disabled = false;
+document.getElementById('btn-run').textContent = 'Run Analysis';
+setStatus('ready','请上传数据文件');
+
+/* 自动加载项目数据（支持 ?project=A 参数） */
+(function autoLoad(){
+  var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
+  fetch('./data/' + project + '/advs.json')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(text){
+      var file = new File([text], 'advs.json', {type:'application/json'});
+      loadData(file);
+    })
+    .catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
+})();
+</script>
+
+</body>
+</html>

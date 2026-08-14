@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>临床监测工具集 · CONTROL PANEL</title>
+<style>
+  /* ============================================================
+     Industrial Skeuomorphism — 工业拟物控制面板
+     设计 token 对应：chassis / panel / muted / accent / shadow 系统
+     ============================================================ */
+  :root {
+    /* 材料色板（严格浅色模式） */
+    --chassis: #e0e5ec;          /* Level 0 底座 */
+    --panel:   #f0f2f5;          /* +1 面板 */
+    --muted:   #d1d9e6;          /* 凹陷 */
+    --text:    #2d3436;          /* 主文字 */
+    --text-muted: #4a5568;       /* 标签 */
+    --accent:  #ff4757;          /* 安全橙 / Braun 红 */
+    --accent-fg: #ffffff;
+    --shadow-dark:  #babecc;
+    --shadow-light: #ffffff;
+    --shadow-deep:  #a3b1c6;
+    --ok:      #22c55e;          /* online 绿 */
+    --warn:    #f59e0b;          /* standby 黄 */
+
+    /* 新拟态阴影系统 */
+    --shadow-card:     8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+    --shadow-floating: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light), inset 1px 1px 0 rgba(255,255,255,0.5);
+    --shadow-pressed:  inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+    --shadow-recessed: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+
+    /* 机械缓动 */
+    --ease-mech: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* 字体 */
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", "Roboto Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--chassis);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    /* 塑料微纹理噪声 */
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.28;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/></svg>");
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 48px 24px 72px;
+  }
+
+  /* ============ 顶部状态条 ============ */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    background: var(--chassis);
+    box-shadow: var(--shadow-recessed);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .statusbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+  .statusbar .led {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 10px rgba(34,197,94,0.8);
+    animation: ledPulse 2s ease-in-out infinite;
+  }
+  @keyframes ledPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  /* ============ Hero ============ */
+  header { margin-bottom: 48px; }
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-eyebrow::before {
+    content: "";
+    width: 22px; height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(255,71,87,0.6);
+  }
+  header h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    text-shadow: 0 1px 0 var(--shadow-light);   /* 浮雕 */
+    margin-bottom: 14px;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    max-width: 56ch;
+  }
+
+  /* ============ 卡片网格 ============ */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 28px;
+  }
+
+  a.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 26px 26px 22px;
+    border-radius: 16px;                    /* lg */
+    background: var(--chassis);
+    box-shadow: var(--shadow-card);
+    text-decoration: none;
+    color: var(--text);
+    transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+  }
+  a.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-floating);
+  }
+  a.card:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-pressed);
+  }
+
+  /* 四角螺丝 */
+  .screws i {
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 40% 35%, rgba(255,255,255,0.85) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 50% 50%, #b3b9c6 0 4px, #c9cfdb 4.5px 7px);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.6);
+  }
+  .screws i:nth-child(1) { top: 10px; left: 10px; }
+  .screws i:nth-child(2) { top: 10px; right: 10px; }
+  .screws i:nth-child(3) { bottom: 10px; left: 10px; }
+  .screws i:nth-child(4) { bottom: 10px; right: 10px; }
+
+  /* 右上角通风槽 */
+  .vents {
+    position: absolute;
+    top: 14px; right: 40px;
+    display: flex;
+    gap: 3px;
+  }
+  .vents i {
+    width: 3px; height: 18px;
+    border-radius: 3px;
+    background: var(--muted);
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.18);
+  }
+
+  /* 模块编号（左上，等宽标签） */
+  .modno {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    padding-left: 2px;
+  }
+
+  /* 图标凹陷座 */
+  .icon-housing {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--chassis);
+    box-shadow: var(--shadow-floating);
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .icon-housing svg { display: block; }
+
+  .card-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .card-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  /* 底部状态行 */
+  .card-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(163,177,198,0.35);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .card-foot .led {
+    width: 9px; height: 9px; border-radius: 50%;
+    flex: 0 0 auto;
+  }
+  .led-on { background: var(--ok); box-shadow: 0 0 8px rgba(34,197,94,0.9); }
+  .led-standby { background: var(--warn); box-shadow: 0 0 8px rgba(245,158,11,0.9); }
+
+  /* ============ 底部 ============ */
+  footer {
+    margin-top: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  footer .led { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(34,197,94,0.8); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 32px 16px 56px; }
+    .statusbar { font-size: 10px; }
+    .grid { grid-template-columns: 1fr; gap: 22px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="statusbar">
+      <span class="brand"><span class="led"></span>CLINICAL MONITORING SUITE</span>
+      <span>SYSTEM OPERATIONAL · v1.0</span>
+    </div>
+
+    <header>
+      <div class="hero-eyebrow">RBQM Control Panel</div>
+      <h1>临床监测工具集</h1>
+      <p>统一入口 · 数据分项目管理。点击任一模块进入对应监测工具，数据按项目自动加载。</p>
+    </header>
+
+    <div class="grid">
+
+      <a class="card" href="kri/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-01</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8.5" stroke-dasharray="2.2 2.6"/>
+          </svg>
+        </div>
+        <div class="card-name">KRI 红绿灯监控</div>
+        <div class="card-desc">关键风险指标红绿灯图、中心问题情况、指标趋势与下钻</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 关键风险指标</div>
+      </a>
+
+      <a class="card" href="event-count/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-02</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>
+          </svg>
+        </div>
+        <div class="card-name">事件数监测</div>
+        <div class="card-desc">事件发生时间与数量监测分析</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 事件监测</div>
+      </a>
+
+      <a class="card" href="baseline/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-03</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/>
+          </svg>
+        </div>
+        <div class="card-name">基线特征监测</div>
+        <div class="card-desc">受试者基线特征分布与比较</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 基线特征</div>
+      </a>
+
+      <a class="card" href="multivariate/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-04</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3l18 18M12 12m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0"/>
+          </svg>
+        </div>
+        <div class="card-name">多元内值与离群监测</div>
+        <div class="card-desc">多元异常值、内值与离群点监测</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 异常值</div>
+      </a>
+
+      <a class="card" href="safety-ae/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-05</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>
+          </svg>
+        </div>
+        <div class="card-name">安全性监测 AE</div>
+        <div class="card-desc">不良事件（AE）安全性监测分析</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 不良事件</div>
+      </a>
+
+      <a class="card" href="safety-lb/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-06</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6M10 3v6l-4.5 9a2 2 0 0 0 1.8 3h9.4a2 2 0 0 0 1.8-3L14 9V3"/>
+          </svg>
+        </div>
+        <div class="card-name">安全性监测 LB</div>
+        <div class="card-desc">实验室检查安全性监测（肝脏 / 肾功能 / QTc / CTCAE）</div>
+        <div class="card-foot"><span class="led led-standby"></span>STANDBY · 待数据接入</div>
+      </a>
+
+      <a class="card" href="data-anomaly/">
+        <div class="screws"><i></i><i></i><i></i><i></i></div>
+        <div class="vents"><i></i><i></i><i></i></div>
+        <div class="modno">MOD-07</div>
+        <div class="icon-housing">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0"/><path d="M12 12l4-4"/>
+          </svg>
+        </div>
+        <div class="card-name">数据异常行为监测</div>
+        <div class="card-desc">数据异常行为监查</div>
+        <div class="card-foot"><span class="led led-on"></span>ONLINE · 数据监查</div>
+      </a>
+
+    </div>
+
+    <footer>
+      <span class="led"></span>
+      <span>ALL SYSTEMS ONLINE · 当前项目代号：A</span>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>临床安全性数据中心化监查系统</title>
+    <script src="lib/echarts.min.js"></script>
+    <script src="lib/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #eef3f8;
+            --bg-panel: #ffffff;
+            --ink-main: #17212b;
+            --ink-sub: #5c6978;
+            --border-line: rgba(87, 103, 122, 0.18);
+            --primary: #2F6DB3;
+            --primary-dark: #1e4a7a;
+            --danger: #8F1D14;
+            --danger-soft: rgba(143, 29, 20, 0.08);
+            --warning: #d97706;
+            --shadow-sm: 0 2px 6px rgba(24, 39, 58, 0.04);
+            --radius-box: 8px;
+            --highlight-glow: rgba(143, 29, 20, 0.45);
+            --improve-color: #10b981;
+            --improve-soft: rgba(16, 185, 129, 0.08);
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: "Microsoft YaHei", sans-serif; background: var(--bg-body); color: var(--ink-main); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 290px; flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--border-line); display: flex; flex-direction: column; z-index: 10; box-shadow: var(--shadow-sm); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border-line); background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%); }
+        .sidebar-header h1 { margin: 0; font-size: 16px; color: var(--primary-dark); font-weight: 700; }
+        .sidebar-header p { margin: 6px 0 0 0; font-size: 11px; color: var(--ink-sub); }
+        .nav-menu { padding: 15px 10px; display: flex; flex-direction: column; gap: 5px; border-bottom: 1px solid var(--border-line); }
+        .nav-item { padding: 12px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-sub); transition: 0.2s; display: flex; align-items: center; }
+        .nav-item:hover { background: #f0f4f8; color: var(--primary-dark); }
+        .nav-item.active { background: rgba(47, 109, 179, 0.1); color: var(--primary); border-left: 4px solid var(--primary); padding-left: 11px; }
+        .global-filters { padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .control-group { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1; }
+        .control-group label { font-size: 12px; font-weight: 700; color: var(--primary-dark); }
+        .control-group .sub-label { font-size: 11px; color: var(--ink-sub); display: flex; justify-content: space-between; align-items: center; }
+        select, input { padding: 6px 8px; border: 1px solid var(--border-line); border-radius: 4px; font-size: 11px; width: 100%; }
+        .btn { padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; border: 1px solid transparent; width: 100%; transition: 0.2s; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-ghost { background: transparent; border-color: var(--border-line); color: var(--ink-main); }
+        .btn-ghost:hover { background: #f0f4f8; border-color: var(--primary); color: var(--primary); }
+        .btn-link { background: #f4f7fa; color: var(--primary-dark); border: 1px dashed var(--primary); }
+        .btn-link:hover { background: rgba(47, 109, 179, 0.1); }
+        .btn-prev { background: #fdf2f8; color: #9b2c2c; border: 1px dashed #d97706; font-size: 11px; }
+        .btn-prev:hover { background: #fef3c7; border-color: #b45309; }
+        .prev-status { font-size: 10px; padding: 4px 8px; border-radius: 3px; display: inline-block; margin-top: 2px; font-weight: 600; }
+        .prev-status.loaded { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        .prev-status.empty { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(2px); }
+        .modal { background: #fff; width: 700px; border-radius: var(--radius-box); box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 16px 20px; background: var(--primary-dark); color: white; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .modal-close { cursor: pointer; font-size: 18px; color: rgba(255,255,255,0.7); border: none; background: transparent; }
+        .modal-close:hover { color: white; }
+        .modal-body { padding: 20px; font-size: 13px; color: var(--ink-main); max-height: 70vh; overflow-y: auto; }
+        .modal-footer { padding: 15px 20px; background: #f8fbfe; border-top: 1px solid var(--border-line); text-align: right; }
+        .dict-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;}
+        .dict-table th, .dict-table td { border: 1px solid var(--border-line); padding: 8px; text-align: left; }
+        .dict-table th { background: #eef4fa; color: var(--primary-dark); }
+        .dict-table code { background: #f0f4f8; color: var(--primary-dark); padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 20px; gap: 15px; background: var(--bg-body); }
+        .module-view { display: none; flex-direction: column; gap: 15px; min-height: 100%; }
+        .module-view.active { display: flex; }
+        .summary-panel { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: var(--radius-box); padding: 14px 20px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .summary-panel.has-risk { border-left-color: var(--danger); background: linear-gradient(90deg, var(--danger-soft), #ffffff 20%); }
+        .summary-panel.has-change-highlight { border-left-color: #d97706; background: linear-gradient(90deg, #fffbeb, #ffffff 20%); }
+        .summary-title { font-size: 14px; font-weight: 700; margin: 0 0 5px 0; color: var(--ink-main); }
+        .summary-text { font-size: 12.5px; color: var(--ink-sub); line-height: 1.5; margin: 0; }
+        .summary-badge { font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
+        .summary-badge.new-worsening { background: #fff1f0; color: var(--danger); border: 1px solid #ffa39e; animation: pulse-badge 2s ease-in-out infinite; }
+        @keyframes pulse-badge { 0%,100% { box-shadow: 0 0 0 0 rgba(143,29,20,0.3); } 50% { box-shadow: 0 0 0 8px rgba(143,29,20,0); } }
+        
+        /* 核心修改点：锁死布局高度 */
+        .layout-top { display: flex; gap: 15px; height: 420px; flex-shrink: 0; flex-wrap: nowrap; }
+        .layout-bottom { display: flex; gap: 15px; flex: 1; min-height: 380px; flex-wrap: wrap; }
+        .card { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: var(--radius-box); display: flex; flex-direction: column; box-shadow: var(--shadow-sm); overflow: hidden; flex: 1; min-width: 320px; min-height: 0; }
+        
+        .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border-line); background: #fafbfc; font-size: 13px; font-weight: 700; color: var(--primary-dark); flex-shrink: 0; }
+        .card-body { flex: 1; position: relative; padding: 10px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .tabs { display: flex; border-bottom: 1px solid var(--border-line); background: #f4f7fa; flex-shrink: 0; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; font-size: 12px; font-weight: 700; color: var(--ink-sub); cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--primary-dark); border-bottom-color: var(--primary); background: #ffffff; }
+        
+        /* 核心修改点：控制内部绝对滚动 */
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            font-size: 12px;
+            min-height: 0; /* 魔法属性：防止被子元素（表格）撑开 */
+        }
+        .tab-content.active {
+            display: block;
+        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { position: sticky; top: 0; background: #eef4fa; color: var(--primary-dark); padding: 8px 10px; border-bottom: 1px solid var(--border-line); z-index: 1; font-weight: bold; font-size: 11px; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f0f4f8; cursor: pointer; font-size: 12px; }
+        tr:hover td { background-color: #f5f8fc; }
+        .row-active td { background-color: #e6f7ff !important; border-top: 1px solid var(--primary); border-bottom: 1px solid var(--primary); color: var(--primary-dark); }
+        .row-active td:first-child { border-left: 3px solid var(--primary); }
+        .row-worsening td { background-color: #fff5f5 !important; border-left: 3px solid var(--danger); }
+        .row-worsening:hover td { background-color: #ffe8e8 !important; }
+        .raw-val { font-size: 10.5px; color: #888; font-weight: normal; margin-top: 2px; display: block; line-height: 1.1; }
+        .badge-danger { color: var(--danger); font-weight: bold; background: #fff1f0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffa39e; display: inline-block; }
+        .badge-warn { color: var(--warning); font-weight: bold; background: #fff7e6; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffd591; display: inline-block; }
+        .badge-change-up { color: #b91c1c; font-weight: bold; background: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5; display: inline-block; font-size: 11px; }
+        .badge-change-down { color: #065f46; font-weight: bold; background: #ecfdf5; padding: 2px 6px; border-radius: 4px; border: 1px solid #6ee7b7; display: inline-block; font-size: 11px; }
+        .badge-change-stable { color: #6b7280; font-weight: bold; background: #f9fafb; padding: 2px 6px; border-radius: 4px; border: 1px solid #d1d5db; display: inline-block; font-size: 11px; }
+        .highlight-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; animation: glow-dot 1.8s ease-in-out infinite; }
+        .highlight-dot.worsening { background: var(--danger); box-shadow: 0 0 6px var(--highlight-glow); }
+        @keyframes glow-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .ai-diagnosis { flex-shrink: 0; font-size: 13px; line-height: 1.6; padding: 12px; border-radius: 4px; margin: 0 10px 10px 10px; border-left: 3px solid var(--primary); background: #f9fbfd; display: none; }
+        
+        /* 核心修改点：媒体查询适配 */
+        @media (max-width: 1100px) { 
+            .layout-top { flex-direction: column; height: auto; flex-wrap: nowrap; } 
+            .layout-bottom { flex-direction: column; }
+            .card { min-width: 100%; height: 420px; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="modal-overlay" id="dict-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>📄 临床数据集 (ADaM: ADLB / ADEG) 结构要求说明</span>
+                <button class="modal-close" onclick="closeModal()">✖</button>
+            </div>
+            <div class="modal-body">
+                <p>本系统支持将<b>实验室检查数据集 (ADLB)</b> 与 <b>心电图数据集 (ADEG)</b> 合并后统一导入。为保证图表准确渲染，请在导出的 Excel 或 CSV 文件中包含以下基础变量。如果您的系统中某些指标命名不同，可直接在左侧手动映射。</p>
+                <table class="dict-table">
+                    <thead><tr><th>变量名</th><th>含义说明</th><th>所属数据源</th><th>是否必须</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>USUBJID</code></td><td>受试者唯一编号</td><td>全局</td><td><b style="color:var(--danger)">必须</b></td></tr>
+                        <tr><td><code>ARM</code></td><td>试验/治疗组别</td><td>全局</td><td>必须</td></tr>
+                        <tr><td><code>SITEID</code></td><td>研究中心编号</td><td>全局</td><td>必须</td></tr>
+                        <tr><td><code>PARAMCD</code></td><td>化验或检查代码 (如 ALT, QTCF)</td><td>ADLB / ADEG</td><td><b style="color:var(--danger)">必须</b></td></tr>
+                        <tr><td><code>ADY</code></td><td>试验天数 (Study Day)</td><td>全局</td><td>必须</td></tr>
+                        <tr><td><code>AVAL</code></td><td>检测原始绝对值</td><td>全局</td><td>必须</td></tr>
+                        <tr><td><code>ANRHI</code></td><td>正常值上限 (ULN)</td><td>ADLB</td><td>计算 eDISH 必须</td></tr>
+                        <tr><td><code>ABLFL</code></td><td>基线标志位 ('Y')</td><td>全局</td><td>计算 AKI/QTc 必须</td></tr>
+                        <tr><td><code>ATOXGR</code> / <code>BTOXGR</code></td><td>分析期 / 基线期毒性等级 (0-4)</td><td>ADLB</td><td>生成 CTCAE 必须</td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top:12px;font-size:11px;color:var(--ink-sub);">💡 <b>提示：</b>本系统支持<b>双数据集对比模式</b>。您可分别导入"本期数据"和"上期数据"，系统将自动高亮显示两期之间的显著变化（如指标恶化、新发毒性等）。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" style="width: auto; margin-right: 10px;" onclick="closeModal()">关闭</button>
+                <button class="btn btn-primary" style="width: auto;" onclick="downloadTemplate()">📥 下载标准演示数据模板 (ADaM)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>安全性数据中心化监查工具</h1>
+            <p>动态适配版 (Dynamic Mapping) · 双期对比</p>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="switchModule('liver')">肝脏安全性 (eDISH)</div>
+            <div class="nav-item" onclick="switchModule('renal')">肾功能监查 (AKI)</div>
+            <div class="nav-item" onclick="switchModule('qtc')">心电图延长 (QTc)</div>
+            <div class="nav-item" onclick="switchModule('heatmap')">实验室毒性 (CTCAE)</div>
+        </div>
+
+        <div class="global-filters">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn btn-primary" onclick="document.getElementById('excel-upload-current').click()"> 导入本期数据集 (ADLB/ADEG)</button>
+                <input type="file" id="excel-upload-current" accept=".xlsx, .xls, .csv" style="display: none;">
+                <button class="btn btn-prev" onclick="document.getElementById('excel-upload-prev').click()"> 导入上期数据集 (可选·对比用)</button>
+                <input type="file" id="excel-upload-prev" accept=".xlsx, .xls, .csv" style="display: none;">
+                <span class="prev-status empty" id="prev-status-indicator">⚠ 未加载上期数据</span>
+                <button class="btn btn-ghost" onclick="loadMockData()"> 加载拟真演示数据 (含双期对比)</button>
+                <button class="btn btn-link" onclick="openModal()">📋 数据字典与系统说明</button>
+            </div>
+
+            <div class="control-group">
+                <label>全局队列过滤器</label>
+                <div class="sub-label"><span>组别 (ARM)</span></div>
+                <select id="filter-arm" onchange="processData()"><option value="ALL">所有治疗组</option></select>
+                <div class="sub-label"><span>中心 (SITEID)</span></div>
+                <select id="filter-site" onchange="processData()"><option value="ALL">所有研究中心</option></select>
+            </div>
+
+            <div class="control-group">
+                <label>核心指标映射 (Mapping)</label>
+                <div class="sub-label"><span>ALT (谷丙转氨酶) 列：</span></div>
+                <select id="map-alt" onchange="processData()"><option value="">等待数据接入...</option></select>
+                <div class="sub-label"><span>AST (谷草转氨酶) 列：</span></div>
+                <select id="map-ast" onchange="processData()"><option value="">等待数据接入...</option></select>
+                <div class="sub-label"><span>BILI (总胆红素) 列：</span></div>
+                <select id="map-bili" onchange="processData()"><option value="">等待数据接入...</option></select>
+                <div class="sub-label"><span>CREAT (血清肌酐) 列：</span></div>
+                <select id="map-creat" onchange="processData()"><option value="">等待数据接入...</option></select>
+                <div class="sub-label"><span>QTc (心电图) 列：</span></div>
+                <select id="map-qtc" onchange="processData()"><option value="">等待数据接入...</option></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <div id="module-liver" class="module-view active">
+            <div class="summary-panel" id="summary-liver">
+                <div><h3 class="summary-title">项目肝脏安全性概览</h3><p class="summary-text" id="text-liver-summary">等待数据接入...</p></div>
+                <span id="badge-liver-change" style="display:none;"></span>
+            </div>
+            <div class="layout-top">
+                <div class="card" style="flex: 1.6;">
+                    <div class="card-header">eDISH 评估散点图 (Peak vs Peak) <span style="font-size:10px;color:var(--danger);font-weight:normal;">🔴 红框高亮=本期新恶化</span></div>
+                    <div class="card-body" id="chart-liver-scatter" style="padding:0"></div>
+                </div>
+                <div class="card" style="flex: 1;">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchTab('liver', 'warning')">预警清单 (<span id="count-liver-warning">0</span>)</button>
+                        <button class="tab-btn" onclick="switchTab('liver', 'selected')">框选清单 (<span id="count-liver-selected">0</span>)</button>
+                    </div>
+                    <div class="tab-content active" id="tab-liver-warning">
+                        <table><thead><tr><th>受试者</th><th>诊断</th><th>Max AT<br><span style="font-size:10px;font-weight:normal">(倍数/原始值)</span></th><th>Peak BILI<br><span style="font-size:10px;font-weight:normal">(倍数/原始值)</span></th><th id="th-liver-change" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-liver-warning"></tbody></table>
+                    </div>
+                    <div class="tab-content" id="tab-liver-selected">
+                        <table><thead><tr><th>受试者</th><th>诊断</th><th>Max AT<br><span style="font-size:10px;font-weight:normal">(倍数/原始值)</span></th><th>Peak BILI<br><span style="font-size:10px;font-weight:normal">(倍数/原始值)</span></th><th id="th-liver-change-sel" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-liver-selected"><tr><td colspan="5" align="center" style="padding:20px;color:#888;">暂无框选</td></tr></tbody></table>
+                    </div>
+                </div>
+            </div>
+            <div class="layout-bottom">
+                <div class="card">
+                    <div class="card-header"><span id="title-liver-timeline">受试者级时序下钻图</span></div>
+                    <div class="card-body" style="padding-top: 15px;">
+                        <div id="ai-liver-diag" class="ai-diagnosis"></div>
+                        <div id="chart-liver-timeline" style="flex: 1; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-renal" class="module-view">
+            <div class="summary-panel" id="summary-renal">
+                <div><h3 class="summary-title">项目肾功能受损预警</h3><p class="summary-text" id="text-renal-summary">等待数据接入...</p></div>
+                <span id="badge-renal-change" style="display:none;"></span>
+            </div>
+            <div class="layout-top">
+                <div class="card" style="flex: 1.6;">
+                    <div class="card-header">基线 vs 服药后最大肌酐 漂移散点图 <span style="font-size:10px;color:var(--danger);font-weight:normal;">🔴 红框高亮=本期新恶化</span></div>
+                    <div class="card-body" id="chart-renal-scatter" style="padding:0"></div>
+                </div>
+                <div class="card" style="flex: 1;">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchTab('renal', 'warning')">预警清单 (<span id="count-renal-warning">0</span>)</button>
+                        <button class="tab-btn" onclick="switchTab('renal', 'selected')">框选清单 (<span id="count-renal-selected">0</span>)</button>
+                    </div>
+                    <div class="tab-content active" id="tab-renal-warning">
+                        <table><thead><tr><th>受试者</th><th>预警</th><th>Base</th><th>Peak</th><th id="th-renal-change" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-renal-warning"></tbody></table>
+                    </div>
+                    <div class="tab-content" id="tab-renal-selected">
+                        <table><thead><tr><th>受试者</th><th>预警</th><th>Base</th><th>Peak</th><th id="th-renal-change-sel" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-renal-selected"><tr><td colspan="5" align="center" style="padding:20px;color:#888;">暂无框选</td></tr></tbody></table>
+                    </div>
+                </div>
+            </div>
+            <div class="layout-bottom">
+                <div class="card">
+                    <div class="card-header"><span id="title-renal-timeline">受试者级时序下钻图</span></div>
+                    <div class="card-body" style="padding-top: 15px;">
+                        <div id="ai-renal-diag" class="ai-diagnosis"></div>
+                        <div id="chart-renal-timeline" style="flex: 1; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-qtc" class="module-view">
+            <div class="summary-panel" id="summary-qtc">
+                <div><h3 class="summary-title">心电图 QTc 延长预警</h3><p class="summary-text" id="text-qtc-summary">等待数据接入...</p></div>
+                <span id="badge-qtc-change" style="display:none;"></span>
+            </div>
+            <div class="layout-top">
+                <div class="card" style="flex: 1.6;">
+                    <div class="card-header">基线 vs 最大 QTc (Peak vs Base) 散点图 <span style="font-size:10px;color:var(--danger);font-weight:normal;">🔴 红框高亮=本期新恶化</span></div>
+                    <div class="card-body" id="chart-qtc-scatter" style="padding:0"></div>
+                </div>
+                <div class="card" style="flex: 1;">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchTab('qtc', 'warning')">预警清单 (<span id="count-qtc-warning">0</span>)</button>
+                        <button class="tab-btn" onclick="switchTab('qtc', 'selected')">框选清单 (<span id="count-qtc-selected">0</span>)</button>
+                    </div>
+                    <div class="tab-content active" id="tab-qtc-warning">
+                        <table><thead><tr><th>受试者</th><th>评估</th><th>Base<br><span style="font-size:10px;font-weight:normal">(ms)</span></th><th>Peak / Δ<br><span style="font-size:10px;font-weight:normal">(ms)</span></th><th id="th-qtc-change" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-qtc-warning"></tbody></table>
+                    </div>
+                    <div class="tab-content" id="tab-qtc-selected">
+                        <table><thead><tr><th>受试者</th><th>评估</th><th>Base<br><span style="font-size:10px;font-weight:normal">(ms)</span></th><th>Peak / Δ<br><span style="font-size:10px;font-weight:normal">(ms)</span></th><th id="th-qtc-change-sel" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-qtc-selected"><tr><td colspan="5" align="center" style="padding:20px;color:#888;">暂无框选</td></tr></tbody></table>
+                    </div>
+                </div>
+            </div>
+            <div class="layout-bottom">
+                <div class="card">
+                    <div class="card-header"><span id="title-qtc-timeline">受试者级时序下钻图</span></div>
+                    <div class="card-body" style="padding-top: 15px;">
+                        <div id="ai-qtc-diag" class="ai-diagnosis"></div>
+                        <div id="chart-qtc-timeline" style="flex: 1; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-heatmap" class="module-view">
+            <div class="summary-panel" id="summary-heatmap">
+                <div>
+                    <h3 class="summary-title" style="display:inline-block; margin-right: 15px;">实验室毒性级别漂移概览</h3>
+                    <select id="heatmap-param" onchange="processData()" style="font-weight: bold; padding: 4px 10px; border-color:var(--primary); color:var(--primary-dark);">
+                        <option value="">上传数据以解锁探测</option>
+                    </select>
+                    <p class="summary-text" id="text-heatmap-summary" style="margin-top:5px;">动态探测全量指标库中...</p>
+                </div>
+                <span id="badge-heatmap-change" style="display:none;"></span>
+            </div>
+            <div class="layout-top">
+                <div class="card" style="flex: 1.6;">
+                    <div class="card-header">基线 vs 最差毒性 热力图 (Shift Table) <span style="font-size:10px;color:var(--danger);font-weight:normal;">🔴 红框高亮=本期新恶化</span></div>
+                    <div class="card-body" id="chart-heatmap-main" style="padding:0"></div>
+                </div>
+                <div class="card" style="flex: 1;">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchTab('heatmap', 'warning')">预警清单 (<span id="count-heatmap-warning">0</span>)</button>
+                        <button class="tab-btn" onclick="switchTab('heatmap', 'selected')">框选清单 (<span id="count-heatmap-selected">0</span>)</button>
+                    </div>
+                    <div class="tab-content active" id="tab-heatmap-warning">
+                        <table><thead><tr><th>受试者</th><th>组别</th><th>Base</th><th>Worst Grade<br><span style="font-size:10px;font-weight:normal">(原始极值)</span></th><th id="th-heatmap-change" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-heatmap-warning"></tbody></table>
+                    </div>
+                    <div class="tab-content" id="tab-heatmap-selected">
+                        <table><thead><tr><th>受试者</th><th>组别</th><th>Base</th><th>Worst Grade<br><span style="font-size:10px;font-weight:normal">(原始极值)</span></th><th id="th-heatmap-change-sel" style="display:none;">趋势</th></tr></thead>
+                            <tbody id="tbody-heatmap-selected"><tr><td colspan="5" align="center" style="padding:20px;color:#888;">请点击左侧热力图网格</td></tr></tbody></table>
+                    </div>
+                </div>
+            </div>
+            <div class="layout-bottom">
+                <div class="card">
+                    <div class="card-header"><span id="title-heatmap-timeline">受试者级时序下钻图</span></div>
+                    <div class="card-body" style="padding-top: 15px;">
+                        <div id="ai-heatmap-diag" class="ai-diagnosis"></div>
+                        <div id="chart-heatmap-timeline" style="flex: 1; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalADLB = [];
+        let globalADLB_previous = [];
+        let hasPreviousData = false;
+        let uniqueParams = [];
+        let currentModule = 'liver';
+        let ptDicts = { liver: [], renal: [], qtc: [], heatmap: [] };
+        let prevPtDicts = { liver: {}, renal: {}, qtc: {}, heatmap: {} };
+
+        function openModal() { document.getElementById('dict-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('dict-modal').style.display = 'none'; }
+        function downloadTemplate() {
+            let templateData = generateDemoDataArray(false);
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ADaM_Safety");
+            XLSX.writeFile(wb, "Clinical_Safety_ADaM_Template.xlsx");
+            closeModal();
+        }
+
+        function updatePrevStatusIndicator() {
+            const indicator = document.getElementById('prev-status-indicator');
+            if (hasPreviousData && globalADLB_previous.length > 0) {
+                indicator.textContent = '✅ 上期数据已加载 (' + globalADLB_previous.length + ' 条记录)';
+                indicator.className = 'prev-status loaded';
+            } else {
+                indicator.textContent = '⚠ 未加载上期数据';
+                indicator.className = 'prev-status empty';
+            }
+        }
+
+        const charts = {
+            liverScatter: echarts.init(document.getElementById('chart-liver-scatter')),
+            liverTimeline: echarts.init(document.getElementById('chart-liver-timeline')),
+            renalScatter: echarts.init(document.getElementById('chart-renal-scatter')),
+            renalTimeline: echarts.init(document.getElementById('chart-renal-timeline')),
+            qtcScatter: echarts.init(document.getElementById('chart-qtc-scatter')),
+            qtcTimeline: echarts.init(document.getElementById('chart-qtc-timeline')),
+            heatmapMain: echarts.init(document.getElementById('chart-heatmap-main')),
+            heatmapTimeline: echarts.init(document.getElementById('chart-heatmap-timeline'))
+        };
+
+        const resizeObserver = new ResizeObserver(entries => {
+            entries.forEach(entry => {
+                for (let key in charts) {
+                    if (charts[key] && charts[key]._dom && charts[key]._dom.id === entry.target.id) {
+                        charts[key].resize();
+                    }
+                }
+            });
+        });
+        Object.values(charts).forEach(c => resizeObserver.observe(c._dom));
+        window.addEventListener('resize', () => { Object.values(charts).forEach(c => c.resize()); });
+
+        function switchModule(modId) {
+            currentModule = modId;
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.module-view').forEach(el => el.classList.remove('active'));
+            document.getElementById(`module-${modId}`).classList.add('active');
+            setTimeout(() => {
+                Object.keys(charts).filter(k => k.toLowerCase().startsWith(modId)).forEach(k => charts[k].resize());
+                processData();
+            }, 50);
+        }
+
+        function switchTab(modId, tabName) {
+            const container = document.getElementById(`module-${modId}`);
+            container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.getElementById(`tab-${modId}-${tabName}`).classList.add('active');
+        }
+
+        function highlightRow(modId, usubjid) {
+            const container = document.getElementById(`module-${modId}`);
+            container.querySelectorAll('tr').forEach(tr => tr.classList.remove('row-active'));
+            container.querySelectorAll(`.row-${sanitizeId(usubjid)}`).forEach(tr => { tr.classList.add('row-active'); tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+        }
+
+        function sanitizeId(id) { return id.replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+        // 通用：点击受试者时高亮选中散点、暗化其他散点（支持再次点击取消）
+        let _focusedId = {}; // 按 chart DOM id 记录当前聚焦的受试者
+        function focusScatterPoint(chartInstance, targetId) {
+            const chartKey = chartInstance._dom.id;
+            const option = chartInstance.getOption();
+            if (!option || !option.series) return true;
+
+            // 再次点击同一受试者 → 取消聚焦，恢复原样
+            if (_focusedId[chartKey] === targetId) {
+                delete _focusedId[chartKey];
+                const restoreOpt = [];
+                option.series.forEach(s => {
+                    if (s.type !== 'scatter' || !s.data || s.data.length === 0) { restoreOpt.push({}); return; }
+                    restoreOpt.push({ data: s.data.map(d => ({
+                        ...d,
+                        symbolSize: d._origStyle ? d._origStyle.symbolSize : (d.symbolSize || s.symbolSize || 8),
+                        itemStyle: d._origStyle ? JSON.parse(JSON.stringify(d._origStyle.itemStyle)) : (d.itemStyle || {})
+                    }))});
+                });
+                chartInstance.setOption({ series: restoreOpt });
+                return false; // 表示已取消聚焦
+            }
+
+            // 聚焦新受试者
+            _focusedId[chartKey] = targetId;
+            const newSeriesOpt = [];
+            option.series.forEach((s, idx) => {
+                if (s.type !== 'scatter' || !s.data || s.data.length === 0) {
+                    newSeriesOpt.push({});
+                    return;
+                }
+                const newData = s.data.map(d => {
+                    const isTarget = (d.name === targetId);
+                    if (!d._origStyle) {
+                        d._origStyle = { itemStyle: d.itemStyle ? JSON.parse(JSON.stringify(d.itemStyle)) : {}, symbolSize: d.symbolSize || s.symbolSize || 8 };
+                    }
+                    if (isTarget) {
+                        return {
+                            ...d,
+                            symbolSize: Math.max(d._origStyle.symbolSize, 12) + 4,
+                            itemStyle: {
+                                ...(d._origStyle.itemStyle || {}),
+                                borderColor: '#8F1D14',
+                                borderWidth: 3,
+                                shadowBlur: 12,
+                                shadowColor: 'rgba(143,29,20,0.6)'
+                            }
+                        };
+                    } else {
+                        return {
+                            ...d,
+                            symbolSize: Math.max(d._origStyle.symbolSize - 2, 4),
+                            itemStyle: {
+                                color: 'rgba(180,180,180,0.3)',
+                                borderColor: 'rgba(180,180,180,0.15)',
+                                borderWidth: 0,
+                                shadowBlur: 0
+                            }
+                        };
+                    }
+                });
+                newSeriesOpt.push({ data: newData });
+            });
+            chartInstance.setOption({ series: newSeriesOpt });
+            return true; // 表示已聚焦
+        }
+
+        document.getElementById('excel-upload-current').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                globalADLB = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                initializeSystemData();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('excel-upload-prev').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                globalADLB_previous = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                hasPreviousData = true;
+                updatePrevStatusIndicator();
+                buildPreviousDicts();
+                processData();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function buildPreviousDicts() {
+            prevPtDicts = { liver: {}, renal: {}, qtc: {}, heatmap: {} };
+            if (!hasPreviousData || globalADLB_previous.length === 0) return;
+
+            const pALT = document.getElementById('map-alt').value;
+            const pAST = document.getElementById('map-ast').value;
+            const pBILI = document.getElementById('map-bili').value;
+            const pCREAT = document.getElementById('map-creat').value;
+            const pQTC = document.getElementById('map-qtc').value;
+
+            globalADLB_previous.forEach(r => {
+                let id = r.USUBJID; if (!id) return;
+                let val = parseFloat(r.AVAL); let uln = parseFloat(r.ANRHI);
+                if (isNaN(val)) return;
+
+                if ([pALT, pAST, pBILI].includes(r.PARAMCD) && !isNaN(uln) && uln > 0) {
+                    if (!prevPtDicts.liver[id]) prevPtDicts.liver[id] = { ALT: { f: 0 }, AST: { f: 0 }, BILI: { f: 0 } };
+                    let mathKey = r.PARAMCD === pALT ? 'ALT' : (r.PARAMCD === pAST ? 'AST' : 'BILI');
+                    let f = val / uln;
+                    if (f > prevPtDicts.liver[id][mathKey].f) prevPtDicts.liver[id][mathKey] = { f: f, raw: val, uln: uln, unit: r.AVALU || '' };
+                }
+                if (r.PARAMCD === pCREAT) {
+                    if (!prevPtDicts.renal[id]) prevPtDicts.renal[id] = { base: null, max: 0 };
+                    if (r.ABLFL === 'Y') prevPtDicts.renal[id].base = val;
+                    else if (val > prevPtDicts.renal[id].max) prevPtDicts.renal[id].max = val;
+                }
+                if (r.PARAMCD === pQTC) {
+                    if (!prevPtDicts.qtc[id]) prevPtDicts.qtc[id] = { base: null, max: 0 };
+                    if (r.ABLFL === 'Y') prevPtDicts.qtc[id].base = val;
+                    else if (val > prevPtDicts.qtc[id].max) prevPtDicts.qtc[id].max = val;
+                }
+                if (r.ATOXGR !== undefined && r.PARAMCD) {
+                    if (!prevPtDicts.heatmap[id]) prevPtDicts.heatmap[id] = {};
+                    if (!prevPtDicts.heatmap[id][r.PARAMCD]) prevPtDicts.heatmap[id][r.PARAMCD] = { worstG: -1, baseG: parseInt(r.BTOXGR)||0 };
+                    let g = parseInt(r.ATOXGR)||0;
+                    if (r.ABLFL !== 'Y' && g > prevPtDicts.heatmap[id][r.PARAMCD].worstG) prevPtDicts.heatmap[id][r.PARAMCD].worstG = g;
+                }
+            });
+        }
+
+        function initializeSystemData() {
+            hasPreviousData = (globalADLB_previous.length > 0);
+            updatePrevStatusIndicator();
+
+            const arms = [...new Set(globalADLB.map(d => d.ARM))].filter(Boolean);
+            const sites = [...new Set(globalADLB.map(d => d.SITEID))].filter(Boolean);
+            document.getElementById('filter-arm').innerHTML = '<option value="ALL">所有治疗组</option>' + arms.map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById('filter-site').innerHTML = '<option value="ALL">所有研究中心</option>' + sites.map(v => `<option value="${v}">${v}</option>`).join('');
+
+            let paramMap = new Map();
+            globalADLB.forEach(row => {
+                if(row.PARAMCD && !paramMap.has(row.PARAMCD)) {
+                    paramMap.set(row.PARAMCD, row.PARAM || row.PARAMCD);
+                }
+            });
+            uniqueParams = Array.from(paramMap.entries()).map(([cd, desc]) => ({cd, desc}));
+
+            const paramOptionsHtml = '<option value="">-- 请手动选择 --</option>' + uniqueParams.map(p => `<option value="${p.cd}">${p.cd} (${p.desc})</option>`).join('');
+
+            const mappingConfigs =[
+                { id: 'map-alt', keywords:['ALT', 'SGPT', '转氨酶'] },
+                { id: 'map-ast', keywords: ['AST', 'SGOT'] },
+                { id: 'map-bili', keywords:['BILI', 'TBILI', '胆红素'] },
+                { id: 'map-creat', keywords:['CREAT', 'CREA', '肌酐'] },
+                { id: 'map-qtc', keywords:['QTC', 'QTCF', '心电图', 'QT'] }
+            ];
+
+            mappingConfigs.forEach(cfg => {
+                let el = document.getElementById(cfg.id);
+                el.innerHTML = paramOptionsHtml;
+                let matchedCd = '';
+                for(let p of uniqueParams) {
+                    if(cfg.keywords.some(kw => p.cd.toUpperCase().includes(kw) || p.desc.includes(kw))) {
+                        matchedCd = p.cd; break;
+                    }
+                }
+                if(matchedCd) el.value = matchedCd;
+            });
+
+            const toxParamsList =[...new Set(globalADLB.filter(d => d.ATOXGR !== undefined).map(d => d.PARAMCD))];
+            let hp = document.getElementById('heatmap-param');
+            if(toxParamsList.length > 0) {
+                hp.innerHTML = toxParamsList.map(cd => `<option value="${cd}">${cd} (${paramMap.get(cd)})</option>`).join('');
+            } else {
+                hp.innerHTML = `<option value="">全表未找到毒性(ATOXGR)记录</option>`;
+            }
+
+            if(hasPreviousData) buildPreviousDicts();
+            processData();
+        }
+
+        function getFilteredData() {
+            const fArm = document.getElementById('filter-arm').value;
+            const fSite = document.getElementById('filter-site').value;
+            return globalADLB.filter(d => (fArm === 'ALL' || d.ARM === fArm) && (fSite === 'ALL' || d.SITEID === fSite));
+        }
+
+        function getPreviousFilteredData() {
+            if (!hasPreviousData || globalADLB_previous.length === 0) return [];
+            const fArm = document.getElementById('filter-arm').value;
+            const fSite = document.getElementById('filter-site').value;
+            return globalADLB_previous.filter(d => (fArm === 'ALL' || d.ARM === fArm) && (fSite === 'ALL' || d.SITEID === fSite));
+        }
+
+        function processData() {
+            if(globalADLB.length === 0) return;
+            if(hasPreviousData && globalADLB_previous.length > 0) buildPreviousDicts();
+            if(currentModule === 'liver') renderLiver();
+            if(currentModule === 'renal') renderRenal();
+            if(currentModule === 'qtc') renderQtc();
+            if(currentModule === 'heatmap') renderHeatmap();
+            updateChangeColumnVisibility();
+        }
+
+        function updateChangeColumnVisibility() {
+            const displayStyle = hasPreviousData ? '' : 'none';
+            const thIds = ['th-liver-change', 'th-liver-change-sel', 'th-renal-change', 'th-renal-change-sel', 'th-qtc-change', 'th-qtc-change-sel', 'th-heatmap-change', 'th-heatmap-change-sel'];
+            thIds.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.style.display = displayStyle;
+            });
+        }
+
+        function getChangeBadge(currVal, prevVal, thresholdUp, thresholdDown, higherIsWorse) {
+            if (prevVal === null || prevVal === undefined || isNaN(prevVal)) return '';
+            if (higherIsWorse === undefined) higherIsWorse = true;
+            let diff = currVal - prevVal;
+            let absDiff = Math.abs(diff);
+            if (higherIsWorse) {
+                if (diff > thresholdUp) return '<span class="badge-change-up">↑ 恶化</span>';
+                if (diff < -thresholdDown) return '<span class="badge-change-down">↓ 改善</span>';
+            } else {
+                if (diff < -thresholdDown) return '<span class="badge-change-up">↓ 恶化</span>';
+                if (diff > thresholdUp) return '<span class="badge-change-down">↑ 改善</span>';
+            }
+            if (absDiff < 0.01) return '<span class="badge-change-stable">→ 稳定</span>';
+            return '<span class="badge-change-stable">→ 稳定</span>';
+        }
+
+        function isWorsening(currVal, prevVal, threshold, higherIsWorse) {
+            if (prevVal === null || prevVal === undefined || isNaN(prevVal)) return false;
+            if (higherIsWorse === undefined) higherIsWorse = true;
+            let diff = currVal - prevVal;
+            return higherIsWorse ? diff > threshold : diff < -threshold;
+        }
+
+        // ================== 肝功能 ==================
+        function renderLiver() {
+            const pALT = document.getElementById('map-alt').value;
+            const pAST = document.getElementById('map-ast').value;
+            const pBILI = document.getElementById('map-bili').value;
+            if(!pALT && !pAST && !pBILI) { charts.liverScatter.clear(); return; }
+
+            let data = getFilteredData().filter(d =>[pALT, pAST, pBILI].includes(d.PARAMCD));
+            let dict = {};
+            data.forEach(r => {
+                let id = r.USUBJID;
+                if(!dict[id]) dict[id] = { id, arm: r.ARM, ALT:{f:0}, AST:{f:0}, BILI:{f:0} };
+                let mathKey = r.PARAMCD === pALT ? 'ALT' : (r.PARAMCD === pAST ? 'AST' : 'BILI');
+                let raw = parseFloat(r.AVAL), uln = parseFloat(r.ANRHI);
+                if(!isNaN(raw) && !isNaN(uln) && uln > 0) {
+                    let f = raw / uln;
+                    if(f > dict[id][mathKey].f) dict[id][mathKey] = { f: f, raw: raw, uln: uln, unit: r.AVALU || '' };
+                }
+            });
+
+            ptDicts.liver = Object.values(dict).map(pt => {
+                pt.maxAT = pt.ALT.f > pt.AST.f ? pt.ALT : pt.AST;
+                pt.diag = (pt.maxAT.f >= 3 && pt.BILI.f >= 2) ? 'HysLaw' : (pt.maxAT.f >= 3 ? 'Temple' : 'Safe');
+                return pt;
+            }).filter(p => p.maxAT.f > 0);
+
+            let ptArray = ptDicts.liver;
+            let hys = ptArray.filter(p => p.diag === 'HysLaw').length;
+            let newWorseningCount = 0;
+
+            ptArray.forEach(pt => {
+                let prevPt = prevPtDicts.liver[pt.id];
+                if (prevPt && hasPreviousData) {
+                    let prevMaxAT = prevPt.ALT.f > prevPt.AST.f ? prevPt.ALT : prevPt.AST;
+                    let prevBILI = prevPt.BILI;
+                    pt.prevMaxAT_f = prevMaxAT.f || 0;
+                    pt.prevBILI_f = prevBILI.f || 0;
+                    pt.prevMaxAT_raw = prevMaxAT.raw || 0;
+                    pt.prevBILI_raw = prevBILI.raw || 0;
+                    pt.prevMaxAT_unit = prevMaxAT.unit || '';
+                    pt.prevBILI_unit = prevBILI.unit || '';
+                    pt.atWorsening = isWorsening(pt.maxAT.f, pt.prevMaxAT_f, 0.5, true);
+                    pt.biliWorsening = isWorsening(pt.BILI.f, pt.prevBILI_f, 0.3, true);
+                    pt.anyWorsening = pt.atWorsening || pt.biliWorsening;
+                    if (pt.anyWorsening && pt.diag !== 'Safe') newWorseningCount++;
+                } else {
+                    pt.prevMaxAT_f = null;
+                    pt.prevBILI_f = null;
+                    pt.anyWorsening = false;
+                }
+            });
+
+            const pnl = document.getElementById('summary-liver');
+            const badgeEl = document.getElementById('badge-liver-change');
+            if(hys > 0) { pnl.className = 'summary-panel has-risk'; document.getElementById('text-liver-summary').innerHTML = `🚨 <b>预警：</b>筛选出 <b>${hys}</b> 例海氏法则潜在极高危。`; }
+            else { pnl.className = 'summary-panel'; document.getElementById('text-liver-summary').innerHTML = `✅ <b>安全：</b>当前肝功能指标平稳。`; }
+            if (hasPreviousData && newWorseningCount > 0) {
+                pnl.classList.add('has-change-highlight');
+                badgeEl.style.display = 'inline-block';
+                badgeEl.className = 'summary-badge new-worsening';
+                badgeEl.innerHTML = `🔴 本期新恶化: <b>${newWorseningCount}</b> 例`;
+            } else { badgeEl.style.display = 'none'; pnl.classList.remove('has-change-highlight'); }
+
+            const seriesData =[...new Set(ptArray.map(d => d.arm))].map(arm => ({
+                name: arm, type: 'scatter', symbolSize: 9,
+                data: ptArray.filter(d => d.arm === arm).map(d => {
+                    let itemStyle = {};
+                    if (d.anyWorsening && hasPreviousData) {
+                        itemStyle = { borderColor: '#8F1D14', borderWidth: 3, shadowBlur: 8, shadowColor: 'rgba(143,29,20,0.5)', color: 'rgba(220,60,50,0.85)' };
+                    }
+                    return { name: d.id, value:[Math.max(d.maxAT.f,0.1), Math.max(d.BILI.f,0.1), d.arm, d.diag, d.maxAT, d.BILI], itemStyle: itemStyle, symbolSize: d.anyWorsening && hasPreviousData ? 14 : 9 };
+                })
+            }));
+
+            charts.liverScatter.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {}, brush: { type: ['rect', 'clear'] } }, right: 15 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                brush: { xAxisIndex: 'all', yAxisIndex: 'all', outOfBrush: { colorAlpha: 0.2 } },
+                tooltip: { formatter: p => {
+                    let pt = ptDicts.liver.find(item => item.id === p.name);
+                    if(!pt) return '';
+                    let html = `<b>${pt.id}</b> (${pt.arm})<br>Max AT: ${pt.maxAT.f.toFixed(1)}x <span style="font-size:11px;color:#888;">(${pt.maxAT.raw.toFixed(1)} ${pt.maxAT.unit})</span><br>Peak BILI: ${pt.BILI.f.toFixed(1)}x <span style="font-size:11px;color:#888;">(${pt.BILI.raw.toFixed(1)} ${pt.BILI.unit})</span>`;
+                    if (hasPreviousData && pt.prevMaxAT_f !== null) {
+                        let atDiff = pt.maxAT.f - pt.prevMaxAT_f;
+                        let biliDiff = pt.BILI.f - pt.prevBILI_f;
+                        let atSign = atDiff > 0 ? '+' : '';
+                        let biliSign = biliDiff > 0 ? '+' : '';
+                        html += `<br><span style="color:#d97706;font-weight:bold;">📋 上期对比:</span>`;
+                        html += `<br>  AT: ${pt.prevMaxAT_f.toFixed(1)}x → <b>${pt.maxAT.f.toFixed(1)}x</b> (${atSign}${atDiff.toFixed(2)}x)`;
+                        html += `<br>  BILI: ${pt.prevBILI_f.toFixed(1)}x → <b>${pt.BILI.f.toFixed(1)}x</b> (${biliSign}${biliDiff.toFixed(2)}x)`;
+                        if (pt.anyWorsening) html += `<br><span style="color:#8F1D14;font-weight:bold;">🔴 本期新恶化!</span>`;
+                    }
+                    return html;
+                }},
+                grid: { top: 30, bottom: 40, left: 40, right: 30 },
+                xAxis: { type: 'log', name: 'Peak AT (x ULN)', nameLocation: 'middle', nameGap: 25, min:0.1, max:100 },
+                yAxis: { type: 'log', name: 'Peak BILI (x ULN)', nameLocation: 'middle', nameGap: 25, min:0.1, max:20 },
+                series:[...seriesData, { type: 'scatter', data:[], markLine: { silent:true, symbol:'none', lineStyle:{color:'red', type:'dashed'}, data:[{xAxis:3}, {yAxis:2}] } }]
+            }, true);
+
+            let warnings = ptArray.filter(p => p.diag !== 'Safe').sort((a,b) => {
+                const diagOrder = {HysLaw: 2, Temple: 1};
+                let da = diagOrder[a.diag]||0, db = diagOrder[b.diag]||0;
+                if(db !== da) return db - da;
+                return b.maxAT.f - a.maxAT.f;
+            });
+            document.getElementById('count-liver-warning').innerText = warnings.length;
+            document.getElementById('tbody-liver-warning').innerHTML = warnings.map(pt => {
+                let badge = pt.diag === 'HysLaw' ? '<span class="badge-danger">Hy\'s Law</span>' : '<span class="badge-warn">AT>3x</span>';
+                let atRaw = `<span class="raw-val">${pt.maxAT.raw.toFixed(1)} ${pt.maxAT.unit}</span>`;
+                let biliRaw = `<span class="raw-val">${pt.BILI.raw.toFixed(1)} ${pt.BILI.unit}</span>`;
+                let changeHtml = '';
+                let rowClass = `row-${sanitizeId(pt.id)}`;
+                if (hasPreviousData && pt.prevMaxAT_f !== null) {
+                    changeHtml = getChangeBadge(pt.maxAT.f, pt.prevMaxAT_f, 0.5, 0.2, true);
+                    if (pt.anyWorsening) rowClass += ' row-worsening';
+                } else if (hasPreviousData) {
+                    changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>';
+                }
+                return `<tr class="${rowClass}" onclick="drillLiver('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${badge}</td><td><b>${pt.maxAT.f.toFixed(1)}x</b> ${atRaw}</td><td><b>${pt.BILI.f.toFixed(1)}x</b> ${biliRaw}</td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+            }).join('') || `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">无预警</td></tr>`;
+
+            charts.liverScatter.off('brushSelected');
+            charts.liverScatter.on('brushSelected', params => {
+                let selectedIds =[];
+                params.batch[0].selected.forEach(s => s.dataIndex.forEach(idx => selectedIds.push(charts.liverScatter.getOption().series[s.seriesIndex].data[idx].name)));
+                let selPts = ptArray.filter(p => selectedIds.includes(p.id)).sort((a,b) => b.maxAT.f - a.maxAT.f);
+                document.getElementById('count-liver-selected').innerText = selPts.length;
+                document.getElementById('tbody-liver-selected').innerHTML = selPts.length ? selPts.map(pt => {
+                    let atRaw = `<span class="raw-val">${pt.maxAT.raw.toFixed(1)} ${pt.maxAT.unit}</span>`;
+                    let biliRaw = `<span class="raw-val">${pt.BILI.raw.toFixed(1)} ${pt.BILI.unit}</span>`;
+                    let changeHtml = '';
+                    let rowClass = `row-${sanitizeId(pt.id)}`;
+                    if (hasPreviousData && pt.prevMaxAT_f !== null) {
+                        changeHtml = getChangeBadge(pt.maxAT.f, pt.prevMaxAT_f, 0.5, 0.2, true);
+                        if (pt.anyWorsening) rowClass += ' row-worsening';
+                    } else if (hasPreviousData) {
+                        changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>';
+                    }
+                    return `<tr class="${rowClass}" onclick="drillLiver('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${pt.diag}</td><td><b>${pt.maxAT.f.toFixed(1)}x</b> ${atRaw}</td><td><b>${pt.BILI.f.toFixed(1)}x</b> ${biliRaw}</td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+                }).join('') : `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">暂无框选</td></tr>`;
+                if(selPts.length > 0) switchTab('liver', 'selected');
+            });
+            charts.liverScatter.off('click');
+            charts.liverScatter.on('click', p => { if(p.componentType === 'series') drillLiver(p.name); });
+        }
+
+        function drillLiver(id) {
+            const focused = focusScatterPoint(charts.liverScatter, id);
+            if (!focused) {
+                document.getElementById('module-liver').querySelectorAll('tr').forEach(tr => tr.classList.remove('row-active'));
+                document.getElementById('ai-liver-diag').style.display = 'none';
+                document.getElementById('title-liver-timeline').innerText = '受试者级时序下钻图';
+                charts.liverTimeline.clear();
+                return;
+            }
+            highlightRow('liver', id);
+            let pt = ptDicts.liver.find(p => p.id === id);
+            let aiBox = document.getElementById('ai-liver-diag'); aiBox.style.display = 'block';
+            aiBox.style.borderColor = pt.diag === 'HysLaw' ? 'var(--danger)' : (pt.diag === 'Temple' ? 'var(--warning)' : 'var(--primary)');
+            let diagText = pt.diag === 'HysLaw' ? '🚨 符合海氏法则潜在特征。' : (pt.diag === 'Temple' ? '⚠️ 转氨酶中重度升高。' : '✅ 指标平稳。');
+            if (hasPreviousData && pt.anyWorsening) {
+                diagText += ' <span style="color:#8F1D14;font-weight:bold;">🔴 本期较上期显著恶化！</span>';
+            } else if (hasPreviousData && pt.prevMaxAT_f !== null) {
+                diagText += ' <span style="color:#6b7280;">(较上期变化不大)</span>';
+            }
+            aiBox.innerHTML = `<b>智能诊断：${diagText}</b>`;
+
+            const pALT = document.getElementById('map-alt').value, pAST = document.getElementById('map-ast').value, pBILI = document.getElementById('map-bili').value;
+            const logs = globalADLB.filter(d => d.USUBJID === id);
+            const getTrend = pCode => logs.filter(d => d.PARAMCD === pCode).sort((a,b)=>a.ADY-b.ADY).map(d => {
+                let raw = parseFloat(d.AVAL), uln = parseFloat(d.ANRHI);
+                return { value: [parseFloat(d.ADY), (!isNaN(raw) && !isNaN(uln) && uln > 0) ? raw/uln : null, raw, d.AVALU || ''] };
+            });
+
+            document.getElementById('title-liver-timeline').innerText = `受试者 ${id} 时序下钻图`;
+            charts.liverTimeline.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                tooltip: {trigger: 'axis', formatter: function(params) {
+                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    params.forEach(p => {
+                        let fold = p.value[1], raw = p.value[2], unit = p.value[3] || '';
+                        let foldStr = (fold !== null && fold !== undefined) ? fold.toFixed(2) + 'x' : '-';
+                        let rawStr = (raw !== null && raw !== undefined && !isNaN(raw)) ? raw.toFixed(1) + ' ' + unit : '-';
+                        html += `<br>${p.marker} ${p.seriesName}: <b>${foldStr}</b> <span style="color:#888;font-size:11px;">(${rawStr})</span>`;
+                    });
+                    return html;
+                }}, legend: {data:[pALT, pAST, pBILI].filter(Boolean)},
+                grid: {top: 30, right: 30, bottom: 50, left: 55},
+                xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
+                yAxis: {type: 'value', name: 'x ULN', nameGap: 30},
+                series:[{name:pALT, type:'line', data:getTrend(pALT), itemStyle:{color:'#8F1D14'}}, {name:pAST, type:'line', data:getTrend(pAST), itemStyle:{color:'#d97706'}}, {name:pBILI, type:'line', data:getTrend(pBILI), itemStyle:{color:'#274a73'}}]
+            }, true);
+        }
+
+        // ================== 肾功能 AKI ==================
+        function renderRenal() {
+            const pCREAT = document.getElementById('map-creat').value;
+            if(!pCREAT) return;
+
+            let data = getFilteredData().filter(d => d.PARAMCD === pCREAT);
+            let dict = {};
+            data.forEach(r => {
+                let id = r.USUBJID; let val = parseFloat(r.AVAL);
+                if(isNaN(val)) return;
+                if(!dict[id]) dict[id] = { id, arm: r.ARM, base: null, max: 0, unit: r.AVALU || '' };
+                if(r.ABLFL === 'Y') dict[id].base = val;
+                else if(val > dict[id].max) dict[id].max = val;
+            });
+
+            ptDicts.renal = Object.values(dict).filter(pt => pt.base !== null && pt.max > 0).map(pt => {
+                pt.fold = pt.max / pt.base;
+                pt.stage = pt.fold >= 3 ? 3 : (pt.fold >= 2 ? 2 : (pt.fold >= 1.5 ? 1 : 0));
+                return pt;
+            });
+            let ptArray = ptDicts.renal;
+            let newWorseningCount = 0;
+
+            ptArray.forEach(pt => {
+                let prevPt = prevPtDicts.renal[pt.id];
+                if (prevPt && hasPreviousData && prevPt.base !== null && prevPt.max > 0) {
+                    pt.prevFold = prevPt.max / prevPt.base;
+                    pt.prevBase = prevPt.base;
+                    pt.prevMax = prevPt.max;
+                    pt.anyWorsening = isWorsening(pt.fold, pt.prevFold, 0.5, true);
+                    if (pt.anyWorsening && pt.stage >= 1) newWorseningCount++;
+                } else {
+                    pt.prevFold = null;
+                    pt.anyWorsening = false;
+                }
+            });
+
+            let stage3 = ptArray.filter(p => p.stage === 3).length;
+            const pnl = document.getElementById('summary-renal');
+            const badgeEl = document.getElementById('badge-renal-change');
+            pnl.className = stage3 > 0 ? 'summary-panel has-risk' : 'summary-panel';
+            document.getElementById('text-renal-summary').innerHTML = stage3 > 0 ? `🚨 <b>预警：</b>发现 <b>${stage3}</b> 例触发 KDIGO 3 期极危预警。` : `✅ <b>未触发 3 期预警。</b>`;
+            if (hasPreviousData && newWorseningCount > 0) {
+                pnl.classList.add('has-change-highlight');
+                badgeEl.style.display = 'inline-block';
+                badgeEl.className = 'summary-badge new-worsening';
+                badgeEl.innerHTML = `🔴 本期新恶化: <b>${newWorseningCount}</b> 例`;
+            } else { badgeEl.style.display = 'none'; pnl.classList.remove('has-change-highlight'); }
+
+            let maxAx = Math.max(...ptArray.map(p => Math.max(p.base, p.max))) * 1.1; if(maxAx < 200) maxAx = 200;
+            const seriesData =[...new Set(ptArray.map(d => d.arm))].map(arm => ({
+                name: arm, type: 'scatter', symbolSize: 8,
+                data: ptArray.filter(d => d.arm === arm).map(d => {
+                    let itemStyle = {};
+                    if (d.anyWorsening && hasPreviousData) {
+                        itemStyle = { borderColor: '#8F1D14', borderWidth: 3, shadowBlur: 8, shadowColor: 'rgba(143,29,20,0.5)', color: 'rgba(220,60,50,0.85)' };
+                    }
+                    return { name: d.id, value:[d.base, d.max, d.arm, d.fold, d.unit], itemStyle: itemStyle, symbolSize: d.anyWorsening && hasPreviousData ? 13 : 8 };
+                })
+            }));
+
+            charts.renalScatter.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {}, brush: { type: ['rect', 'clear'] } }, right: 15 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                brush: { xAxisIndex: 'all', yAxisIndex: 'all', outOfBrush: { colorAlpha: 0.2 } },
+                tooltip: { formatter: p => {
+                    let pt = ptArray.find(item => item.id === p.name);
+                    if(!pt) return '';
+                    let html = `<b>${p.name}</b><br>Base: ${p.value[0].toFixed(1)}<br>Peak: ${p.value[1].toFixed(1)}<br>Fold: ${p.value[3].toFixed(2)}x`;
+                    if (hasPreviousData && pt.prevFold !== null) {
+                        let diff = pt.fold - pt.prevFold;
+                        let sign = diff > 0 ? '+' : '';
+                        html += `<br><span style="color:#d97706;font-weight:bold;">📋 上期: ${pt.prevFold.toFixed(2)}x → <b>${pt.fold.toFixed(2)}x</b> (${sign}${diff.toFixed(2)}x)</span>`;
+                        if (pt.anyWorsening) html += `<br><span style="color:#8F1D14;font-weight:bold;">🔴 本期新恶化!</span>`;
+                    }
+                    return html;
+                }},
+                grid: { top: 30, bottom: 40, left: 40, right: 30 },
+                xAxis: { type: 'value', name: 'Baseline', nameLocation: 'middle', nameGap: 25, max: maxAx },
+                yAxis: { type: 'value', name: 'Peak', nameLocation: 'middle', nameGap: 25, max: maxAx },
+                series:[...seriesData,
+                    { type:'line', silent:true, showSymbol:false, data:[[0,0],[maxAx,maxAx]], lineStyle:{color:'#94a3b8', type:'dashed'} },
+                    { type:'line', silent:true, showSymbol:false, data:[[0,0],[maxAx/1.5,maxAx]], lineStyle:{color:'#eab308'}, label:{show:true, formatter:'1.5x'} },
+                    { type:'line', silent:true, showSymbol:false, data:[[0,0],[maxAx/2,maxAx]], lineStyle:{color:'#d97706'}, label:{show:true, formatter:'2.0x'} }
+                ]
+            }, true);
+
+            let warnings = ptArray.filter(p => p.stage > 0).sort((a,b) => {
+                if(b.stage !== a.stage) return b.stage - a.stage;
+                return b.fold - a.fold;
+            });
+            document.getElementById('count-renal-warning').innerText = warnings.length;
+            document.getElementById('tbody-renal-warning').innerHTML = warnings.map(pt => {
+                let rowClass = `row-${sanitizeId(pt.id)}`;
+                let changeHtml = '';
+                if (hasPreviousData && pt.prevFold !== null) {
+                    changeHtml = getChangeBadge(pt.fold, pt.prevFold, 0.5, 0.2, true);
+                    if (pt.anyWorsening) rowClass += ' row-worsening';
+                } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                return `<tr class="${rowClass}" onclick="drillRenal('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td><span class="badge-${pt.stage>=2?'danger':'warn'}">AKIx${pt.fold.toFixed(1)}</span></td><td><b>${pt.base.toFixed(1)}</b></td><td><b>${pt.max.toFixed(1)}</b></td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+            }).join('') || `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">无预警</td></tr>`;
+
+            charts.renalScatter.off('brushSelected');
+            charts.renalScatter.on('brushSelected', params => {
+                let selectedIds =[];
+                params.batch[0].selected.forEach(s => s.dataIndex.forEach(idx => selectedIds.push(charts.renalScatter.getOption().series[s.seriesIndex].data[idx].name)));
+                let selPts = ptArray.filter(p => selectedIds.includes(p.id)).sort((a,b) => b.fold - a.fold);
+                document.getElementById('count-renal-selected').innerText = selPts.length;
+                document.getElementById('tbody-renal-selected').innerHTML = selPts.length ? selPts.map(pt => {
+                    let rowClass = `row-${sanitizeId(pt.id)}`;
+                    let changeHtml = '';
+                    if (hasPreviousData && pt.prevFold !== null) {
+                        changeHtml = getChangeBadge(pt.fold, pt.prevFold, 0.5, 0.2, true);
+                        if (pt.anyWorsening) rowClass += ' row-worsening';
+                    } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                    return `<tr class="${rowClass}" onclick="drillRenal('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td><span class="badge-${pt.stage>=2?'danger':'warn'}">AKIx${pt.fold.toFixed(1)}</span></td><td><b>${pt.base.toFixed(1)}</b></td><td><b>${pt.max.toFixed(1)}</b></td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+                }).join('') : `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">暂无框选</td></tr>`;
+                if(selPts.length > 0) switchTab('renal', 'selected');
+            });
+            charts.renalScatter.off('click');
+            charts.renalScatter.on('click', p => { if(p.componentType === 'series') drillRenal(p.name); });
+        }
+
+        function drillRenal(id) {
+            const focused = focusScatterPoint(charts.renalScatter, id);
+            if (!focused) {
+                document.getElementById('module-renal').querySelectorAll('tr').forEach(tr => tr.classList.remove('row-active'));
+                document.getElementById('ai-renal-diag').style.display = 'none';
+                document.getElementById('title-renal-timeline').innerText = '受试者级时序下钻图';
+                charts.renalTimeline.clear();
+                return;
+            }
+            highlightRow('renal', id);
+            let pt = ptDicts.renal.find(p => p.id === id);
+            let aiBox = document.getElementById('ai-renal-diag'); aiBox.style.display = 'block';
+            aiBox.style.borderColor = pt.stage >= 2 ? 'var(--danger)' : 'var(--warning)';
+            let diagText = `🚨 智能诊断：较基线激增 ${pt.fold.toFixed(2)} 倍。`;
+            if (hasPreviousData && pt.anyWorsening) {
+                diagText += ' <span style="color:#8F1D14;font-weight:bold;">🔴 本期较上期显著恶化！</span>';
+            }
+            aiBox.innerHTML = `<b>${diagText}</b>`;
+
+            const pCREAT = document.getElementById('map-creat').value;
+            const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === pCREAT).sort((a,b)=>a.ADY-b.ADY);
+
+            document.getElementById('title-renal-timeline').innerText = `受试者 ${id} 时序下钻图`;
+            charts.renalTimeline.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                tooltip: {trigger: 'axis', formatter: function(params) {
+                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(1) : '-'}</b>`; });
+                    return html;
+                }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
+                xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
+                yAxis: {type: 'value', name: pCREAT, nameGap: 40},
+                series:[{name:pCREAT, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]), itemStyle:{color:'#1e4a7a'}, markLine:{silent:true, data:[{yAxis:pt.base*1.5, lineStyle:{color:'#eab308'}}]}}]
+            }, true);
+        }
+
+        // ================== QTc ==================
+        function renderQtc() {
+            const pQTC = document.getElementById('map-qtc').value;
+            if(!pQTC) return;
+
+            let data = getFilteredData().filter(d => d.PARAMCD === pQTC);
+            let dict = {};
+            data.forEach(r => {
+                let id = r.USUBJID; let val = parseFloat(r.AVAL);
+                if(isNaN(val)) return;
+                if(!dict[id]) dict[id] = { id, arm: r.ARM, base: null, max: 0, unit: r.AVALU || 'ms' };
+                if(r.ABLFL === 'Y') dict[id].base = val;
+                else if(val > dict[id].max) dict[id].max = val;
+            });
+
+            ptDicts.qtc = Object.values(dict).filter(pt => pt.base !== null && pt.max > 0).map(pt => {
+                pt.delta = pt.max - pt.base;
+                if (pt.max > 500 || pt.delta > 60) pt.stage = 2;
+                else if (pt.max > 480 || pt.delta > 30) pt.stage = 1;
+                else pt.stage = 0;
+                return pt;
+            });
+            let ptArray = ptDicts.qtc;
+            let newWorseningCount = 0;
+
+            ptArray.forEach(pt => {
+                let prevPt = prevPtDicts.qtc[pt.id];
+                if (prevPt && hasPreviousData && prevPt.base !== null && prevPt.max > 0) {
+                    pt.prevMax = prevPt.max;
+                    pt.prevBase = prevPt.base;
+                    pt.prevDelta = prevPt.max - prevPt.base;
+                    pt.anyWorsening = isWorsening(pt.max, pt.prevMax, 20, true) || isWorsening(pt.delta, pt.prevDelta, 15, true);
+                    if (pt.anyWorsening && pt.stage >= 1) newWorseningCount++;
+                } else {
+                    pt.prevMax = null;
+                    pt.prevDelta = null;
+                    pt.anyWorsening = false;
+                }
+            });
+
+            let stage2 = ptArray.filter(p => p.stage === 2).length;
+            const pnl = document.getElementById('summary-qtc');
+            const badgeEl = document.getElementById('badge-qtc-change');
+            if(stage2 > 0) {
+                pnl.className = 'summary-panel has-risk';
+                document.getElementById('text-qtc-summary').innerHTML = `🚨 <b>预警：</b>发现 <b>${stage2}</b> 例触发高危预警 (QTc > 500ms 或较基线延长 > 60ms)。`;
+            } else {
+                pnl.className = 'summary-panel';
+                document.getElementById('text-qtc-summary').innerHTML = `✅ <b>未触发高危预警。</b>请持续关注中低风险趋势。`;
+            }
+            if (hasPreviousData && newWorseningCount > 0) {
+                pnl.classList.add('has-change-highlight');
+                badgeEl.style.display = 'inline-block';
+                badgeEl.className = 'summary-badge new-worsening';
+                badgeEl.innerHTML = `🔴 本期新恶化: <b>${newWorseningCount}</b> 例`;
+            } else { badgeEl.style.display = 'none'; pnl.classList.remove('has-change-highlight'); }
+
+            let minAx = 300;
+            let maxBase = Math.max(...ptArray.map(p => p.base));
+            let maxPeak = Math.max(...ptArray.map(p => p.max));
+            let maxAx = Math.max(550, maxBase, maxPeak) * 1.05;
+
+            const seriesData =[...new Set(ptArray.map(d => d.arm))].map(arm => ({
+                name: arm, type: 'scatter', symbolSize: 8,
+                data: ptArray.filter(d => d.arm === arm).map(d => {
+                    let itemStyle = {};
+                    if (d.anyWorsening && hasPreviousData) {
+                        itemStyle = { borderColor: '#8F1D14', borderWidth: 3, shadowBlur: 8, shadowColor: 'rgba(143,29,20,0.5)', color: 'rgba(220,60,50,0.85)' };
+                    }
+                    return { name: d.id, value:[d.base, d.max, d.arm, d.delta, d.unit, d.stage], itemStyle: itemStyle, symbolSize: d.anyWorsening && hasPreviousData ? 13 : 8 };
+                })
+            }));
+
+            charts.qtcScatter.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {}, brush: { type:['rect', 'clear'] } }, right: 15 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                brush: { xAxisIndex: 'all', yAxisIndex: 'all', outOfBrush: { colorAlpha: 0.2 } },
+                tooltip: { formatter: p => {
+                    if(p.value.length < 6) return '';
+                    let pt = ptArray.find(item => item.id === p.name);
+                    let html = `<b>${p.name}</b><br>Base: ${p.value[0].toFixed(0)} ms<br>Peak: ${p.value[1].toFixed(0)} ms<br>Δ: ${p.value[3] > 0 ? '+'+p.value[3].toFixed(0) : p.value[3].toFixed(0)} ms`;
+                    if (hasPreviousData && pt && pt.prevMax !== null) {
+                        let diff = pt.max - pt.prevMax;
+                        let sign = diff > 0 ? '+' : '';
+                        html += `<br><span style="color:#d97706;font-weight:bold;">📋 上期Peak: ${pt.prevMax.toFixed(0)} ms → <b>${pt.max.toFixed(0)} ms</b> (${sign}${diff.toFixed(0)} ms)</span>`;
+                        if (pt.anyWorsening) html += `<br><span style="color:#8F1D14;font-weight:bold;">🔴 本期新恶化!</span>`;
+                    }
+                    return html;
+                }},
+                grid: { top: 30, bottom: 40, left: 45, right: 30 },
+                xAxis: { type: 'value', name: 'Baseline QTc (ms)', nameLocation: 'middle', nameGap: 25, min: minAx, max: maxAx },
+                yAxis: { type: 'value', name: 'Peak QTc (ms)', nameLocation: 'middle', nameGap: 30, min: minAx, max: maxAx },
+                series:[...seriesData,
+                    { type:'line', silent:true, showSymbol:false, data:[[minAx,minAx],[maxAx,maxAx]], lineStyle:{color:'#94a3b8', type:'dashed'} },
+                    { type:'line', silent:true, showSymbol:false, data:[[minAx,minAx+30],[maxAx,maxAx+30]], lineStyle:{color:'#eab308', type:'dashed'}, label:{show:true, formatter:'+30ms'} },
+                    { type:'line', silent:true, showSymbol:false, data:[[minAx,minAx+60],[maxAx,maxAx+60]], lineStyle:{color:'#8F1D14', type:'dashed'}, label:{show:true, formatter:'+60ms'} },
+                    { type:'scatter', data:[], markLine: { silent:true, symbol:'none', data:[ {yAxis: 480, lineStyle:{color:'#eab308'}}, {yAxis: 500, lineStyle:{color:'#8F1D14'}} ] } }
+                ]
+            }, true);
+
+            let warnings = ptArray.filter(p => p.stage > 0).sort((a,b) => {
+                if(b.stage !== a.stage) return b.stage - a.stage;
+                return b.max - a.max;
+            });
+            document.getElementById('count-qtc-warning').innerText = warnings.length;
+            document.getElementById('tbody-qtc-warning').innerHTML = warnings.map(pt => {
+                let badge = pt.stage === 2 ? `<span class="badge-danger">High Risk</span>` : `<span class="badge-warn">Med Risk</span>`;
+                let deltaText = pt.delta > 0 ? `+${pt.delta.toFixed(0)}` : pt.delta.toFixed(0);
+                let rowClass = `row-${sanitizeId(pt.id)}`;
+                let changeHtml = '';
+                if (hasPreviousData && pt.prevMax !== null) {
+                    changeHtml = getChangeBadge(pt.max, pt.prevMax, 20, 10, true);
+                    if (pt.anyWorsening) rowClass += ' row-worsening';
+                } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                return `<tr class="${rowClass}" onclick="drillQtc('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${badge}</td><td><b>${pt.base.toFixed(0)}</b></td><td><b>${pt.max.toFixed(0)}</b> <span class="raw-val">(Δ ${deltaText})</span></td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+            }).join('') || `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">无预警</td></tr>`;
+
+            charts.qtcScatter.off('brushSelected');
+            charts.qtcScatter.on('brushSelected', params => {
+                let selectedIds =[];
+                params.batch[0].selected.forEach(s => s.dataIndex.forEach(idx => selectedIds.push(charts.qtcScatter.getOption().series[s.seriesIndex].data[idx].name)));
+                let selPts = ptArray.filter(p => selectedIds.includes(p.id)).sort((a,b) => b.max - a.max);
+                document.getElementById('count-qtc-selected').innerText = selPts.length;
+                document.getElementById('tbody-qtc-selected').innerHTML = selPts.length ? selPts.map(pt => {
+                    let rowClass = `row-${sanitizeId(pt.id)}`;
+                    let changeHtml = '';
+                    if (hasPreviousData && pt.prevMax !== null) {
+                        changeHtml = getChangeBadge(pt.max, pt.prevMax, 20, 10, true);
+                        if (pt.anyWorsening) rowClass += ' row-worsening';
+                    } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                    return `<tr class="${rowClass}" onclick="drillQtc('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${pt.stage===2?'High':(pt.stage===1?'Med':'Low')}</td><td><b>${pt.base.toFixed(0)}</b></td><td><b>${pt.max.toFixed(0)}</b></td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+                }).join('') : `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">暂无框选</td></tr>`;
+                if(selPts.length > 0) switchTab('qtc', 'selected');
+            });
+            charts.qtcScatter.off('click');
+            charts.qtcScatter.on('click', p => { if(p.componentType === 'series' && p.seriesType === 'scatter') drillQtc(p.name); });
+        }
+
+        function drillQtc(id) {
+            const focused = focusScatterPoint(charts.qtcScatter, id);
+            if (!focused) {
+                document.getElementById('module-qtc').querySelectorAll('tr').forEach(tr => tr.classList.remove('row-active'));
+                document.getElementById('ai-qtc-diag').style.display = 'none';
+                document.getElementById('title-qtc-timeline').innerText = '受试者级时序下钻图';
+                charts.qtcTimeline.clear();
+                return;
+            }
+            highlightRow('qtc', id);
+            let pt = ptDicts.qtc.find(p => p.id === id);
+            let aiBox = document.getElementById('ai-qtc-diag'); aiBox.style.display = 'block';
+
+            if (pt.stage === 2) {
+                aiBox.style.borderColor = 'var(--danger)';
+                aiBox.innerHTML = `<b>🚨 智能诊断：存在 QTc 严重延长风险。</b>Peak QTc 为 ${pt.max.toFixed(0)} ms，较基线改变 ${pt.delta.toFixed(0)} ms。`;
+            } else if (pt.stage === 1) {
+                aiBox.style.borderColor = 'var(--warning)';
+                aiBox.innerHTML = `<b>⚠️ 智能诊断：QTc 中度延长。</b>(触发 >480ms 或 Δ>30ms 规则)。`;
+            } else {
+                aiBox.style.borderColor = 'var(--primary)';
+                aiBox.innerHTML = `<b>✅ 智能诊断：QTc 间期平稳，处于正常变异范围内。</b>`;
+            }
+            if (hasPreviousData && pt.anyWorsening) {
+                aiBox.innerHTML += ' <span style="color:#8F1D14;font-weight:bold;display:block;margin-top:6px;">🔴 本期较上期显著恶化！</span>';
+            }
+
+            const pQTC = document.getElementById('map-qtc').value;
+            const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === pQTC).sort((a,b)=>a.ADY-b.ADY);
+
+            document.getElementById('title-qtc-timeline').innerText = `受试者 ${id} 时序下钻图`;
+            charts.qtcTimeline.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                tooltip: {trigger: 'axis', formatter: function(params) {
+                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(0) : '-'} ms</b>`; });
+                    return html;
+                }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
+                xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
+                yAxis: {type: 'value', name: 'QTc (ms)', nameGap: 40, min: 'dataMin'},
+                series:[{
+                    name:pQTC, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]),
+                    itemStyle:{color:'#8F1D14'}, areaStyle:{color:'rgba(143, 29, 20, 0.05)'},
+                    markLine:{ silent:true, data:[ {yAxis: 480, lineStyle:{color:'#eab308'}}, {yAxis: 500, lineStyle:{color:'#8F1D14'}} ] }
+                }]
+            }, true);
+        }
+
+        // ================== CTCAE 热力图 ==================
+        function renderHeatmap() {
+            const param = document.getElementById('heatmap-param').value;
+            if(!param) return;
+
+            let data = getFilteredData().filter(d => d.PARAMCD === param);
+            let dict = {};
+            data.forEach(r => {
+                let id = r.USUBJID;
+                if(!dict[id]) dict[id] = { id, arm: r.ARM, baseG: parseInt(r.BTOXGR)||0, worstG: -1, maxRaw: 0, unit: r.AVALU||'' };
+                let g = parseInt(r.ATOXGR)||0; let val = parseFloat(r.AVAL);
+                if(r.ABLFL !== 'Y') {
+                    if(g > dict[id].worstG) dict[id].worstG = g;
+                    if(dict[id].maxRaw===0 || Math.abs(val) > Math.abs(dict[id].maxRaw)) dict[id].maxRaw=val;
+                }
+            });
+
+            ptDicts.heatmap = Object.values(dict).filter(p => p.baseG>=0 && p.worstG>=0);
+            let ptArray = ptDicts.heatmap;
+            let newWorseningCount = 0;
+
+            ptArray.forEach(pt => {
+                let prevPt = prevPtDicts.heatmap[pt.id];
+                if (prevPt && hasPreviousData && prevPt[param] && prevPt[param].worstG >= 0) {
+                    pt.prevWorstG = prevPt[param].worstG;
+                    pt.prevBaseG = prevPt[param].baseG;
+                    pt.anyWorsening = pt.worstG > pt.prevWorstG && pt.worstG >= 2;
+                    if (pt.anyWorsening && pt.worstG >= 3) newWorseningCount++;
+                } else {
+                    pt.prevWorstG = null;
+                    pt.anyWorsening = false;
+                }
+            });
+
+            let gr34 = ptArray.filter(p => p.worstG >= 3).length;
+            const pnl = document.getElementById('summary-heatmap');
+            const badgeEl = document.getElementById('badge-heatmap-change');
+            let paramObj = uniqueParams.find(p => p.cd === param);
+            let displayName = paramObj ? paramObj.desc : param;
+
+            if(gr34 > 0) { pnl.className = 'summary-panel has-risk'; document.getElementById('text-heatmap-summary').innerHTML = `🚨 <b>预警：</b>发现 <b>${gr34}</b> 例 <b>${displayName}</b> 的 3/4 级严重毒性事件！`; }
+            else { pnl.className = 'summary-panel'; document.getElementById('text-heatmap-summary').innerHTML = `✅ <b>安全：</b>当前指标未发现 3/4 级严重恶化。`; }
+            if (hasPreviousData && newWorseningCount > 0) {
+                pnl.classList.add('has-change-highlight');
+                badgeEl.style.display = 'inline-block';
+                badgeEl.className = 'summary-badge new-worsening';
+                badgeEl.innerHTML = `🔴 本期新恶化: <b>${newWorseningCount}</b> 例`;
+            } else { badgeEl.style.display = 'none'; pnl.classList.remove('has-change-highlight'); }
+
+            let matrix = Array(5).fill(0).map(()=>Array(5).fill(0));
+            ptArray.forEach(pt => matrix[pt.baseG][pt.worstG] += 1);
+
+            let heatData =[];
+            for(let b=0; b<=4; b++) for(let w=0; w<=4; w++) heatData.push([w, b, matrix[b][w]]);
+
+            const gLabels =['G0', 'G1', 'G2', 'G3', 'G4'];
+            charts.heatmapMain.setOption({
+                tooltip: { position: 'top', formatter: p => `Base: ${gLabels[p.value[1]]} → Worst: ${gLabels[p.value[0]]}<br>Count: ${p.value[2]}` },
+                grid: { top: 20, bottom: 40, left: 50, right: 20 },
+                xAxis: { type: 'category', data: gLabels, name: 'Worst Post-Base Grade', nameLocation: 'middle', nameGap: 25 },
+                yAxis: { type: 'category', data: gLabels, name: 'Baseline Grade', nameLocation: 'middle', nameGap: 30 },
+                visualMap: { show: false, min: 0, max: Math.max(...heatData.map(d=>d[2]))||10, inRange: { color:['#f8fbfe', '#a5b4fc', '#4338ca', '#8F1D14'] } },
+                series:[{ type: 'heatmap', data: heatData, label: {show:true, color:'#000'}, itemStyle: {borderColor: '#fff', borderWidth: 2} }]
+            }, true);
+
+            let warnings = ptArray.filter(p => p.worstG >= 3).sort((a,b) => {
+                if(b.worstG !== a.worstG) return b.worstG - a.worstG;
+                return a.baseG - b.baseG;
+            });
+            document.getElementById('count-heatmap-warning').innerText = warnings.length;
+            document.getElementById('tbody-heatmap-warning').innerHTML = warnings.map(pt => {
+                let rowClass = `row-${sanitizeId(pt.id)}`;
+                let changeHtml = '';
+                if (hasPreviousData && pt.prevWorstG !== null) {
+                    changeHtml = getChangeBadge(pt.worstG, pt.prevWorstG, 1, 0, true);
+                    if (pt.anyWorsening) rowClass += ' row-worsening';
+                } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                return `<tr class="${rowClass}" onclick="drillHeatmap('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${pt.arm}</td><td>Grade ${pt.baseG}</td><td><span class="badge-danger">Grade ${pt.worstG}</span></td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+            }).join('') || `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">无记录</td></tr>`;
+
+            charts.heatmapMain.off('click');
+            charts.heatmapMain.on('click', p => {
+                if(p.componentType === 'series') {
+                    let selPts = ptArray.filter(pt => pt.worstG === p.value[0] && pt.baseG === p.value[1]);
+                    document.getElementById('count-heatmap-selected').innerText = selPts.length;
+                    document.getElementById('tbody-heatmap-selected').innerHTML = selPts.length ? selPts.map(pt => {
+                        let rowClass = `row-${sanitizeId(pt.id)}`;
+                        let changeHtml = '';
+                        if (hasPreviousData && pt.prevWorstG !== null) {
+                            changeHtml = getChangeBadge(pt.worstG, pt.prevWorstG, 1, 0, true);
+                            if (pt.anyWorsening) rowClass += ' row-worsening';
+                        } else if (hasPreviousData) { changeHtml = '<span style="color:#888;font-size:10px;">新入组</span>'; }
+                        return `<tr class="${rowClass}" onclick="drillHeatmap('${pt.id}')"><td><b>${pt.id}</b>${pt.anyWorsening && hasPreviousData ? ' <span class="highlight-dot worsening"></span>' : ''}</td><td>${pt.arm}</td><td>Grade ${pt.baseG}</td><td>Grade ${pt.worstG}</td>${hasPreviousData ? '<td>' + changeHtml + '</td>' : ''}</tr>`;
+                    }).join('') : `<tr><td colspan="${hasPreviousData ? 5 : 4}" align="center" style="padding:20px;color:#888;">暂无框选</td></tr>`;
+                    switchTab('heatmap', 'selected');
+                }
+            });
+        }
+
+        function drillHeatmap(id) {
+            highlightRow('heatmap', id);
+            const param = document.getElementById('heatmap-param').value;
+            let pt = ptDicts.heatmap.find(p => p.id === id);
+            let aiBox = document.getElementById('ai-heatmap-diag'); aiBox.style.display = 'block';
+            aiBox.style.borderColor = pt.worstG >= 3 ? 'var(--danger)' : 'var(--primary)';
+            let diagText = pt.worstG >= 3 ? '🚨 发生严重毒性恶化！' : '✅ 毒性波动可控。';
+            if (hasPreviousData && pt.anyWorsening) {
+                diagText += ` <span style="color:#8F1D14;font-weight:bold;">🔴 本期较上期恶化 (上期Grade: ${pt.prevWorstG} → 本期Grade: ${pt.worstG})</span>`;
+            }
+            aiBox.innerHTML = `<b>智能诊断：${diagText}</b>`;
+
+            const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === param).sort((a,b)=>a.ADY-b.ADY);
+            document.getElementById('title-heatmap-timeline').innerText = `受试者 ${id} 时序下钻图`;
+            charts.heatmapTimeline.setOption({
+                toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
+                dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
+                tooltip: {trigger: 'axis', formatter: function(params) {
+                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(2) : '-'}</b>`; });
+                    return html;
+                }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
+                xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
+                yAxis: {type: 'value', name: `Value`, nameGap: 40},
+                series:[{name:param, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]), symbolSize:6, itemStyle:{color:'#5c6978'}}]
+            }, true);
+        }
+
+        function generateDemoDataArray(isPrevious) {
+            let mock =[];
+            let days =[1, 14, 28, 42, 56];
+
+            function rLogNorm(mean, std) {
+                let u1 = Math.random(), u2 = Math.random();
+                if(u1 === 0) u1 = 0.001;
+                let z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+                return Math.exp(z * std + Math.log(mean));
+            }
+
+            let baseData = {};
+            let totalSubjects = isPrevious ? 95 : 100;
+
+            for(let i=1; i<=totalSubjects; i++) {
+                let id = `SUBJ-${String(i).padStart(3, '0')}`;
+                let arm = i % 2 === 0 ? 'Study Drug 100mg' : 'Placebo';
+                let site = i % 3 === 0 ? 'Site-01' : (i % 3 === 1 ? 'Site-02' : 'Site-03');
+
+                let baseAlt = rLogNorm(20, 0.35);
+                let baseAst = rLogNorm(22, 0.3);
+                let baseBili = rLogNorm(8, 0.25);
+                let baseCreat = rLogNorm(70, 0.15);
+                let baseQtc = rLogNorm(395, 0.05);
+
+                baseData[id] = { baseGr: {} };
+
+                days.forEach(d => {
+                    let isB = (d === 1) ? 'Y' : '';
+
+                    let alt = baseAlt * rLogNorm(1, 0.15);
+                    let ast = baseAst * rLogNorm(1, 0.15);
+                    let bili = baseBili * rLogNorm(1, 0.15);
+                    let creat = baseCreat * rLogNorm(1, 0.05);
+                    let qtc = baseQtc + (Math.random() - 0.5) * 15;
+
+                    if (d === 28 || d === 42) {
+                        if (!isPrevious) {
+                            if (i === 5 || i === 12) { alt = rLogNorm(250, 0.2); ast = rLogNorm(220, 0.2); bili = rLogNorm(45, 0.2); }
+                            else if ([18, 25, 33, 41].includes(i)) { alt = rLogNorm(180, 0.3); ast = rLogNorm(160, 0.3); }
+                            else if ([7, 22, 55, 88].includes(i)) { bili = rLogNorm(35, 0.2); }
+                            if ([8, 21].includes(i)) creat = baseCreat * 3.5;
+                            else if ([15, 29, 63].includes(i)) creat = baseCreat * 2.3;
+                            else if ([35, 42, 77, 91].includes(i)) creat = baseCreat * 1.7;
+                            if ([7, 19, 44].includes(i)) qtc = baseQtc + 75 + Math.random()*20;
+                            else if ([14, 26, 50, 68, 82].includes(i)) qtc = baseQtc + 40 + Math.random()*15;
+                        } else {
+                            if (i === 5) { alt = rLogNorm(80, 0.2); ast = rLogNorm(70, 0.2); bili = rLogNorm(15, 0.2); }
+                            else if (i === 12) { alt = rLogNorm(90, 0.2); ast = rLogNorm(75, 0.2); bili = rLogNorm(18, 0.2); }
+                            else if (i === 18 || i === 33) { alt = rLogNorm(60, 0.3); ast = rLogNorm(55, 0.3); }
+                            else if (i === 25) { alt = rLogNorm(100, 0.3); ast = rLogNorm(90, 0.3); }
+                            else if (i === 41) { alt = rLogNorm(45, 0.3); ast = rLogNorm(40, 0.3); }
+                            if (i === 8) creat = baseCreat * 1.3;
+                            else if (i === 21) creat = baseCreat * 1.4;
+                            else if (i === 15) creat = baseCreat * 1.5;
+                            else if (i === 29) creat = baseCreat * 1.6;
+                            else if (i === 63) creat = baseCreat * 1.2;
+                            if (i === 7) qtc = baseQtc + 20;
+                            else if (i === 19) qtc = baseQtc + 25;
+                            else if (i === 44) qtc = baseQtc + 35;
+                        }
+                    }
+
+                    alt = Math.max(alt, 5); ast = Math.max(ast, 5); bili = Math.max(bili, 2); creat = Math.max(creat, 30); qtc = Math.max(qtc, 300);
+
+                    let getToxGr = (val, uln) => val > uln*5 ? '3' : (val > uln*3 ? '2' : (val > uln ? '1' : '0'));
+                    let altGr = getToxGr(alt, 40);
+                    if (isB === 'Y') baseData[id].baseGr['ALT'] = altGr;
+
+                    mock.push({USUBJID: id, ARM: arm, SITEID: site, ADY: d, ABLFL: isB, PARAMCD: 'ALT', PARAM: 'Alanine Aminotransferase', AVAL: alt, ANRHI: 40, AVALU: 'U/L', ATOXGR: altGr, BTOXGR: baseData[id].baseGr['ALT']});
+                    mock.push({USUBJID: id, ARM: arm, SITEID: site, ADY: d, ABLFL: isB, PARAMCD: 'AST', PARAM: 'Aspartate Aminotransferase', AVAL: ast, ANRHI: 40, AVALU: 'U/L'});
+                    mock.push({USUBJID: id, ARM: arm, SITEID: site, ADY: d, ABLFL: isB, PARAMCD: 'BILI', PARAM: 'Total Bilirubin', AVAL: bili, ANRHI: 17.1, AVALU: 'umol/L'});
+                    mock.push({USUBJID: id, ARM: arm, SITEID: site, ADY: d, ABLFL: isB, PARAMCD: 'CREAT', PARAM: 'Creatinine', AVAL: creat, ANRHI: 104, AVALU: 'umol/L'});
+                    mock.push({USUBJID: id, ARM: arm, SITEID: site, ADY: d, ABLFL: isB, PARAMCD: 'QTCF', PARAM: 'QTcF Interval', AVAL: qtc, ANRHI: 450, AVALU: 'msec'});
+                });
+            }
+            return mock;
+        }
+
+        function loadMockData() {
+            globalADLB = generateDemoDataArray(false);
+            globalADLB_previous = generateDemoDataArray(true);
+            hasPreviousData = true;
+            updatePrevStatusIndicator();
+            initializeSystemData();
+        }
+    </script>
+</body>
+</html>
