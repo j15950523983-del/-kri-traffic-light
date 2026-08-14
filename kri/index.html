@@ -8101,7 +8101,7 @@
 
     function loadProject(project) {
       currentProject = project;
-      fetch('./data/' + project + '/kri_export.json')
+      fetch('../data/' + project + '/kri_export.json')
         .then(function (resp) {
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
           return resp.text();
@@ -8109,7 +8109,7 @@
         .then(function (text) {
           var mainData = parseJsonUtf8(text);
           loadDataAndRender(mainData, { stripDetailPanels: true });
-          return fetch('./data/' + project + '/kri_detail_panels.json').then(function (resp2) {
+          return fetch('../data/' + project + '/kri_detail_panels.json').then(function (resp2) {
             if (!resp2.ok) throw new Error('详情 HTTP ' + resp2.status);
             return resp2.text();
           }).then(function (text2) {
@@ -8128,7 +8128,7 @@
     function initProjectSelector() {
       var sel = document.getElementById('projectSelect');
       if (!sel) return;
-      fetch('./data/projects.json')
+      fetch('../data/projects.json')
         .then(function (r) { return r.json(); })
         .then(function (list) {
           if (!Array.isArray(list) || !list.length) return;

@@ -4617,7 +4617,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* 自动加载项目数据（支持 ?project=A 参数） */
 (function autoLoad(){
   var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
-  fetch('./data/' + project + '/adsl.json')
+  fetch('../data/' + project + '/adsl.json')
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(function(text){
       var file = new File([text], 'adsl.json', {type:'application/json'});

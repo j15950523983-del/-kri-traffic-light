@@ -4159,7 +4159,7 @@ async function loadExampleData() {
   // Try loading real ADTTE data files from the same directory;
   // falls back to generated data when fetch is unavailable (e.g. file:// protocol).
   const project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
-  const filesToTry = ['data/' + project + '/adtte.json'];
+  const filesToTry = ['../data/' + project + '/adtte.json'];
   const loaded = {};
   let anyLoaded = false;
 
