@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SMART 多维度数据异常监测</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="lib/plotly.min.js"></script>
+<script src="lib/jstat.min.js"></script>
 <style>
 /* ============================================================
    SMART RBQM — Clinical Precision Dashboard
@@ -1068,7 +1070,7 @@ body{
 <!-- ======== SCRIPTS ======== -->
 <script>
 (function loadScripts(){
-  const SCRIPT_TIMEOUT=8000;
+  const SCRIPT_TIMEOUT=60000;
   function injectTry(urls,id){
     let i=0;
     return new Promise((resolve,reject)=>{
@@ -1092,6 +1094,7 @@ body{
   window._plotlyReady=null;
   window._loadPlotly=function(){
     if(window._plotlyReady)return window._plotlyReady;
+    if(typeof Plotly!=='undefined'){ window._plotlyReady=Promise.resolve(); return window._plotlyReady; }
     const plotlyCDN=['lib/plotly.min.js'];
     window._plotlyReady=injectTry(plotlyCDN,'plotly-js').then(()=>{
       console.log('Plotly loaded on demand');
