@@ -435,6 +435,54 @@ tr.clickable:hover td { background: rgba(33,102,172,0.06); }
 .drill-filter-bar .filter-count { font-size: 0.7rem; color: var(--slate); white-space: nowrap; }
 .drill-filter-bar .filter-count.has-filter { color: var(--blue); font-weight: 600; }
 
+/* ── Forecast Modal ── */
+.forecast-overlay {
+  position: fixed; inset: 0; background: rgba(20,28,43,0.4); z-index: 210;
+  opacity: 0; pointer-events: none; transition: opacity var(--duration-normal);
+}
+.forecast-overlay.open { opacity: 1; pointer-events: auto; }
+.forecast-modal {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: min(1120px, calc(100vw - 40px)); height: min(88vh, 860px);
+  background: var(--canvas); box-shadow: var(--shadow-lg); z-index: 211;
+  border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--duration-normal), transform var(--duration-normal);
+}
+.forecast-modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+.forecast-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border);
+  background: var(--navy); color: white; flex-shrink: 0;
+}
+.forecast-header h2 { color: white; font-size: 0.95rem; margin: 0; }
+.forecast-controls {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-lg); background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.forecast-controls select,
+.forecast-controls input[type="number"],
+.forecast-controls input[type="date"] {
+  font-size: 0.75rem; padding: 4px 6px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--white); color: var(--ink);
+}
+.forecast-controls input[type="number"] { width: 62px; }
+.forecast-controls input[type="date"] { font-family: var(--font-body); }
+.forecast-body {
+  flex: 1; overflow-y: auto; padding: var(--space-md) var(--space-lg);
+  display: flex; flex-direction: column; gap: var(--space-md); min-height: 0;
+}
+.forecast-table-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; flex-shrink: 0; }
+.forecast-table-wrap .table-scroll { max-height: 240px; }
+.forecast-chart-wrap {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 6px var(--space-md); height: 260px; flex-shrink: 0; position: relative;
+}
+.forecast-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.forecast-empty { padding: var(--space-lg); text-align: center; color: var(--slate); font-size: 0.8rem; }
+
 /* ── Per-column filter row (inside thead) ── */
 tr.filter-row th { padding: 2px 6px !important; background: #F8F9FB !important; border-bottom: 2px solid var(--border) !important; }
 tr.filter-row input.col-filter {
@@ -635,6 +683,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
             间隔
             <input type="number" id="inpEventInterval" value="30" min="1" max="365" step="1" style="width:52px;padding:3px 4px;font-size:0.75rem;"> 天
           </span>
+          <button class="btn btn-sm btn-outline" id="btnOpenForecast" style="margin-left:auto;"><i data-lucide="trending-up"></i> 简易预测</button>
         </div>
         <div class="panel-grid">
           <div style="display:flex;gap:12px;width:100%;">
@@ -824,6 +873,40 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
     <button class="drill-close" id="btnDrillClose"><i data-lucide="x"></i></button>
   </div>
   <div class="drill-body" id="drillBody"></div>
+</div>
+
+<!-- Forecast Modal -->
+<div class="forecast-overlay" id="forecastOverlay"></div>
+<div class="forecast-modal" id="forecastModal">
+  <div class="forecast-header">
+    <h2><i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;"></i> 事件增长预测</h2>
+    <button class="drill-close" id="btnForecastClose"><i data-lucide="x"></i></button>
+  </div>
+  <div class="forecast-controls">
+    <span class="text-xs">终点</span>
+    <select id="selForecastParam" style="min-width:140px;"></select>
+    <span class="text-xs">预测日期</span>
+    <input type="date" id="inpForecastDate">
+    <span class="text-xs">间隔</span>
+    <input type="number" id="inpForecastInterval" value="30" min="1" max="365" step="1"> <span class="text-xs">天</span>
+    <span class="text-xs">预测至</span>
+    <input type="number" id="inpForecastMaxT" value="365" min="1" max="3650" step="1"> <span class="text-xs">天</span>
+    <button class="btn btn-sm btn-primary" id="btnForecastApply" style="margin-left:auto;">计算</button>
+  </div>
+  <div class="forecast-body">
+    <div class="forecast-table-wrap">
+      <div class="table-scroll">
+        <table id="tblForecast"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <div class="forecast-chart-wrap">
+      <canvas id="chartForecast"></canvas>
+    </div>
+    <div class="forecast-chart-wrap">
+      <canvas id="chartForecastTimeline"></canvas>
+    </div>
+    <div class="forecast-empty" id="forecastEmpty" style="display:none;"></div>
+  </div>
 </div>
 
 </div><!-- /app -->
@@ -1197,6 +1280,7 @@ function pivotADTTE(rawData) {
   const subjField = findKey(['SUBJID', 'USUBJID', 'subjid', 'SUBJECTID', 'subjectid', 'SUBJECT']);
   const randField = findKey(['rddat', 'RDDAT', 'RANDDT', 'randdt', 'randomizationDate', 'RANDDATE']);
   const paramField = findKey(['PARAMCD', 'paramcd', 'PARAM']);
+  const paramLabelField = keys.find(k => k.toUpperCase() === 'PARAM');
   const censorField = findKey(['censor', 'CENSOR', 'CNSR', 'cnsr']);
   const evdaysField = findKey(['eventdays', 'EVENTDAYS', 'EVENT_DAYS', 'AVAL', 'aval']);
   const evdatField = findKey(['eventdat', 'EVENTDAT']);
@@ -1231,6 +1315,7 @@ function pivotADTTE(rawData) {
       subjectId: String(first[subjField] || ''),
       randomizationDate: randField ? (first[randField] || '') : '',
       arm: armField ? (first[armField] != null ? String(first[armField]) : '') : '',
+      endpoints: [],
     };
 
     // Extract PFS/IDFS/DRFS and OS — supports arbitrary ADTTE PARAMCD values
@@ -1259,6 +1344,16 @@ function pivotADTTE(rawData) {
       if (dstreField && row[dstreField] != null && patient.dstreat_dsdecod == null) {
         patient.dstreat_dsdecod = String(row[dstreField]);
       }
+      // Preserve each raw endpoint (PARAMCD) for data-driven forecasting
+      patient.endpoints.push({
+        paramcd: pv,
+        param: paramLabelField ? String(row[paramLabelField] || '') : pv,
+        days: evdaysField && row[evdaysField] != null ? Number(row[evdaysField]) : null,
+        censor: censorField && row[censorField] != null ? Number(row[censorField]) : null,
+        eventdat: evdatField && row[evdatField] ? row[evdatField] : null,
+        evntdesc: evntdescField && row[evntdescField] != null ? String(row[evntdescField]) : '',
+        dstre: dstreField && row[dstreField] != null ? String(row[dstreField]) : ''
+      });
     });
 
     // Extract first assessment from row with Firflg="Y", fallback to first non-empty visit
@@ -3579,6 +3674,292 @@ function renderCurrentTab() {
 }
 
 // ============================================================
+// FORECAST — 事件增长简易预测（分段区间外推）
+// ============================================================
+
+let forecastChartInstance = null;
+let forecastTimelineChartInstance = null;
+
+// 从筛选后数据中收集去重的终点类型（PARAMCD），供下拉选择
+function collectForecastParams() {
+  const map = new Map();
+  getFilteredData().forEach(p => {
+    (p.endpoints || []).forEach(e => {
+      if (e && e.paramcd && !map.has(e.paramcd)) {
+        map.set(e.paramcd, e.param || e.paramcd);
+      }
+    });
+  });
+  return Array.from(map.entries()).map(([paramcd, param]) => ({ paramcd, param }));
+}
+
+// 分段区间预测：对每个 (i*interval, (i+1)*interval] 段独立外推
+function computeForecast(paramcd, interval, maxT, cutDate) {
+  const pts = [];
+  let dataCut = null;   // 数据截止日期 = 所有 eventdat 的最大值
+  getFilteredData().forEach(p => {
+    const ep = (p.endpoints || []).find(e => e.paramcd === paramcd);
+    if (!ep || ep.days == null) return;
+    const rd = parseDate(p.randomizationDate);
+    if (!rd) return;
+    const ed = parseDate(ep.eventdat);
+    if (ed && (!dataCut || ed > dataCut)) dataCut = ed;
+    pts.push({ days: ep.days, censor: ep.censor, dstre: ep.dstre, rd });
+  });
+  if (pts.length === 0) return { rows: [], labels: [], current: [], predicted: [] };
+  if (!dataCut) dataCut = new Date();
+
+  // 计算每个受试者的当前随访(daysNow)与预测随访(daysFuture)
+  const subjects = pts.map(pt => {
+    const nonExit = pt.censor === 1 && !pt.dstre;  // 非退出（仍在随访中）
+    let daysNow, daysFuture;
+    if (nonExit) {
+      // 非退出：默认随访到数据截止、未发生事件，相对时间 = 截止日 - 随机日 + 1
+      daysNow = daysBetween(pt.rd, dataCut) + 1;
+      daysFuture = Math.max(daysNow, daysBetween(pt.rd, cutDate) + 1);
+    } else {
+      // 事件或退出：随访固定为原始 eventdays
+      daysNow = pt.days;
+      daysFuture = pt.days;
+    }
+    return { censor: pt.censor, days: pt.days, daysNow, daysFuture };
+  });
+
+  const nBins = Math.max(1, Math.ceil(maxT / interval));
+  const rows = [];
+  for (let i = 0; i < nBins; i++) {
+    const a = i * interval;
+    const b = (i + 1) * interval;
+    let E = 0;   // 段内当前事件数（a < days <= b 且事件）
+    let N = 0;   // 当前随访满 b 天的例数
+    let N2 = 0;  // 到预测日随访满 b 天的例数
+    subjects.forEach(s => {
+      if (s.censor === 0 && s.days > a && s.days <= b) E++;
+      if (s.daysNow >= b) N++;
+      if (s.daysFuture >= b) N2++;
+    });
+    const r = N > 0 ? E / N : null;
+    const dN = N2 - N;
+    const dE = r != null ? dN * r : null;
+    const E2 = r != null ? E + dE : null;
+    rows.push({ start: a, end: b, E, N, r, N2, dN, dE, E2 });
+  }
+
+  const labels = rows.map(r => `${r.start}-${r.end}天`);
+  const current = [], predicted = [];
+  let c = 0, c2 = 0;
+  rows.forEach(r => {
+    c += r.E;
+    current.push(c);
+    if (r.E2 != null) { c2 += r.E2; predicted.push(c2); }
+    else predicted.push(null);
+  });
+
+  return { rows, labels, current, predicted };
+}
+
+// 默认「预测至」= 数据最大随访天数向上取整到间隔倍数
+function updateForecastMaxTDefault() {
+  const interval = parseInt(document.getElementById('inpForecastInterval').value, 10) || 30;
+  let maxDays = 0;
+  getFilteredData().forEach(p => {
+    (p.endpoints || []).forEach(e => { if (e.days != null && e.days > maxDays) maxDays = e.days; });
+  });
+  document.getElementById('inpForecastMaxT').value = Math.max(interval, Math.ceil(maxDays / interval) * interval);
+}
+
+function renderForecastChart(labels, current, predicted) {
+  const ctx = document.getElementById('chartForecast').getContext('2d');
+  if (forecastChartInstance) { forecastChartInstance.destroy(); forecastChartInstance = null; }
+  if (!labels.length) return;
+  forecastChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '当前累积事件', data: current,
+          borderColor: '#2166AC', backgroundColor: '#2166AC',
+          pointRadius: 2.5, pointBackgroundColor: '#2166AC', pointBorderColor: '#FFFFFF', pointBorderWidth: 1.5,
+          borderWidth: 1.8, tension: 0, spanGaps: false,
+        },
+        {
+          label: '预测累积事件', data: predicted,
+          borderColor: '#B71C1C', backgroundColor: '#B71C1C', borderDash: [5, 3],
+          pointRadius: 2.5, pointBackgroundColor: '#B71C1C', pointBorderColor: '#FFFFFF', pointBorderWidth: 1.5,
+          borderWidth: 1.8, tension: 0, spanGaps: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'system-ui, -apple-system, sans-serif' }, color: '#4A5568' } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'system-ui' }, color: '#4A5568' }, grid: { color: '#EBEEF2', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#4A5568' } },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#4A5568', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
+      },
+    },
+  });
+}
+
+// 预测时间线：累积事件数随预测日期（按月）的变化
+function computeForecastTimeline(paramcd, interval, maxT, forecastDate) {
+  const fc = computeForecast(paramcd, interval, maxT, forecastDate);
+  if (!fc.rows.length) return { labels: [], data: [] };
+
+  const currentTotal = fc.rows.reduce((s, r) => s + r.E, 0);
+  // 各区间发生率 r 与右端点 b（b 已按区间顺序递增）
+  const bins = fc.rows.filter(r => r.r != null).map(r => ({ b: r.end, r: r.r }));
+
+  // 数据截止（所有 eventdat 最大值）与非退出受试者的随机化日期
+  let dataCut = null;
+  const nonExitRDs = [];
+  getFilteredData().forEach(p => {
+    const ep = (p.endpoints || []).find(e => e.paramcd === paramcd);
+    if (!ep || ep.days == null) return;
+    const rd = parseDate(p.randomizationDate);
+    if (!rd) return;
+    const ed = parseDate(ep.eventdat);
+    if (ed && (!dataCut || ed > dataCut)) dataCut = ed;
+    if (ep.censor === 1 && !ep.dstre) nonExitRDs.push(rd);
+  });
+  if (!dataCut) dataCut = new Date();
+
+  // 累积发生率前缀和：C(t) = Σ_{b<=t} r
+  function cumRate(t) {
+    let s = 0;
+    for (const bin of bins) {
+      if (bin.b <= t) s += bin.r;
+      else break;
+    }
+    return s;
+  }
+
+  // X 轴终点：至少到预测日期，且不短于数据截止后 12 个月
+  const end = new Date(Math.max(
+    forecastDate.getTime(),
+    Date.UTC(dataCut.getUTCFullYear(), dataCut.getUTCMonth() + 12, dataCut.getUTCDate())
+  ));
+
+  const labels = [], data = [];
+  const d = new Date(dataCut);
+  while (d <= end) {
+    labels.push(fmtDate(d));
+    let total = currentTotal;
+    nonExitRDs.forEach(rd => {
+      const daysNow = daysBetween(rd, dataCut) + 1;
+      const daysFuture = daysBetween(rd, d) + 1;
+      total += cumRate(daysFuture) - cumRate(daysNow);
+    });
+    data.push(Number(total.toFixed(2)));
+    d.setUTCMonth(d.getUTCMonth() + 1);
+  }
+  return { labels, data };
+}
+
+function renderForecastTimelineChart(labels, data) {
+  const ctx = document.getElementById('chartForecastTimeline').getContext('2d');
+  if (forecastTimelineChartInstance) { forecastTimelineChartInstance.destroy(); forecastTimelineChartInstance = null; }
+  if (!labels.length) return;
+  forecastTimelineChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '预测累积事件',
+        data,
+        borderColor: '#B71C1C',
+        backgroundColor: '#B71C1C',
+        pointRadius: 2.5,
+        pointBackgroundColor: '#B71C1C',
+        pointBorderColor: '#FFFFFF',
+        pointBorderWidth: 1.5,
+        borderWidth: 1.8,
+        tension: 0,
+        spanGaps: false,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'system-ui, -apple-system, sans-serif' }, color: '#4A5568' } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'system-ui' }, color: '#4A5568' }, grid: { color: '#EBEEF2', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#4A5568' } },
+        x: { type: 'category', grid: { display: false }, ticks: { font: { size: 9 }, color: '#4A5568', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
+      },
+    },
+  });
+}
+
+function renderForecast() {
+  const paramcd = document.getElementById('selForecastParam').value;
+  const interval = parseInt(document.getElementById('inpForecastInterval').value, 10) || 30;
+  const maxT = parseInt(document.getElementById('inpForecastMaxT').value, 10) || 365;
+  const cutDate = parseDate(document.getElementById('inpForecastDate').value) || new Date();
+
+  if (!paramcd) return;
+  const { rows, labels, current, predicted } = computeForecast(paramcd, interval, maxT, cutDate);
+
+  const thead = document.getElementById('tblForecast').querySelector('thead');
+  const tbody = document.getElementById('tblForecast').querySelector('tbody');
+  thead.innerHTML = '<tr>' + ['相对区间', '当前事件数', '可评估数', '发生率', '预测可评估数', '新增可评估', '预测新增事件', '预测总事件']
+    .map(h => `<th>${h}</th>`).join('') + '</tr>';
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--slate);">暂无数据</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(r => {
+      const rTxt = r.r != null ? (r.r * 100).toFixed(1) + '%' : '—';
+      const dETxt = r.dE != null ? r.dE.toFixed(2) : '—';
+      const E2Txt = r.E2 != null ? r.E2.toFixed(2) : '—';
+      return `<tr>
+        <td>${r.start}-${r.end}天</td>
+        <td>${r.E}</td>
+        <td>${r.N}</td>
+        <td>${rTxt}</td>
+        <td>${r.N2}</td>
+        <td>${r.dN}</td>
+        <td>${dETxt}</td>
+        <td>${E2Txt}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  renderForecastChart(labels, current, predicted);
+
+  const tl = computeForecastTimeline(paramcd, interval, maxT, cutDate);
+  renderForecastTimelineChart(tl.labels, tl.data);
+}
+
+function openForecast() {
+  const params = collectForecastParams();
+  const sel = document.getElementById('selForecastParam');
+  sel.innerHTML = params.length > 0
+    ? params.map(p => `<option value="${p.paramcd}">${p.param || p.paramcd} (${p.paramcd})</option>`).join('')
+    : '<option value="">-- 无可用终点 --</option>';
+
+  const now = new Date();
+  document.getElementById('inpForecastDate').value =
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  updateForecastMaxTDefault();
+
+  document.getElementById('forecastOverlay').classList.add('open');
+  document.getElementById('forecastModal').classList.add('open');
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  renderForecast();
+}
+
+function closeForecast() {
+  document.getElementById('forecastOverlay').classList.remove('open');
+  document.getElementById('forecastModal').classList.remove('open');
+}
+
+// ============================================================
 // DRILL-DOWN
 // ============================================================
 
@@ -4606,6 +4987,19 @@ document.getElementById('inpEventInterval').addEventListener('change', function(
   this.value = v;
   eventInterval = v;
   if (activeTab === 'events') renderEventsTab();
+});
+
+// Forecast modal
+document.getElementById('btnOpenForecast').addEventListener('click', openForecast);
+document.getElementById('btnForecastClose').addEventListener('click', closeForecast);
+document.getElementById('forecastOverlay').addEventListener('click', closeForecast);
+document.getElementById('btnForecastApply').addEventListener('click', renderForecast);
+document.getElementById('selForecastParam').addEventListener('change', renderForecast);
+document.getElementById('inpForecastDate').addEventListener('change', renderForecast);
+document.getElementById('inpForecastMaxT').addEventListener('change', renderForecast);
+document.getElementById('inpForecastInterval').addEventListener('change', function() {
+  updateForecastMaxTDefault();
+  renderForecast();
 });
 
 
