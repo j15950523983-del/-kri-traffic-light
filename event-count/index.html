@@ -631,6 +631,10 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
           <span style="font-weight:600;font-size:0.95rem;">事件增长监测</span>
           <button class="btn btn-sm btn-outline active" id="btnTimeCal"><i data-lucide="calendar"></i> 日历</button>
           <button class="btn btn-sm btn-outline" id="btnTimeRel"><i data-lucide="timer"></i> 相对</button>
+          <span class="text-xs" id="grpEventInterval" style="display:none;align-items:center;gap:4px;">
+            间隔
+            <input type="number" id="inpEventInterval" value="30" min="1" max="365" step="1" style="width:52px;padding:3px 4px;font-size:0.75rem;"> 天
+          </span>
         </div>
         <div class="panel-grid">
           <div style="display:flex;gap:12px;width:100%;">
@@ -1871,6 +1875,7 @@ let chartEventsPFSInstance = null;
 let chartEventsOSInstance = null;
 
 let eventTimeMode = 'calendar'; // 'calendar' | 'relative'
+let eventInterval = 30; // relative-mode bin size in days
 
 // Build event data for PFS/OS
 function buildMonthlyEvents(type) {
@@ -1904,9 +1909,9 @@ function buildMonthlyEvents(type) {
     });
     labels = months.map(m => (m.month + 1) + '月/' + String(m.year).slice(2));
   } else {
-    // Relative: 30-day bins from randomization
+    // Relative: N-day bins from randomization
     const maxDays = Math.max(...events.map(e => e.days));
-    const binSize = 30;
+    const binSize = eventInterval;
     const nBins = Math.ceil(maxDays / binSize);
     added = new Array(nBins).fill(0);
     events.forEach(e => {
@@ -2027,7 +2032,7 @@ function renderEventsTab() {
   });
   document.getElementById('chartEventsPFS').parentElement.style.height = '260px';
   document.getElementById('titleEventsPFS').innerHTML = chartTitleHTML(
-    getPfsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : '距随机天数（30天间隔）'),
+    getPfsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : `距随机天数（${eventInterval}天间隔）`),
     'chartEventsPFS', 'png', getPfsLabel() + '_事件增长');
 
   // ── OS Chart ──
@@ -2129,7 +2134,7 @@ function renderEventsTab() {
   });
   document.getElementById('chartEventsOS').parentElement.style.height = '260px';
   document.getElementById('titleEventsOS').innerHTML = chartTitleHTML(
-    getOsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : '距随机天数（30天间隔）'),
+    getOsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : `距随机天数（${eventInterval}天间隔）`),
     'chartEventsOS', 'png', getOsLabel() + '_事件增长');
 
   // ── Chart click → drill to subject-level event data ──
@@ -3590,7 +3595,7 @@ function showEventPatients(type, monthData, idx, label, mode) {
       const eventDate = new Date(Date.UTC(rd.getUTCFullYear(), rd.getUTCMonth(), rd.getUTCDate() + days - 1));
       return eventDate.getUTCFullYear() === monthData.year && eventDate.getUTCMonth() === monthData.month;
     } else {
-      const binSize = 30;
+      const binSize = eventInterval;
       const bin = Math.floor(days / binSize);
       return bin === idx;
     }
@@ -4583,6 +4588,7 @@ document.getElementById('btnTimeCal').addEventListener('click', function() {
   eventTimeMode = 'calendar';
   this.classList.add('active');
   document.getElementById('btnTimeRel').classList.remove('active');
+  document.getElementById('grpEventInterval').style.display = 'none';
   if (activeTab === 'events') renderEventsTab();
 });
 document.getElementById('btnTimeRel').addEventListener('click', function() {
@@ -4590,6 +4596,15 @@ document.getElementById('btnTimeRel').addEventListener('click', function() {
   eventTimeMode = 'relative';
   this.classList.add('active');
   document.getElementById('btnTimeCal').classList.remove('active');
+  document.getElementById('grpEventInterval').style.display = 'inline-flex';
+  if (activeTab === 'events') renderEventsTab();
+});
+document.getElementById('inpEventInterval').addEventListener('change', function() {
+  let v = parseInt(this.value, 10);
+  if (isNaN(v) || v < 1) v = 1;
+  if (v > 365) v = 365;
+  this.value = v;
+  eventInterval = v;
   if (activeTab === 'events') renderEventsTab();
 });
 
