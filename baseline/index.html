@@ -706,6 +706,9 @@ body {
             <div style="padding:0.25rem 0;display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;">
               <button class="btn btn-sm btn-primary" id="btnEnrollUpdate">更新图表</button>
               <button class="btn btn-sm btn-outline-secondary" id="btnEnrollSave"><i class="bi bi-save"></i> 保存方案</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnEnrollExport" title="导出方案为 JSON 文件（可跨本地/GitHub 环境迁移）"><i class="bi bi-download"></i> 导出方案</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnEnrollImport" title="从 JSON 文件导入方案"><i class="bi bi-upload"></i> 导入方案</button>
+              <input type="file" id="schemeFileInput" accept=".json,application/json" style="display:none;">
               <button class="btn btn-sm btn-outline-secondary" id="btnSankeyAdjust" title="锁定当前自动布局位置，允许拖拽微调"><i class="bi bi-arrows-move"></i> 调整位置</button>
               <button class="btn btn-sm btn-outline-secondary" id="btnSankeyReset" title="清除手动位置，恢复自动布局" disabled><i class="bi bi-arrow-counterclockwise"></i> 重置位置</button>
               <span id="sankeyPosStatus" style="font-size:0.65rem;display:none;"></span>
@@ -4216,6 +4219,59 @@ function loadEnrollmentScheme() {
   return false;
 }
 
+// 导出入组方案为 JSON 文件（含节点配置 + 桑基图位置），可跨本地/GitHub 环境迁移
+function exportEnrollmentScheme() {
+  const project = state.active;
+  if (!project) return;
+  const studyIdCol = detectStudyId(project.records);
+  const studyId = studyIdCol ? String(project.records[0][studyIdCol] ?? '').trim() : (project.name || 'default');
+  if (!studyId) { showToast('无法识别 STUDYID', 'warning'); return; }
+  const data = {
+    enrollmentNodes: project.enrollmentNodes,
+    sankeyPositions: project.sankeyPositions || {},
+    savedAt: Date.now()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bct_' + studyId + '_scheme.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('方案已导出: ' + studyId);
+}
+
+// 从 JSON 文件导入入组方案（恢复节点配置 + 桑基图位置，并同步写回 localStorage）
+function importEnrollmentScheme(file) {
+  const project = state.active;
+  if (!project) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object') { showToast('方案文件格式无效', 'error'); return; }
+      let restored = false;
+      if (Array.isArray(data.enrollmentNodes) && data.enrollmentNodes.length > 0) {
+        project.enrollmentNodes = data.enrollmentNodes;
+        restored = true;
+      }
+      if (data.sankeyPositions && Object.keys(data.sankeyPositions).length > 0) {
+        project.sankeyPositions = data.sankeyPositions;
+        restored = true;
+      }
+      if (!restored) { showToast('方案文件中无节点配置或位置数据', 'warning'); return; }
+      // 同步写回 localStorage（当前 origin 内后续自动恢复），再刷新界面
+      saveEnrollmentScheme();
+      renderNodeConfig();
+      renderEnrollmentCharts();
+      showToast('方案已导入（含节点与桑基图位置）');
+    } catch (err) {
+      showToast('导入失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Plotly === 'undefined') {
     document.getElementById('cdnError').style.display = 'block';
@@ -4510,6 +4566,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // 保存/加载入组方案（按 STUDYID）—— 复用全局函数
   document.getElementById('btnEnrollSave').addEventListener('click', saveEnrollmentScheme);
   document.getElementById('btnEnrollUpdate').addEventListener('click', renderEnrollmentCharts);
+  // 导出/导入入组方案（跨本地/GitHub 环境迁移）
+  document.getElementById('btnEnrollExport').addEventListener('click', exportEnrollmentScheme);
+  document.getElementById('btnEnrollImport').addEventListener('click', () => {
+    document.getElementById('schemeFileInput').click();
+  });
+  document.getElementById('schemeFileInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      importEnrollmentScheme(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
 
   // Control chart controls
   document.getElementById('ccVar').addEventListener('change', () => {
