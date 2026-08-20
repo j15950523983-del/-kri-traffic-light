@@ -3377,7 +3377,13 @@ function renderEnrollmentCharts() {
         var sel = (k === prevVal) ? ' selected' : '';
         screenVarSel.innerHTML += '<option value="' + escapeHtml(k) + '"' + sel + '>' + escapeHtml(k) + '</option>';
       });
-      screenVarSel.value = prevVal; // 恢复选择
+      // 默认自动选择"筛选状态"类字段；没有匹配字段才留空让用户自选
+      var autoScreen = !prevVal ? Object.keys(meta).find(function(k) {
+        return meta[k].type !== 'empty' && ['筛选期状态','筛选状态','筛选','screen','enrl'].some(function(p) {
+          return k.toLowerCase().indexOf(p.toLowerCase()) !== -1;
+        });
+      }) : null;
+      screenVarSel.value = autoScreen || prevVal;
       const screenVar = screenVarSel.value;
       if (!screenVar) {
         document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">请选择筛选状态变量</div>';
