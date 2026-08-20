@@ -1,0 +1,489 @@
+{
+  "enrollmentNodes": [
+    {
+      "id": 1,
+      "name": "筛选",
+      "variable": "受试者编号",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": null
+    },
+    {
+      "id": 2,
+      "name": "筛选失败",
+      "variable": "筛选期状态",
+      "condition": "equals",
+      "value": "其他,筛选失败(不满足入选标准或满足排除标准),受试者主动退出",
+      "isTerminal": false,
+      "parentId": 1
+    },
+    {
+      "id": 3,
+      "name": "随机",
+      "variable": "随机化日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 1
+    },
+    {
+      "id": 4,
+      "name": "试验组",
+      "variable": "试验分组",
+      "condition": "equals",
+      "value": "试验组",
+      "isTerminal": false,
+      "parentId": 3
+    },
+    {
+      "id": 5,
+      "name": "对照组",
+      "variable": "试验分组",
+      "condition": "equals",
+      "value": "对照组",
+      "isTerminal": false,
+      "parentId": 3
+    },
+    {
+      "id": 6,
+      "name": "试验组-用药",
+      "variable": "首次用药日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 4
+    },
+    {
+      "id": 7,
+      "name": "试验组-未用药",
+      "variable": "首次用药日期",
+      "condition": "isnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 4
+    },
+    {
+      "id": 9,
+      "name": "对照组-用药",
+      "variable": "首次用药日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 5
+    },
+    {
+      "id": 10,
+      "name": "对照组-未用药",
+      "variable": "首次用药日期",
+      "condition": "isnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 5
+    },
+    {
+      "id": 16,
+      "name": "治疗中",
+      "variable": "24周状态",
+      "condition": "isnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 6
+    },
+    {
+      "id": 20,
+      "name": "试验组-不再临床获益",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "不再临床获益",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 21,
+      "name": "试验组-出现第二肿瘤",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "出现第二肿瘤",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 22,
+      "name": "试验组-疾病进展",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "疾病进展",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 23,
+      "name": "试验组-受试者主动退出",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "受试者主动退出",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 24,
+      "name": "死亡",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "死亡",
+      "isTerminal": true,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 25,
+      "name": "试验组-完成",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "完成",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 26,
+      "name": "试验组-研究计划不依从",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "研究计划不依从",
+      "isTerminal": false,
+      "parentId": 6,
+      "mergeParentId": null
+    },
+    {
+      "id": 27,
+      "name": "对照组-不再临床获益",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "不再临床获益",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 28,
+      "name": "对照组-出现第二肿瘤",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "出现第二肿瘤",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 29,
+      "name": "对照组-疾病进展",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "疾病进展",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 30,
+      "name": "对照组-受试者主动退出",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "受试者主动退出",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 31,
+      "name": "死亡",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "死亡",
+      "isTerminal": true,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 32,
+      "name": "对照组-完成",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "完成",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 33,
+      "name": "对照组-研究计划不依从",
+      "variable": "24周状态",
+      "condition": "equals",
+      "value": "研究计划不依从",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 35,
+      "name": "筛选中",
+      "variable": "筛选期状态",
+      "condition": "isnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 1,
+      "mergeParentId": null
+    },
+    {
+      "id": 36,
+      "name": "对照组-治疗中",
+      "variable": "24周状态",
+      "condition": "isnull",
+      "value": "",
+      "isTerminal": false,
+      "parentId": 9,
+      "mergeParentId": null
+    },
+    {
+      "id": 37,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 23,
+      "mergeParentId": null
+    },
+    {
+      "id": 38,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 7,
+      "mergeParentId": null
+    },
+    {
+      "id": 39,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 20,
+      "mergeParentId": null
+    },
+    {
+      "id": 40,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 21,
+      "mergeParentId": null
+    },
+    {
+      "id": 41,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 22,
+      "mergeParentId": null
+    },
+    {
+      "id": 42,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 26,
+      "mergeParentId": null
+    },
+    {
+      "id": 43,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 10,
+      "mergeParentId": null
+    },
+    {
+      "id": 44,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 27,
+      "mergeParentId": null
+    },
+    {
+      "id": 45,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 29,
+      "mergeParentId": null
+    },
+    {
+      "id": 46,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 28,
+      "mergeParentId": 28
+    },
+    {
+      "id": 47,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 33,
+      "mergeParentId": null
+    },
+    {
+      "id": 48,
+      "name": "死亡",
+      "variable": "死亡日期",
+      "condition": "notnull",
+      "value": "",
+      "isTerminal": true,
+      "parentId": 36,
+      "mergeParentId": null
+    }
+  ],
+  "sankeyPositions": {
+    "1": {
+      "x": 0.0071428571428571435,
+      "y": 0.33286046484542614
+    },
+    "2": {
+      "x": 0.21309525626046316,
+      "y": 0.6833148719067297
+    },
+    "3": {
+      "x": 0.21130952380952378,
+      "y": 0.2730221584812865
+    },
+    "4": {
+      "x": 0.4101190476190476,
+      "y": 0.14588810107321923
+    },
+    "5": {
+      "x": 0.4029761904761905,
+      "y": 0.5050907173668622
+    },
+    "6": {
+      "x": 0.5619047619047618,
+      "y": 0.13513782704526786
+    },
+    "7": {
+      "x": 0.5613095238095238,
+      "y": 0.3051909050880566
+    },
+    "9": {
+      "x": 0.5571428571428572,
+      "y": 0.5540676715759871
+    },
+    "10": {
+      "x": 0.5534913003663003,
+      "y": 0.7765407866406324
+    },
+    "11": {
+      "x": 0.9928571428571429,
+      "y": 0.061810332887021535
+    },
+    "16": {
+      "x": 0.7160714285714286,
+      "y": 0.22611643893955555
+    },
+    "18": {
+      "x": 0.8922619047619048,
+      "y": 0.5958553344313252
+    },
+    "19": {
+      "x": 0.9928571428571429,
+      "y": 0.5467291087061031
+    },
+    "20": {
+      "x": 0.7143772893772895,
+      "y": 0.3612184629229454
+    },
+    "21": {
+      "x": 0.7172619047619049,
+      "y": 0.33527993811794715
+    },
+    "22": {
+      "x": 0.9510531135531136,
+      "y": 0.33431303373499605
+    },
+    "23": {
+      "x": 0.717554766133807,
+      "y": 0.07838913254091213
+    },
+    "24": {
+      "x": 0.704698946886447,
+      "y": 0.812700095581887
+    },
+    "25": {
+      "x": 0.7029189560439562,
+      "y": 0.8829910435522926
+    },
+    "26": {
+      "x": 0.7083047161172161,
+      "y": 0.6782420232849401
+    },
+    "27": {
+      "x": 0.704892805447241,
+      "y": 0.7394560766514068
+    },
+    "28": {
+      "x": 0.7095238095238096,
+      "y": 0.47696845024232415
+    },
+    "29": {
+      "x": 0.7045848472763796,
+      "y": 0.9489633997103673
+    },
+    "30": {
+      "x": 0.20976192292712975,
+      "y": 0.774819136522754
+    },
+    "32": {
+      "x": 0.7077644230769231,
+      "y": 0.6129050279329613
+    },
+    "33": {
+      "x": 0.98,
+      "y": 0.9200000000000004
+    },
+    "35": {
+      "x": 0.26,
+      "y": 0.56
+    },
+    "36": {
+      "x": 0.98,
+      "y": 0.8900000000000003
+    }
+  },
+  "savedAt": 1787036001905
+}
