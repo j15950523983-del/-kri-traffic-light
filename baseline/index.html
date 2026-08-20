@@ -1202,8 +1202,12 @@ function generateTable1(meta, records, groupVar, selectedVars, refGroup, refLeve
       });
     } else {
       // categorical / binary / ordinal
-      const levels = meta[key].levels || [];
+      const levels = (meta[key].levels || []).slice();
       const overall = computeCategoricalCounts(allVals, levels);
+      // 分类变量（含二分类）按总体例数从大到小排列；有序变量保持自然顺序
+      if (colType === 'categorical' || colType === 'binary') {
+        levels.sort((a, b) => (overall.counts[String(b)] || 0) - (overall.counts[String(a)] || 0));
+      }
       const groupCounts = groups.map(g => computeCategoricalCounts(g.records.map(r => r[key]), levels));
 
       // p-value: use non-missing values contingency table
