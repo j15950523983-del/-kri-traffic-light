@@ -1999,7 +1999,7 @@ function buildMonthlyEvents(type) {
       const idx = months.findIndex(m => m.year === e.date.getUTCFullYear() && m.month === e.date.getUTCMonth());
       if (idx >= 0) added[idx]++;
     });
-    labels = months.map(m => (m.month + 1) + '月/' + String(m.year).slice(2));
+    labels = months.map(m => String(m.year).slice(2) + '-' + (m.month + 1) + '月');
   } else {
     // Relative: N-day bins from randomization
     const maxDays = Math.max(...events.map(e => e.days));
@@ -2118,7 +2118,7 @@ function renderEventGrowthChart(canvasId, evLabel, labels, added, cumulative) {
         },
         x: {
           grid: { display: false },
-          ticks: { font: { size: 9 }, color: '#5a5a5a', maxRotation: 0, autoSkip: false },
+          ticks: { font: { size: 9 }, color: '#5a5a5a', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
         },
       },
     },
