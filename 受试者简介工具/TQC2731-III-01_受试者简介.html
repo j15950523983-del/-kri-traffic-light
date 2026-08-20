@@ -1,0 +1,527 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>临床受试者简介</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #eef3f8; --bg-panel: #ffffff; --ink-main: #17212b; --ink-sub: #5c6978;
+            --border-line: rgba(87, 103, 122, 0.18); --primary: #2F6DB3; --primary-dark: #1e4a7a;
+            --danger: #8F1D14; --danger-soft: rgba(143, 29, 20, 0.08); --warning: #d97706;      
+            --shadow-sm: 0 2px 6px rgba(24, 39, 58, 0.04); --radius-box: 8px;       
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: "Microsoft YaHei", sans-serif; background: var(--bg-body); color: var(--ink-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 280px; flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--border-line); display: flex; flex-direction: column; z-index: 10; box-shadow: var(--shadow-sm); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border-line); background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%); }
+        .sidebar-header h1 { margin: 0; font-size: 16px; color: var(--primary-dark); font-weight: 700; }
+        .search-box { margin-top: 10px; width: 100%; padding: 8px 12px; border: 1px solid var(--border-line); border-radius: 4px; font-size: 12px; outline: none;}
+        .search-box:focus { border-color: var(--primary); }
+        .btn-upload { margin-top: 15px; width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 4px rgba(47, 109, 179, 0.3);}
+        .btn-upload:hover { background: var(--primary-dark); }
+        
+        .nav-menu { flex: 1; overflow-y: auto; padding: 10px; }
+        .nav-item { padding: 12px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-sub); transition: 0.2s; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;}
+        .nav-item:hover { background: #f0f4f8; color: var(--primary-dark); }
+        .nav-item.active { background: rgba(47, 109, 179, 0.1); color: var(--primary); border-left: 4px solid var(--primary); padding-left: 11px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-danger { background-color: var(--danger); box-shadow: 0 0 4px var(--danger); }
+        .dot-safe { background-color: #10b981; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 20px; gap: 15px; background: var(--bg-body); }
+        .summary-panel { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: var(--radius-box); padding: 14px 20px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 15px; flex-shrink: 0;}
+        .summary-panel.has-risk { border-left-color: var(--danger); background: linear-gradient(90deg, var(--danger-soft), #ffffff 40%); }
+        .summary-title { font-size: 14px; font-weight: 700; margin: 0 0 5px 0; color: var(--ink-main); }
+        .summary-text { font-size: 12.5px; color: var(--ink-sub); line-height: 1.5; margin: 0; }
+
+        .card { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: var(--radius-box); box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column;}
+        .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border-line); background: #fafbfc; font-size: 13px; font-weight: 700; color: var(--primary-dark); display: flex; justify-content: space-between; align-items: center;}
+        .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px 20px; font-size: 12px; }
+        .info-item { display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #f0f4f8;}
+        .info-item:last-child { border-right: none; }
+        .info-label { color: var(--ink-sub); font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .info-value { color: var(--ink-main); font-size: 13px; font-weight: 600; }
+        .mh-text { grid-column: span 4; color: var(--primary); font-style: italic; background: #f9fbfd; padding: 8px; border-radius: 4px; border-left: 2px solid var(--primary); margin-top: 5px;}
+
+        .chart-container { flex: 1; height: 100%; min-height: 400px; padding: 10px; position: relative;}
+        
+        .toolbar { display: flex; align-items: center; gap: 8px; }
+        .axis-input { width: 55px; padding: 4px; border: 1px solid var(--border-line); border-radius: 4px; font-size: 12px; text-align: center; outline: none; }
+        .axis-input:focus { border-color: var(--primary); }
+        .btn-ghost { padding: 4px 10px; font-size: 12px; cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; font-weight: bold;}
+        .btn-ghost:hover { background: rgba(47, 109, 179, 0.1); }
+        .divider { width: 1px; height: 16px; background: var(--border-line); margin: 0 5px; }
+
+        #loading { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; color: var(--primary); backdrop-filter: blur(2px);}
+        
+        @media print {
+            .sidebar, .toolbar, .btn-upload { display: none; }
+            .main-content { padding: 0; background: #fff; }
+            .card, .summary-panel { box-shadow: none; border-color: #000; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">正在清洗 SAS 数据并构建可视化...</div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>中心化受试者监查 (Profile)</h1>
+            <input type="file" id="file-upload" style="display:none" accept=".xlsx, .xls, .csv">
+            <input type="text" class="search-box" id="search-input" placeholder="输入受试者序号搜索..." oninput="renderSidebar()">
+        </div>
+        <div class="nav-menu" id="patient-list"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="summary-panel" id="smart-summary-panel">
+            <div id="smart-icon" style="font-size: 24px;">💡</div>
+            <div>
+                <h3 class="summary-title" id="smart-title">智能洞察 (Smart AI Summary)</h3>
+                <p class="summary-text" id="smart-text">加载中...</p>
+            </div>
+        </div>
+
+        <div class="card" style="flex-shrink: 0;">
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">受试者 ID</span><span class="info-value" id="info-id"></span></div>
+                <div class="info-item"><span class="info-label">人口学信息</span><span class="info-value" id="info-demo">-</span></div>
+                <div class="info-item"><span class="info-label">研究中心</span><span class="info-value" id="info-site">-</span></div>
+                <div class="info-item"><span class="info-label">当前状态</span><span class="info-value" id="info-status">-</span></div>
+                <div class="info-item"><span class="info-label">知情同意日期</span><span class="info-value" id="info-icf">-</span></div>
+                <div class="info-item"><span class="info-label">随机化日期</span><span class="info-value" id="info-rand">-</span></div>
+                <div class="info-item"><span class="info-label">首次给药日期</span><span class="info-value" id="info-dose">-</span></div>
+                <div class="info-item"><span class="info-label" title="该受试者目前记录的最晚天数">数据截止/最大天数</span><span class="info-value" style="color:var(--danger)">Day <span id="info-maxday"></span></span></div>
+                <div class="mh-text" id="info-mh">既往病史: 暂无记录</div>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1; min-height: 0;">
+            <div class="card-header" style="flex-shrink: 0;">
+                <span>纵向生命周期视图 (Longitudinal Timeline)</span>
+                <div class="toolbar">
+                    <span style="font-size: 12px; color: var(--primary-dark); font-weight: bold;">X轴时间跨度:</span>
+                    <input type="number" id="x-min" class="axis-input" value="-7">
+                    <span style="font-size: 12px; color: var(--ink-sub);">至</span>
+                    <input type="number" id="x-max" class="axis-input" value="350">
+                    <button class="btn-ghost" onclick="applyAxisRange()">刷新轴</button>
+                    <div class="divider"></div>
+                    <button class="btn-ghost" onclick="window.print()">导出 PDF</button>
+                </div>
+            </div>
+            <div class="chart-container" id="chart-main"></div>
+        </div>
+    </div>
+
+    <script>
+        let db = {};
+        let currentId = null;
+        const myChart = echarts.init(document.getElementById('chart-main'));
+        new ResizeObserver(() => myChart.resize()).observe(document.getElementById('chart-main'));
+        window.addEventListener('resize', () => myChart.resize());
+
+        const getVal = (row, key) => {
+            if (row[key] !== undefined && row[key] !== null) return row[key];
+            let upper = key.toUpperCase();
+            if (row[upper] !== undefined && row[upper] !== null) return row[upper];
+            let lower = key.toLowerCase();
+            if (row[lower] !== undefined && row[lower] !== null) return row[lower];
+            return null;
+        };
+
+        const parseNum = (val) => {
+            if (val === null || val === undefined) return NaN;
+            let strVal = String(val).trim();
+            if (strVal === '' || strVal === '.' || strVal === 'NA') return NaN;
+            return parseFloat(strVal);
+        };
+
+        document.getElementById('file-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('loading').style.display = 'flex';
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    
+                    parseSASDataset(jsonData);
+                    
+                    if (Object.keys(db).length > 0) {
+                        currentId = Object.keys(db)[0];
+                        renderSidebar();
+                        loadPatientData();
+                    } else {
+                        alert("解析失败，未在数据集中找到有效的 SUBJID 列。");
+                    }
+                } catch(err) {
+                    alert("文件解析错误：" + err.message);
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                    e.target.value = ''; 
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function parseSASDataset(rawData) {
+            db = {};
+            rawData.forEach(row => {
+                let id = getVal(row, 'subjid');
+                if (!id) return;
+                id = String(id).trim();
+                if (!id || id === '-' || id.includes('(')) return;  // 过滤缺失/占位符
+
+                if (!db[id]) db[id] = { info: { id: id }, ec:[], ae:[], cm:[], ce:[], fev1:[] };
+
+                if (!db[id].info.age && getVal(row, 'AGE')) {
+                    db[id].info.age = getVal(row, 'AGE') || '-';
+                    db[id].info.sex = getVal(row, 'SEX') || '-';
+                    db[id].info.ethnic = getVal(row, 'CETHNIC') || '-';
+                    db[id].info.site = getVal(row, 'SITE') || '-';
+                    db[id].info.status = getVal(row, 'STATUS') || '-';
+                    db[id].info.dose = getVal(row, 'ECFIRDAT') || '-';
+                    db[id].info.icf = getVal(row, 'DSSTDAT_dsrfic') || '-';
+                    db[id].info.rand = getVal(row, 'DSSTDAT_rand') || '-';
+                    let mhRaw = getVal(row, 'All_Mh_Comb');
+                    db[id].info.mh = mhRaw ? `既往病史: ${mhRaw}` : '无既往病史记录';
+                }
+
+                let ecName = getVal(row, 'ec_name'), ecDays = parseNum(getVal(row, 'days')), ecGrp = getVal(row, 'ec_abnormal_grp');
+                if (ecName !== null && !isNaN(ecDays)) {
+                    let status = (ecGrp && (String(ecGrp).includes('超窗') || String(ecGrp).includes('违规'))) ? 'error' : 'normal';
+                    db[id].ec.push({ day: ecDays, dose: ecName, status: status, type: ecGrp || '正常' });
+                }
+
+                let aeTerm = getVal(row, 'AETERM'), aeSt = parseNum(getVal(row, 'AE_ST'));
+                if (aeTerm !== null && !isNaN(aeSt)) {
+                    let aeEn = parseNum(getVal(row, 'AE_EN'));
+                    db[id].ae.push({
+                        start: aeSt, end: isNaN(aeEn) ? null : aeEn, term: aeTerm,
+                        grade: getVal(row, 'AETOXGR') || '未知', action: getVal(row, 'AEACN_F') || '无', rel: getVal(row, 'AEREL') || '未知'
+                    });
+                }
+
+                let cmTerm = getVal(row, 'CMTRT'), cmSt = parseNum(getVal(row, 'CM_ST'));
+                if (cmTerm !== null && !isNaN(cmSt)) {
+                    let cmEn = parseNum(getVal(row, 'CM_EN'));
+                    db[id].cm.push({ start: cmSt, end: isNaN(cmEn) ? null : cmEn, term: cmTerm });
+                }
+
+                let ceTerm = getVal(row, 'CECAT'), ceSt = parseNum(getVal(row, 'CE_ST'));
+                if (ceTerm !== null && !isNaN(ceSt)) {
+                    let ceEn = parseNum(getVal(row, 'CE_EN'));
+                    let ceType = getVal(row, 'cetype') || '未知';
+                    db[id].ce.push({ start: ceSt, end: isNaN(ceEn) ? null : ceEn, term: ceTerm, cetype: ceType });
+                }
+
+                let fevRes = parseNum(getVal(row, 'REORRESN')), fevDays = parseNum(getVal(row, 'days_re'));
+                if (!isNaN(fevRes) && !isNaN(fevDays)) db[id].fev1.push([fevDays, fevRes]);
+            });
+
+            Object.keys(db).forEach(k => {
+                let validFev = db[k].fev1;
+                validFev.sort((a,b) => a[0] - b[0]);
+                let uniqueFev =[];
+                let seenDays = new Set();
+                for (let i=0; i<validFev.length; i++) {
+                    if (!seenDays.has(validFev[i][0])) {
+                        uniqueFev.push(validFev[i]);
+                        seenDays.add(validFev[i][0]);
+                    }
+                }
+                db[k].fev1 = uniqueFev;
+            });
+
+            // 敏感信息脱敏：受试者 ID → 序号（受试者1、受试者2...），日期不屏蔽
+            const sortedIds = Object.keys(db).sort();
+            const maskedDb = {};
+            sortedIds.forEach((id, i) => {
+                const displayId = '受试者' + (i + 1);
+                const entry = db[id];
+                entry.info.id = displayId;
+                maskedDb[displayId] = entry;
+            });
+            db = maskedDb;
+        }
+
+        function renderSidebar() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            const listEl = document.getElementById('patient-list');
+            listEl.innerHTML = '';
+
+            Object.keys(db).forEach(id => {
+                if(!id.toLowerCase().includes(keyword)) return;
+                const pt = db[id];
+                // ⭐ 红点预警判定：CE只在 start > 0 (晚于随机日期) 时才记为高危
+                const hasRisk = pt.ae.some(a => String(a.grade).includes('3') || String(a.grade).includes('4') || String(a.grade).includes('5')) 
+                             || pt.ec.some(e => e.status !== 'normal') 
+                             || pt.ce.some(c => c.start > 0);
+                
+                const div = document.createElement('div');
+                div.className = `nav-item ${id === currentId ? 'active' : ''}`;
+                div.innerHTML = `<span><i class="status-dot ${hasRisk ? 'dot-danger' : 'dot-safe'}" style="margin-right:8px;"></i>${id}</span> <span style="font-size:11px; font-weight:normal;">AE:${pt.ae.length}</span>`;
+                div.onclick = () => { currentId = id; renderSidebar(); loadPatientData(); };
+                listEl.appendChild(div);
+            });
+        }
+
+        function loadPatientData() {
+            if(!currentId || !db[currentId]) return;
+            const data = db[currentId];
+            
+            document.getElementById('smart-title').innerText = "智能洞察 (Smart AI Summary)";
+
+            document.getElementById('info-id').innerText = data.info.id;
+            document.getElementById('info-demo').innerText = `${data.info.age||'-'}岁 | ${data.info.sex||'-'} | ${data.info.ethnic||'-'}`;
+            document.getElementById('info-site').innerText = data.info.site;
+            document.getElementById('info-status').innerText = data.info.status;
+            document.getElementById('info-icf').innerText = data.info.icf;
+            document.getElementById('info-rand').innerText = data.info.rand;
+            document.getElementById('info-dose').innerText = data.info.dose;
+            document.getElementById('info-mh').innerText = data.info.mh;
+            
+            const maxFev1Day = data.fev1.length > 0 ? Math.max(...data.fev1.map(v => v[0])) : 0;
+            const maxAeDay = data.ae.length > 0 ? Math.max(...data.ae.map(a => a.start)) : 0;
+            const finalMaxDay = Math.max(maxFev1Day, maxAeDay) || 1;
+            document.getElementById('info-maxday').innerText = finalMaxDay;
+            document.getElementById('x-max').value = Math.ceil(finalMaxDay/10)*10 + 30;
+
+            const severeAEs = data.ae.filter(a => String(a.grade).includes('3') || String(a.grade).includes('4') || String(a.grade).includes('5'));
+            const ecErrors = data.ec.filter(e => e.status !== 'normal');
+            
+            // ⭐ 摘要预警判定：CE只在 start > 0 (晚于随机日期) 时才进入高危播报
+            const postRandCEs = data.ce.filter(c => c.start > 0);
+
+            const panel = document.getElementById('smart-summary-panel');
+            
+            if (severeAEs.length > 0 || ecErrors.length > 0 || postRandCEs.length > 0) {
+                panel.className = 'summary-panel has-risk';
+                document.getElementById('smart-icon').innerText = '🚨';
+                
+                let msgs =[];
+                if (severeAEs.length > 0) msgs.push(`发生 <b>${severeAEs.length}</b> 起严重/≥3级AE`);
+                if (postRandCEs.length > 0) msgs.push(`发生 <b style="color:var(--danger)">${postRandCEs.length}</b> 次急性发作 (主要终点)`);
+                if (ecErrors.length > 0) msgs.push(`存在 <b>${ecErrors.length}</b> 次给药违规`);
+                
+                document.getElementById('smart-text').innerHTML = `<b>重点关注信号：</b> ` + msgs.join('；') + '。';
+            } else {
+                panel.className = 'summary-panel';
+                document.getElementById('smart-icon').innerText = '✅';
+                let lastFev1 = data.fev1.length > 0 ? data.fev1[data.fev1.length-1][1] : '无记录';
+                document.getElementById('smart-text').innerHTML = `<b>指标平稳：</b> 无严重不良事件及新增急性发作，给药依从性良好。最新 FEV1 为 ${lastFev1} L。`;
+            }
+
+            drawECharts(data);
+        }
+
+        function applyAxisRange() { if(currentId) drawECharts(db[currentId]); }
+
+        function renderGantt(params, api) {
+            var categoryIndex = api.value(3);
+            var start = api.coord([api.value(0), categoryIndex]);
+            var end = api.coord([api.value(1), categoryIndex]);
+            var height = api.size([0, 1])[1] * 0.4;
+            var rectShape = echarts.graphic.clipRectByRect({
+                x: start[0], y: start[1] - height / 2, width: Math.max(end[0] - start[0], 2), height: height
+            }, { x: params.coordSys.x, y: params.coordSys.y, width: params.coordSys.width, height: params.coordSys.height });
+            return rectShape && { type: 'rect', transition:['shape'], shape: rectShape, style: api.style() };
+        }
+
+        function drawECharts(data) {
+            const customMin = Number(document.getElementById('x-min').value);
+            const customMax = Number(document.getElementById('x-max').value);
+
+            let anchorDate = (data.info.rand && data.info.rand !== '-') ? data.info.rand : ((data.info.dose && data.info.dose !== '-') ? data.info.dose : null);
+            
+            function getActualDate(dayNum) {
+                if (!anchorDate || isNaN(dayNum)) return '';
+                let d = new Date(anchorDate.replace(/-/g, '/')); 
+                if (isNaN(d.getTime())) return '';
+                let offset = dayNum > 0 ? dayNum - 1 : dayNum; 
+                d.setDate(d.getDate() + offset);
+                let yyyy = d.getFullYear();
+                let mm = String(d.getMonth() + 1).padStart(2, '0');
+                let dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+
+            const aeTerms = data.ae.length > 0 ?[...new Set(data.ae.map(item => item.term))] :['暂无数据'];
+            const cmTerms = data.cm.length > 0 ?[...new Set(data.cm.map(item => item.term))] : ['暂无数据'];
+            const ceTerms = data.ce.length > 0 ?[...new Set(data.ce.map(item => item.term))] : ['暂无数据'];
+
+            const aeData = data.ae.map(item => ({
+                name: item.term, 
+                value:[item.start, item.end || customMax, item.grade, aeTerms.indexOf(item.term), item.action, item.rel],
+                itemStyle: { color: String(item.grade).includes('3') ? '#E74C3C' : (String(item.grade).includes('2') ? '#F5B041' : '#AED6F1') }
+            }));
+
+            const cmData = data.cm.map(item => ({
+                name: item.term, value:[item.start, item.end || customMax, 'CM', cmTerms.indexOf(item.term)], itemStyle: { color: '#E5E7E9' }
+            }));
+
+            const ceData = data.ce.map(item => ({
+                name: item.term, value:[item.start, item.end || customMax, 'CE', ceTerms.indexOf(item.term), item.cetype], itemStyle: { color: '#d97706' }
+            }));
+
+            const ecNormal = data.ec.filter(e => e.status === 'normal').map(e => {
+                let is35 = String(e.dose).trim() === '3.5ml';
+                return {
+                    name: e.dose, value:[e.day, 0, e.dose],
+                    symbol: is35 ? 'circle' : 'rect',  
+                    symbolSize: is35 ? 10 : 12,
+                    itemStyle: { color: is35 ? '#10b981' : '#95a5a6' } 
+                };
+            });
+            
+            const ecError = data.ec.filter(e => e.status !== 'normal').map(e => {
+                let is35 = String(e.dose).trim() === '3.5ml';
+                return {
+                    name: e.dose, value:[e.day, 0, e.dose, e.type],
+                    symbol: is35 ? 'triangle' : 'rect', 
+                    symbolSize: is35 ? 15 : 12,
+                    itemStyle: { color: '#8F1D14' } 
+                };
+            });
+
+            let dataZoomConfig =[
+                { type: 'slider', xAxisIndex:[0,1,2,3,4], bottom: 0, height: 20, start: 0, end: 100, borderColor: 'transparent', backgroundColor: '#f0f4f8', filterMode: 'none' },
+                { type: 'inside', xAxisIndex:[0,1,2,3,4], filterMode: 'none' } 
+            ];
+            if (aeTerms.length > 5) {
+                dataZoomConfig.push({ type: 'slider', yAxisIndex: 1, show: true, width: 12, right: '2%', startValue: Math.max(0, aeTerms.length - 5), endValue: aeTerms.length - 1, filterMode: 'none' });
+                dataZoomConfig.push({ type: 'inside', yAxisIndex: 1, filterMode: 'none' });
+            }
+            if (cmTerms.length > 5) {
+                dataZoomConfig.push({ type: 'slider', yAxisIndex: 2, show: true, width: 12, right: '2%', startValue: Math.max(0, cmTerms.length - 5), endValue: cmTerms.length - 1, filterMode: 'none' });
+                dataZoomConfig.push({ type: 'inside', yAxisIndex: 2, filterMode: 'none' });
+            }
+
+            const option = {
+                title:[
+                    { text: '研究用药 (EC)', top: '2%', left: '1%', textStyle: { fontSize: 13, color: '#1e4a7a', fontWeight: 'bold' } },
+                    { text: '不良事件 (AE)', top: '14%', left: '1%', textStyle: { fontSize: 13, color: '#1e4a7a', fontWeight: 'bold' } },
+                    { text: '合并用药 (CM)', top: '40%', left: '1%', textStyle: { fontSize: 13, color: '#1e4a7a', fontWeight: 'bold' } },
+                    { text: '临床事件 (CE)', top: '68%', left: '1%', textStyle: { fontSize: 13, color: '#1e4a7a', fontWeight: 'bold' } },
+                    { text: '定量指标 (FEV1)', top: '80%', left: '1%', textStyle: { fontSize: 13, color: '#1e4a7a', fontWeight: 'bold' } }
+                ],
+                dataZoom: dataZoomConfig,
+                tooltip: {
+                    trigger: 'item', backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderColor: '#1e4a7a', borderWidth: 1, textStyle: { color: '#17212b', fontSize: 12 },
+                    formatter: function(p) {
+                        let actualDate = getActualDate(p.value[0]);
+                        let startStr = actualDate ? `${actualDate} (Day ${p.value[0]})` : `Day ${p.value[0]}`;
+
+                        let endStr = '';
+                        if (p.seriesName === 'AE' || p.seriesName === 'CM' || p.seriesName === 'CE') {
+                            if (p.value[1] >= customMax) {
+                                endStr = '<b>至今 / 持续中</b>';
+                            } else {
+                                let actualEndDate = getActualDate(p.value[1]);
+                                endStr = actualEndDate ? `<b>${actualEndDate} (Day ${p.value[1]})</b>` : `<b>Day ${p.value[1]}</b>`;
+                            }
+                        }
+
+                        if (p.seriesName === 'AE') {
+                            return `<div style="font-size:13px; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:4px; font-weight:bold; color:var(--primary-dark)">${p.name}</div>
+                                    开始日期: <b>${startStr}</b><br>
+                                    结束日期: ${endStr}<br>
+                                    严重等级: <span style="color:${String(p.value[2]).includes('3')?'red':'#d97706'};font-weight:bold">${p.value[2]}</span><br>
+                                    用药相关性: <b>${p.value[5]}</b><br>
+                                    采取措施: ${p.value[4]}`;
+                        }
+                        if (p.seriesName === 'CM') {
+                            return `<div style="font-size:13px; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:4px; font-weight:bold; color:var(--primary-dark)">${p.name}</div>
+                                    开始日期: <b>${startStr}</b><br>
+                                    结束日期: ${endStr}`;
+                        }
+                        if (p.seriesName === 'CE') {
+                            return `<div style="font-size:13px; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:4px; font-weight:bold; color:var(--primary-dark)">${p.name}</div>
+                                    开始日期: <b>${startStr}</b><br>
+                                    结束日期: ${endStr}<br>
+                                    急性发作的类型: <b>${p.value[4]}</b>`;
+                        }
+                        if (p.seriesName === 'FEV1') return `<div style="font-size:13px; font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">肺功能 (FEV1)</div>测定时间: <b>${startStr}</b><br>实测数值: <b>${p.value[1]} L</b>`;
+                        if (p.seriesName === '异常给药') return `<div style="font-size:13px; font-weight:bold; color:#8F1D14; margin-bottom:4px;">异常给药 (${p.value[3]})</div>给药时间: <b>${startStr}</b><br>使用剂量: ${p.value[2]}`;
+                        if (p.seriesName === '合规给药') return `<div style="font-size:13px; font-weight:bold; color:#10b981; margin-bottom:4px;">合规给药</div>给药时间: <b>${startStr}</b><br>使用剂量: ${p.value[2]}`;
+                        return `${p.name}`;
+                    }
+                },
+                axisPointer: { link: { xAxisIndex: 'all' }, lineStyle: { color: '#e74c3c', width: 1.5, type: 'dashed' } },
+                grid:[
+                    { top: '6%', height: '5%', left: '18%', right: '6%' },
+                    { top: '18%', height: '18%', left: '18%', right: '6%' },
+                    { top: '44%', height: '20%', left: '18%', right: '6%' },
+                    { top: '72%', height: '5%', left: '18%', right: '6%' },
+                    { top: '84%', height: '12%', left: '18%', right: '6%' }
+                ],
+                xAxis:[0, 1, 2, 3, 4].map(idx => ({
+                    gridIndex: idx, type: 'value', 
+                    min: customMin, max: customMax,
+                    show: idx === 4, name: idx === 4 ? '\n研究天数 (Study Day)' : '', nameLocation: 'middle',
+                    splitLine: { show: idx === 4, lineStyle: { type: 'dashed', color: '#e2e8f0'} }
+                })),
+                yAxis:[
+                    { gridIndex: 0, type: 'category', data: ['剂量'], axisTick: {show: false}, splitLine: {show: false}, axisLabel: {show:false} },
+                    { gridIndex: 1, type: 'category', inverse: true, data: aeTerms, splitLine: {show: true, lineStyle: {color:'#f0f4f8'}}, axisLabel: { interval: 0, width: 130, overflow: 'truncate' } },
+                    { gridIndex: 2, type: 'category', inverse: true, data: cmTerms, splitLine: {show: true, lineStyle: {color:'#f0f4f8'}}, axisLabel: { interval: 0, width: 130, overflow: 'truncate' } },
+                    { gridIndex: 3, type: 'category', data: ceTerms, splitLine: {show: true, lineStyle: {color:'#f0f4f8'}} },
+                    { gridIndex: 4, type: 'value', splitLine: {show: true, lineStyle: {type:'dashed'}} }
+                ],
+                series:[
+                    { name: '合规给药', type: 'scatter', xAxisIndex: 0, yAxisIndex: 0, data: ecNormal },
+                    { name: '异常给药', type: 'scatter', xAxisIndex: 0, yAxisIndex: 0, data: ecError },
+                    { name: 'AE', type: 'custom', renderItem: renderGantt, xAxisIndex: 1, yAxisIndex: 1, data: aeData, encode: { x:[0, 1], y: 3 } },
+                    { name: 'CM', type: 'custom', renderItem: renderGantt, xAxisIndex: 2, yAxisIndex: 2, data: cmData, encode: { x:[0, 1], y: 3 } },
+                    { name: 'CE', type: 'custom', renderItem: renderGantt, xAxisIndex: 3, yAxisIndex: 3, data: ceData, encode: { x: [0, 1], y: 3 } },
+                    { name: 'FEV1', type: 'line', xAxisIndex: 4, yAxisIndex: 4, data: data.fev1, itemStyle: { color: '#2F6DB3' }, lineStyle: { width: 2 }, symbolSize: 6, connectNulls: true,
+                      markLine: { data:[{ yAxis: 0.8, name: '阈值', label:{formatter:'0.8'} }], symbol: 'none', lineStyle: { type: 'dashed', color: '#d97706' } }
+                    }
+                ]
+            };
+            myChart.setOption(option, true);
+        }
+
+        document.getElementById('smart-title').innerText = "正在自动加载数据";
+        document.getElementById('smart-text').innerText = "正在读取患者数据文件...";
+
+        // 自动加载同目录的患者数据（patientprofile xlsx）
+        (function autoLoad(){
+            const url = 'TQC2731-III-01_patientprofile_20260516.xlsx';
+            document.getElementById('loading').style.display = 'flex';
+            fetch(url)
+                .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+                .then(buf => {
+                    const data = new Uint8Array(buf);
+                    const workbook = XLSX.read(data, {type:'array'});
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    parseSASDataset(jsonData);
+                    if (Object.keys(db).length > 0) {
+                        currentId = Object.keys(db)[0];
+                        renderSidebar();
+                        loadPatientData();
+                    } else {
+                        document.getElementById('smart-title').innerText = "解析失败";
+                        document.getElementById('smart-text').innerText = "未在数据集中找到有效的受试者记录。";
+                    }
+                })
+                .catch(err => {
+                    console.warn('自动加载失败：', err);
+                    document.getElementById('smart-title').innerText = "数据加载失败";
+                    document.getElementById('smart-text').innerText = "请确认数据文件存在。";
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        })();
+    </script>
+</body>
+</html>
