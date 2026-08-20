@@ -13,38 +13,38 @@
    ============================================================ */
 
 :root {
-  /* ── 色彩令牌 ── */
-  --ink:        #141C2B;
-  --slate:      #4A5568;
-  --canvas:     #FAFBFC;
-  --surface:    #F1F3F6;
-  --surface-alt:#E8EBEF;
-  --border:     #DDE1E7;
-  --border-light:#EBEEF2;
-  --navy:       #1B3A5C;
-  --blue:       #2166AC;
-  --blue-light: #3B82C4;
-  --crimson:    #B71C1C;
-  --crimson-bg: #FEF2F2;
-  --amber:      #C7772A;
-  --amber-bg:   #FFFCF5;
-  --teal:       #1B7A5E;
-  --teal-bg:    #F0FDF9;
-  --stone:      #8A8D93;
-  --orange:     #D4713A;
-  --white:      #FFFFFF;
-  --shadow-sm:  0 1px 2px rgba(20,28,43,0.06);
-  --shadow-md:  0 4px 12px rgba(20,28,43,0.08);
-  --shadow-lg:  0 12px 32px rgba(20,28,43,0.12);
-  --radius-sm:  4px;
-  --radius-md:  6px;
-  --radius-lg:  8px;
+  /* ── 色彩令牌（参考基线特征监测学术期刊配色）── */
+  --ink:        #1a1a1a;
+  --slate:      #5a5a5a;
+  --canvas:     #fafaf8;
+  --surface:    #f5f5f5;
+  --surface-alt:#ebebeb;
+  --border:     #d0d0d0;
+  --border-light:#e8e8e8;
+  --navy:       #1a1a1a;
+  --blue:       #4472C4;
+  --blue-light: #5B9BD5;
+  --crimson:    #c0504d;
+  --crimson-bg: #fbf1f0;
+  --amber:      #ED7D31;
+  --amber-bg:   #fdf6ef;
+  --teal:       #4caf90;
+  --teal-bg:    #f0f8f5;
+  --stone:      #7F7F7F;
+  --orange:     #ED7D31;
+  --white:      #ffffff;
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 12px 32px rgba(0,0,0,0.12);
+  --radius-sm:  3px;
+  --radius-md:  4px;
+  --radius-lg:  6px;
 
   /* ── 字体 ── */
-  --font-body:   system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display:'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-body:   'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-display:'Georgia', 'Times New Roman', 'Songti SC', 'SimSun', serif;
   --font-mono:   'Cascadia Code', 'SF Mono', 'Consolas', 'Fira Code', monospace;
-  --font-table:  'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-table:  'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 
   /* ── 间距 ── */
   --space-xs: 4px;
@@ -172,7 +172,7 @@ select, input[type="number"], input[type="text"] {
   border-radius: var(--radius-sm); font-size: 0.82rem; font-family: var(--font-body);
   background: var(--white); color: var(--ink); transition: border-color var(--duration-fast);
 }
-select:focus, input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(33,102,172,0.12); }
+select:focus, input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(68,114,196,0.12); }
 select { cursor: pointer; }
 
 .checkbox-group { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
@@ -183,7 +183,7 @@ select { cursor: pointer; }
   user-select: none;
 }
 .checkbox-item:hover { border-color: var(--blue); }
-.checkbox-item.checked { background: rgba(33,102,172,0.08); border-color: var(--blue); color: var(--blue); }
+.checkbox-item.checked { background: rgba(68,114,196,0.08); border-color: var(--blue); color: var(--blue); }
 .checkbox-item input { display: none; }
 
 /* ── Content Area ── */
@@ -211,7 +211,7 @@ select { cursor: pointer; }
   margin-bottom: var(--space-md); position: relative; overflow: hidden;
 }
 .dropzone:hover, .dropzone.drag-over {
-  border-color: var(--blue); background: rgba(33,102,172,0.04);
+  border-color: var(--blue); background: rgba(68,114,196,0.04);
 }
 .dropzone-icon { font-size: 2rem; margin-bottom: var(--space-sm); }
 .dropzone-title { font-size: 0.9rem; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
@@ -238,7 +238,7 @@ select { cursor: pointer; }
   font-size: 0.65rem; padding: 1px 6px; border-radius: 999px;
   font-weight: 600;
 }
-.file-item .file-badge.adtte { background: rgba(33,102,172,0.1); color: var(--blue); }
+.file-item .file-badge.adtte { background: rgba(68,114,196,0.1); color: var(--blue); }
 .file-item .file-badge.events { background: rgba(183,28,28,0.1); color: var(--crimson); }
 
 .import-actions {
@@ -275,7 +275,7 @@ select { cursor: pointer; }
   border-bottom: 1px solid var(--border-light);
   display: flex; flex-direction: column;
 }
-.filter-chip:hover { background: rgba(33,102,172,0.2) !important; }
+.filter-chip:hover { background: rgba(68,114,196,0.2) !important; }
 
 /* ── Summary Cards ── */
 .summary-bar {
@@ -361,7 +361,7 @@ tr.row-warning td { background: var(--amber-bg); }
 tr.row-small td { background: var(--surface-alt); color: var(--stone); }
 tr.row-normal td { background: transparent; }
 tr.clickable { cursor: pointer; }
-tr.clickable:hover td { background: rgba(33,102,172,0.06); }
+tr.clickable:hover td { background: rgba(68,114,196,0.06); }
 
 .badge {
   display: inline-block; padding: 2px 8px; border-radius: 999px;
@@ -372,11 +372,11 @@ tr.clickable:hover td { background: rgba(33,102,172,0.06); }
 .badge-teal { background: var(--teal-bg); color: var(--teal); }
 .badge-stone { background: var(--surface-alt); color: var(--stone); }
 .badge-orange { background: #FFF5F0; color: var(--orange); }
-.badge-blue { background: rgba(33,102,172,0.08); color: var(--blue); }
+.badge-blue { background: rgba(68,114,196,0.08); color: var(--blue); }
 
 /* ── Drill-down Panel ── */
 .drill-overlay {
-  position: fixed; inset: 0; background: rgba(20,28,43,0.3); z-index: 200;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200;
   opacity: 0; pointer-events: none; transition: opacity var(--duration-normal);
 }
 .drill-overlay.open { opacity: 1; pointer-events: auto; }
@@ -437,7 +437,7 @@ tr.clickable:hover td { background: rgba(33,102,172,0.06); }
 
 /* ── Forecast Modal ── */
 .forecast-overlay {
-  position: fixed; inset: 0; background: rgba(20,28,43,0.4); z-index: 210;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 210;
   opacity: 0; pointer-events: none; transition: opacity var(--duration-normal);
 }
 .forecast-overlay.open { opacity: 1; pointer-events: auto; }
@@ -492,8 +492,8 @@ tr.filter-row input.col-filter {
   transition: border-color var(--duration-fast);
   min-width: 50px;
 }
-tr.filter-row input.col-filter:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px rgba(33,102,172,0.15); }
-tr.filter-row input.col-filter.active { border-color: var(--blue); background: rgba(33,102,172,0.04); }
+tr.filter-row input.col-filter:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px rgba(68,114,196,0.15); }
+tr.filter-row input.col-filter.active { border-color: var(--blue); background: rgba(68,114,196,0.04); }
 th.filter-active { color: var(--blue) !important; }
 th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
 
@@ -588,9 +588,6 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
   <div class="topbar-brand">
     <span class="dot"></span> 中心事件异常监测
   </div>
-  <div class="topbar-actions">
-    <button class="topbar-btn" id="btnToggleImport" title="数据导入"><i data-lucide="clipboard-list"></i> 数据导入</button>
-  </div>
 </div>
 
 <!-- ── Main Layout ── -->
@@ -598,6 +595,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
 
   <!-- Left Nav -->
   <nav class="sidebar" id="sidebar">
+    <button class="nav-btn" id="btnToggleImportSide" title="数据导入"><span class="nav-icon"><i data-lucide="clipboard-list"></i></span>数据导入</button>
     <button class="nav-btn active" data-tab="events"><span class="nav-icon"><i data-lucide="bar-chart-3"></i></span>事件增长</button>
     <button class="nav-btn" data-tab="first"><span class="nav-icon"><i data-lucide="alert-triangle"></i></span>首次评估</button>
     <button class="nav-btn" data-tab="forest"><span class="nav-icon"><i data-lucide="tree-pine"></i></span>森林图</button>
@@ -656,8 +654,8 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
           <option value="includes">包含</option>
         </select>
         <input type="text" id="filterVal" placeholder="值" style="font-size:0.75rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;width:120px;">
-        <button class="btn btn-sm btn-primary" id="btnAddFilter" style="font-size:0.7rem;padding:3px 10px;"><i data-lucide="plus"></i> 添加</button>
-        <button class="btn btn-sm btn-outline" id="btnClearFilters" style="font-size:0.7rem;padding:3px 10px;display:none;">清除</button>
+        <button class="btn btn-sm btn-primary" id="btnAddFilter"><i data-lucide="plus"></i> 添加</button>
+        <button class="btn btn-sm btn-outline" id="btnClearFilters" style="display:none;">清除</button>
         <span id="filterCount" style="font-size:0.72rem;color:var(--slate);"></span>
       </div>
       <div id="activeFilterChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
@@ -717,7 +715,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
       </div>
 
       <!-- Tab: First Assessment -->
-      <div class="tab-panel" id="panel-first">
+      <div class="tab-panel fill-screen" id="panel-first">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
           <span style="font-weight:600;font-size:0.95rem;">首次评估监测</span>
           <span class="text-xs">入组≥</span>
@@ -729,12 +727,12 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
             <option value="wald">Wald</option>
             <option value="wilson">Wilson</option>
           </select>
-          <button class="btn btn-sm btn-primary" id="btnApplyFirst" style="font-size:0.7rem;">应用</button>
+          <button class="btn btn-sm btn-primary" id="btnApplyFirst">应用</button>
         </div>
         <div class="panel-grid">
-          <div class="chart-container">
+          <div class="chart-container control-chart-wrapper">
             <div class="chart-title" id="titleFunnel">首次评估漏斗图</div>
-            <svg id="svgFunnel" viewBox="0 0 800 350" preserveAspectRatio="xMidYMid meet"></svg>
+            <svg id="svgFunnel" preserveAspectRatio="xMidYMid meet"></svg>
           </div>
           <div class="table-container">
             <div class="table-header" data-table="tblFirst"><span><span class="toggle-arrow">▼</span> 首次评估异常详情</span><span class="text-xs">点击行查看详情</span></div>
@@ -762,7 +760,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
           </span>
           <span class="text-xs">小样本≤</span>
           <input type="number" id="inpSmallN" value="2" min="0" style="width:44px;padding:3px 4px;font-size:0.75rem;">
-          <button class="btn btn-sm btn-primary" id="btnApplyForest" style="font-size:0.7rem;">应用</button>
+          <button class="btn btn-sm btn-primary" id="btnApplyForest">应用</button>
         </div>
         <div class="panel-grid">
           <div class="chart-container">
@@ -794,7 +792,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
           </span>
           <span class="text-xs">参考线(天):</span>
           <input type="text" id="inpKMRefTimes" value="91,183,365" style="width:90px;padding:3px 6px;font-size:0.75rem;" title="逗号分隔的时间点（天），用于在KM曲线上绘制参考dropline">
-          <button class="btn btn-sm btn-primary" id="btnApplyKM" style="font-size:0.7rem;">应用</button>
+          <button class="btn btn-sm btn-primary" id="btnApplyKM" style="font-size:0.7rem;padding:2px 8px;">应用</button>
           <span class="text-xs" style="margin-left:8px;"><i data-lucide="calendar"></i> 参考日期:</span>
           <input type="date" id="inpRefDate" style="width:115px;padding:3px 4px;font-size:0.75rem;" title="用于计算'距参考日天数' = 参考日期 - 删失日期">
           <span class="text-xs" style="margin-left:8px;"><i data-lucide="clock"></i> 滞后阈值:</span>
@@ -806,12 +804,11 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
           <input type="number" id="inpKMBrushStart" placeholder="起始" min="0" style="width:60px;padding:3px 4px;font-size:0.75rem;" title="输出起始天数">
           <span class="text-xs">–</span>
           <input type="number" id="inpKMBrushEnd" placeholder="结束" min="0" style="width:60px;padding:3px 4px;font-size:0.75rem;" title="输入结束天数">
-          <button class="btn btn-sm btn-primary" id="btnQueryBrush" style="font-size:0.7rem;">查询删失</button>
+          <button class="btn btn-sm btn-primary" id="btnQueryBrush" style="font-size:0.7rem;padding:2px 8px;">查询删失</button>
         </div>
         <div class="panel-grid">
           <div class="chart-container km-container">
             <div class="chart-title" id="titleKM">Kaplan-Meier 生存曲线</div>
-            <div style="font-size:0.7rem;color:var(--stone);margin-bottom:4px;"><i data-lucide="lightbulb"></i> 在曲线上拖拽可圈选时间段，或在上方输入起止天数后"查询删失"，查看该区间内删失受试者详情</div>
             <div style="position:relative;">
               <canvas id="chartKM"></canvas>
               <canvas id="chartKMOverlay" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
@@ -821,7 +818,7 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
       </div>
 
       <!-- Tab: Custom Event Control -->
-      <div class="tab-panel" id="panel-custom">
+      <div class="tab-panel fill-screen" id="panel-custom">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
           <span style="font-weight:600;font-size:0.95rem;">自定义事件控制图</span>
           <div class="subtab-nav" style="margin:0;">
@@ -845,12 +842,12 @@ th.filter-active::after { content: ' ▽'; font-size: 0.6rem; }
             <label class="checkbox-item"><input type="checkbox" value="stale9m"> >9月</label>
             <label class="checkbox-item"><input type="checkbox" value="realevent"> 实际事件(censor=0)</label>
           </div>
-          <button class="btn btn-sm btn-primary" id="btnApplyCustom" style="font-size:0.7rem;">应用</button>
+          <button class="btn btn-sm btn-primary" id="btnApplyCustom">应用</button>
         </div>
         <div class="panel-grid">
-          <div class="chart-container">
+          <div class="chart-container control-chart-wrapper">
             <div class="chart-title" id="titleCustom"></div>
-            <svg id="svgCustomControl" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg>
+            <svg id="svgCustomControl" preserveAspectRatio="xMidYMid meet"></svg>
           </div>
           <div class="table-container">
             <div class="table-header" data-table="tblCustom"><span><span class="toggle-arrow">▼</span> 自定义事件详情</span><span class="text-xs">点击行查看详情</span></div>
@@ -1890,7 +1887,7 @@ function updateFilterUI() {
 
   const n = dataFilters.length;
   chipsDiv.innerHTML = dataFilters.map((f, i) =>
-    `<span class="filter-chip" data-idx="${i}" style="display:inline-flex;align-items:center;gap:3px;background:rgba(33,102,172,0.1);color:var(--blue);padding:2px 8px;border-radius:12px;font-size:0.7rem;cursor:pointer;" title="点击删除">${f.label} ×</span>`
+    `<span class="filter-chip" data-idx="${i}" style="display:inline-flex;align-items:center;gap:3px;background:rgba(68,114,196,0.1);color:var(--blue);padding:2px 8px;border-radius:12px;font-size:0.7rem;cursor:pointer;" title="点击删除">${f.label} ×</span>`
   ).join('');
   countSpan.textContent = n > 0 ? `${n} 条筛选 · ${getFilteredData().length}/${patientData.length} 条` : '';
   clearBtn.style.display = n > 0 ? '' : 'none';
@@ -2024,39 +2021,62 @@ function buildMonthlyEvents(type) {
   return { months, labels, added, cumulative, total: sum };
 }
 
-function renderEventsTab() {
-  const pfsData = buildMonthlyEvents('pfs');
-  const osData = buildMonthlyEvents('os');
+// 数值标注插件 — 在柱顶 / 折线点上方绘制数值（对齐基线研究入组进度图）
+const eventValueLabelPlugin = {
+  id: 'eventValueLabel',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    const datasets = chart.data.datasets;
+    ctx.save();
+    datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      const isLine = ds.type === 'line';
+      ctx.font = (isLine ? '700 ' : '600 ') + '9px Georgia, "Times New Roman", "Songti SC", serif';
+      ctx.textAlign = 'center';
+      meta.data.forEach((el, i) => {
+        const v = ds.data[i];
+        if (v == null || isNaN(v)) return;
+        ctx.fillStyle = isLine ? '#1A0099' : '#1A0099';
+        ctx.fillText(String(v), el.x, isLine ? el.y - 6 : el.y - 4);
+      });
+    });
+    ctx.restore();
+  }
+};
 
-  // ── PFS Chart ──
-  const ctxPFS = document.getElementById('chartEventsPFS').getContext('2d');
-  if (chartEventsPFSInstance) chartEventsPFSInstance.destroy();
-  chartEventsPFSInstance = new Chart(ctxPFS, {
+// 事件增长图 — 对齐基线「研究入组进度」设计：蓝色柱(每月) + 深蓝折线(累积) + 双轴 + 数值标注
+function renderEventGrowthChart(canvasId, evLabel, labels, added, cumulative) {
+  const serif = 'Georgia, "Times New Roman", "Songti SC", serif';
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const inst = (canvasId === 'chartEventsPFS') ? chartEventsPFSInstance : chartEventsOSInstance;
+  if (inst) inst.destroy();
+  const newInst = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: pfsData.labels,
+      labels,
       datasets: [
         {
-          label: '月度新增',
-          data: pfsData.added,
-          backgroundColor: '#2166AC',
+          label: '每月新增',
+          data: added,
+          backgroundColor: '#4775FF',
           borderWidth: 0,
-          borderRadius: 3,
-          barPercentage: 0.75,
+          borderRadius: 0,
+          barPercentage: 0.7,
+          categoryPercentage: 0.85,
           yAxisID: 'y',
           order: 2,
         },
         {
           label: '累积',
-          data: pfsData.cumulative,
+          data: cumulative,
           type: 'line',
-          borderColor: '#1B3A5C',
-          backgroundColor: '#1B3A5C',
-          pointRadius: 2.5,
-          pointBackgroundColor: '#1B3A5C',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 1.5,
-          borderWidth: 1.8,
+          borderColor: '#1A0099',
+          backgroundColor: '#1A0099',
+          pointRadius: 3,
+          pointBackgroundColor: '#1A0099',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 1,
+          borderWidth: 2,
           tension: 0,
           yAxisID: 'y1',
           order: 1,
@@ -2069,164 +2089,58 @@ function renderEventsTab() {
         legend: {
           display: true,
           position: 'top',
-          align: 'center',
+          align: 'start',
           labels: {
             boxWidth: 8,
             boxHeight: 8,
-            padding: 6,
+            padding: 8,
             usePointStyle: true,
             pointStyleWidth: 8,
-            font: { size: 9, family: 'system-ui, -apple-system, sans-serif' },
-            color: '#4A5568',
-            generateLabels: function(chart) {
-              const ds = chart.data.datasets;
-              return [{
-                text: ds[0].label,
-                fillStyle: ds[0].backgroundColor,
-                strokeStyle: 'transparent',
-                lineWidth: 0,
-                hidden: false,
-                index: 0,
-                pointStyle: 'rectRounded',
-                rotation: 0,
-              }, {
-                text: ds[1].label,
-                fillStyle: 'transparent',
-                strokeStyle: ds[1].borderColor,
-                lineWidth: 2,
-                hidden: false,
-                index: 1,
-                pointStyle: 'line',
-                rotation: 0,
-              }];
-            },
+            font: { size: 9, family: serif },
+            color: '#5a5a5a',
           },
         },
       },
       scales: {
         y: {
           type: 'linear', position: 'left',
-          title: { display: true, text: '新增' + getPfsLabel() + '事件', font: { size: 10, family: 'system-ui' }, color: '#4A5568' },
+          title: { display: true, text: '每月新增' + evLabel + '事件', font: { size: 10, family: serif }, color: '#5a5a5a' },
           min: 0,
-          grid: { color: '#EBEEF2', lineWidth: 0.5 },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
+          grid: { color: '#e5e5e5', lineWidth: 0.5 },
+          ticks: { font: { size: 9 }, color: '#5a5a5a' },
         },
         y1: {
           type: 'linear', position: 'right',
-          title: { display: true, text: '累积' + getPfsLabel() + '事件', font: { size: 10, family: 'system-ui' }, color: '#4A5568' },
+          title: { display: true, text: '累积' + evLabel + '事件', font: { size: 10, family: serif }, color: '#5a5a5a' },
           min: 0,
           grid: { display: false },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
+          ticks: { font: { size: 9 }, color: '#5a5a5a' },
         },
         x: {
           grid: { display: false },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
+          ticks: { font: { size: 9 }, color: '#5a5a5a', maxRotation: 0, autoSkip: false },
         },
       },
     },
+    plugins: [eventValueLabelPlugin],
   });
+  if (canvasId === 'chartEventsPFS') chartEventsPFSInstance = newInst;
+  else chartEventsOSInstance = newInst;
+}
+
+function renderEventsTab() {
+  const pfsData = buildMonthlyEvents('pfs');
+  const osData = buildMonthlyEvents('os');
+
+  // ── PFS Chart ── 对齐基线研究入组进度设计
+  renderEventGrowthChart('chartEventsPFS', getPfsLabel(), pfsData.labels, pfsData.added, pfsData.cumulative);
   document.getElementById('chartEventsPFS').parentElement.style.height = '260px';
   document.getElementById('titleEventsPFS').innerHTML = chartTitleHTML(
     getPfsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : `距随机天数（${eventInterval}天间隔）`),
     'chartEventsPFS', 'png', getPfsLabel() + '_事件增长');
 
-  // ── OS Chart ──
-  const ctxOS = document.getElementById('chartEventsOS').getContext('2d');
-  if (chartEventsOSInstance) chartEventsOSInstance.destroy();
-  chartEventsOSInstance = new Chart(ctxOS, {
-    type: 'bar',
-    data: {
-      labels: osData.labels,
-      datasets: [
-        {
-          label: '月度新增',
-          data: osData.added,
-          backgroundColor: '#2166AC',
-          borderWidth: 0,
-          borderRadius: 3,
-          barPercentage: 0.75,
-          yAxisID: 'y',
-          order: 2,
-        },
-        {
-          label: '累积',
-          data: osData.cumulative,
-          type: 'line',
-          borderColor: '#1B3A5C',
-          backgroundColor: '#1B3A5C',
-          pointRadius: 2.5,
-          pointBackgroundColor: '#1B3A5C',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 1.5,
-          borderWidth: 1.8,
-          tension: 0,
-          yAxisID: 'y1',
-          order: 1,
-        },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          align: 'center',
-          labels: {
-            boxWidth: 8,
-            boxHeight: 8,
-            padding: 6,
-            usePointStyle: true,
-            pointStyleWidth: 8,
-            font: { size: 9, family: 'system-ui, -apple-system, sans-serif' },
-            color: '#4A5568',
-            generateLabels: function(chart) {
-              const ds = chart.data.datasets;
-              return [{
-                text: ds[0].label,
-                fillStyle: ds[0].backgroundColor,
-                strokeStyle: 'transparent',
-                lineWidth: 0,
-                hidden: false,
-                index: 0,
-                pointStyle: 'rectRounded',
-                rotation: 0,
-              }, {
-                text: ds[1].label,
-                fillStyle: 'transparent',
-                strokeStyle: ds[1].borderColor,
-                lineWidth: 2,
-                hidden: false,
-                index: 1,
-                pointStyle: 'line',
-                rotation: 0,
-              }];
-            },
-          },
-        },
-      },
-      scales: {
-        y: {
-          type: 'linear', position: 'left',
-          title: { display: true, text: '新增' + getOsLabel() + '事件', font: { size: 10, family: 'system-ui' }, color: '#4A5568' },
-          min: 0,
-          grid: { color: '#EBEEF2', lineWidth: 0.5 },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
-        },
-        y1: {
-          type: 'linear', position: 'right',
-          title: { display: true, text: '累积' + getOsLabel() + '事件', font: { size: 10, family: 'system-ui' }, color: '#4A5568' },
-          min: 0,
-          grid: { display: false },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
-        },
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 9 }, color: '#4A5568' },
-        },
-      },
-    },
-  });
+  // ── OS Chart ── 对齐基线研究入组进度设计
+  renderEventGrowthChart('chartEventsOS', getOsLabel(), osData.labels, osData.added, osData.cumulative);
   document.getElementById('chartEventsOS').parentElement.style.height = '260px';
   document.getElementById('titleEventsOS').innerHTML = chartTitleHTML(
     getOsLabel() + ' 事件 — ' + (eventTimeMode === 'calendar' ? '月度新增与累积' : `距随机天数（${eventInterval}天间隔）`),
@@ -2253,7 +2167,34 @@ function renderEventsTab() {
   };
 
   // ── Events Control Chart ──
+  ensureEventsControlObserver();
   renderEventsControlChart();
+}
+
+// 监听控制图 SVG 尺寸变化自动重绘，避免首次加载布局未稳定导致图形变形/只占中间
+let eventsControlObserver = null;
+let eventsControlResizeTimer = null;
+function ensureEventsControlObserver() {
+  const svg = document.getElementById('svgEventsControl');
+  if (!svg || eventsControlObserver) return;
+  eventsControlObserver = new ResizeObserver(() => {
+    clearTimeout(eventsControlResizeTimer);
+    eventsControlResizeTimer = setTimeout(() => renderEventsControlChart(), 120);
+  });
+  eventsControlObserver.observe(svg);
+}
+
+// 通用：任意 SVG 尺寸变化自动重绘（首次评估/自定义控制图铺满模块）
+let boundSvgResize = {};
+let svgResizeTimer = null;
+function bindSvgResize(svgId, renderFn) {
+  const svg = document.getElementById(svgId);
+  if (!svg || boundSvgResize[svgId]) return;
+  boundSvgResize[svgId] = true;
+  new ResizeObserver(() => {
+    clearTimeout(svgResizeTimer);
+    svgResizeTimer = setTimeout(() => renderFn(), 120);
+  }).observe(svg);
 }
 
 // ============================================================
@@ -2287,7 +2228,7 @@ function renderEventsControlChart() {
 
   const svg = document.getElementById('svgEventsControl');
   if (entries.length === 0) {
-    svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#8A8D93" font-size="12">暂无数据</text>';
+    svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#7F7F7F" font-size="12">暂无数据</text>';
     return;
   }
 
@@ -2296,11 +2237,8 @@ function renderEventsControlChart() {
   const totalK = entries.reduce((s, e) => s + e.k, 0);
   const overallRate = totalN > 0 ? totalK / totalN : 0;
 
-  // CI per center (binomial CI around overall rate)
-  const z = 1.96;
-  entries.forEach(e => {
-    const p0 = overallRate;
-    const ni = e.n;
+  // CI per center (binomial CI around overall rate) — 95% 与 99% 两条（参考基线中心监测控制图）
+  function calcCI(p0, ni, z) {
     let lower, upper;
     if (ciMethod === 'wald') {
       const se = Math.sqrt(p0 * (1 - p0) / ni);
@@ -2314,23 +2252,30 @@ function renderEventsControlChart() {
       lower = Math.max(0, center - margin);
       upper = Math.min(1, center + margin);
     }
-    e.ci = { lower, upper, p: p0 };
-    e.isAnomaly = e.rate > upper || e.rate < lower;
+    return { lower, upper };
+  }
+  entries.forEach(e => {
+    const p0 = overallRate;
+    e.ci = calcCI(p0, e.n, 1.96);      // 95% CI
+    e.ci99 = calcCI(p0, e.n, 2.576);   // 99% CI
+    e.isAnomaly = e.rate > e.ci99.upper || e.rate < e.ci99.lower;  // 超出 99% CI 判定异常
   });
 
-  // SVG dimensions — 动态适应容器高度
+  // SVG dimensions — 用 getBoundingClientRect 取精确渲染尺寸，viewBox 比例与容器一致避免变形
   const container = svg.closest('.control-chart-wrapper') || svg.parentElement;
-  const containerH = container ? container.clientHeight : 350;
-  const H = Math.max(280, containerH - 8);  // 减去标题栏高度，最低 280px
-  const W = 800;
+  const rect = svg.getBoundingClientRect();
+  const W = Math.max(400, rect.width || (container ? container.clientWidth : 800));
+  const H = Math.max(240, rect.height || (container ? container.clientHeight - 30 : 400));
   const pad = { top: 24, right: 60, bottom: 35, left: 72 };
   const pw = W - pad.left - pad.right;
   const ph = H - pad.top - pad.bottom;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'none');  // 比例已匹配，铺满不变形
 
   const maxN = Math.max(...entries.map(e => e.n), 1) * 1.12;
   const maxCI = Math.max(...entries.map(e => e.ci?.upper || 0), 0);
-  const maxRate = Math.max(maxCI, 0.12, overallRate + 0.15) * 1.1;
+  const maxSiteRate = Math.max(...entries.map(e => e.rate), 0);
+  const maxRate = Math.max(maxCI, maxSiteRate, 0.12, overallRate + 0.15) * 1.1;
 
   const xScale = n => pad.left + (n / maxN) * pw;
   const yScale = rate => pad.top + ph - (rate / maxRate) * ph;
@@ -2342,8 +2287,8 @@ function renderEventsControlChart() {
   for (let i = 0; i <= 5; i++) {
     const rate = maxRate * i / 5;
     const y = yScale(rate);
-    html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#EBEEF2" stroke-width="0.5"/>`;
-    html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#4A5568" font-size="10" font-family="system-ui">${(rate * 100).toFixed(0)}%</text>`;
+    html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#e8e8e8" stroke-width="0.5"/>`;
+    html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">${(rate * 100).toFixed(0)}%</text>`;
   }
 
   // X-axis ticks
@@ -2351,63 +2296,75 @@ function renderEventsControlChart() {
   for (let i = 0; i <= nXTicks; i++) {
     const nv = Math.round(maxN * i / nXTicks);
     const x = xScale(nv);
-    html += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#4A5568" stroke-width="0.8"/>`;
-    html += `<text x="${x}" y="${pad.top + ph + 18}" text-anchor="middle" fill="#4A5568" font-size="9" font-family="system-ui">${nv}</text>`;
+    html += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#5a5a5a" stroke-width="0.8"/>`;
+    html += `<text x="${x}" y="${pad.top + ph + 18}" text-anchor="middle" fill="#5a5a5a" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">${nv}</text>`;
   }
   // Axes
   html += `<line x1="${pad.left}" y1="${pad.top + ph}" x2="${W - pad.right}" y2="${pad.top + ph}" stroke="#C3C8D0" stroke-width="0.8"/>`;
   html += `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + ph}" stroke="#C3C8D0" stroke-width="0.8"/>`;
 
   // Axis labels
-  html += `<text x="${W / 2}" y="${H - 8}" text-anchor="middle" fill="#4A5568" font-size="10" font-family="system-ui">中心入组受试者数</text>`;
-  html += `<text x="${pad.left - 48}" y="${H / 2 + 4}" text-anchor="middle" fill="#4A5568" font-size="10" font-family="system-ui" transform="rotate(-90,${pad.left - 48},${H / 2})">${label}事件率</text>`;
+  html += `<text x="${W / 2}" y="${H - 8}" text-anchor="middle" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">中心入组受试者数</text>`;
+  html += `<text x="${pad.left - 48}" y="${H / 2 + 4}" text-anchor="middle" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif" transform="rotate(-90,${pad.left - 48},${H / 2})">${label}事件率</text>`;
 
   // Chart title
   document.getElementById('titleEventsControl').innerHTML = chartTitleHTML(
     `中心 ${label} 事件控制图`, 'svgEventsControl', 'svgpng', label + '_事件控制图');
   document.getElementById('tblEventsControlTitle').textContent = `中心 ${label} 事件详情`;
 
-  // CI curves (sorted by N)
+  // CI curves (sorted by N) — 99% 虚线（外）、95% 点线（内），参考漏斗图
   const sortedByN = [...entries].sort((a, b) => a.n - b.n);
   if (sortedByN.length > 1) {
-    let upperPath = '', lowerPath = '';
+    // 99% CI（外，深灰虚线）
+    let u99 = '', l99 = '';
+    sortedByN.forEach((e, i) => {
+      const x = xScale(e.n), yu = yScale(e.ci99.upper), yl = yScale(e.ci99.lower);
+      u99 += (i === 0 ? 'M' : 'L') + `${x},${yu} `;
+      l99 += (i === 0 ? 'M' : 'L') + `${x},${yl} `;
+    });
+    html += `<path d="${u99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    html += `<path d="${l99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    // 95% CI（内，浅灰点线）
+    let u95 = '', l95 = '';
     sortedByN.forEach((e, i) => {
       const x = xScale(e.n), yu = yScale(e.ci.upper), yl = yScale(e.ci.lower);
-      upperPath += (i === 0 ? 'M' : 'L') + `${x},${yu} `;
-      lowerPath += (i === 0 ? 'M' : 'L') + `${x},${yl} `;
+      u95 += (i === 0 ? 'M' : 'L') + `${x},${yu} `;
+      l95 += (i === 0 ? 'M' : 'L') + `${x},${yl} `;
     });
-    html += `<path d="${upperPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
-    html += `<path d="${lowerPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
+    html += `<path d="${u95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+    html += `<path d="${l95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
   }
 
-  // Overall rate reference line
+  // Overall rate reference line（红虚线）
   const refY = yScale(overallRate);
-  html += `<line x1="${pad.left}" y1="${refY}" x2="${W - pad.right}" y2="${refY}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="6,4"/>`;
-  html += `<text x="${W - pad.right + 4}" y="${refY + 4}" fill="#3B3B3B" font-size="9" font-family="system-ui">整体 ${(overallRate * 100).toFixed(1)}%</text>`;
+  html += `<line x1="${pad.left}" y1="${refY}" x2="${W - pad.right}" y2="${refY}" stroke="#c0504d" stroke-width="1.3" stroke-dasharray="6,4"/>`;
+  html += `<text x="${W - pad.right + 4}" y="${refY + 4}" fill="#c0504d" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">整体 ${(overallRate * 100).toFixed(1)}%</text>`;
 
-  // Site points
+  // Site points（正常蓝、异常红，参考漏斗图）
   entries.forEach(e => {
     const x = xScale(e.n), y = yScale(e.rate);
-    const r = Math.max(4, Math.min(8, Math.sqrt(e.n) * 1.2));
-    const color = e.isAnomaly ? '#C7772A' : '#ADB5BD';
-    const tipText = `中心${e.siteId}: ${(e.rate * 100).toFixed(1)}% (${e.k}/${e.n})  CI: ${(e.ci.lower * 100).toFixed(1)}%-${(e.ci.upper * 100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
-    html += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.85" stroke="white" stroke-width="1"/></g>`;
+    const r = e.isAnomaly ? Math.max(6, Math.min(10, Math.sqrt(e.n) * 1.4)) : Math.max(4, Math.min(7, Math.sqrt(e.n) * 1.1));
+    const color = e.isAnomaly ? '#c0504d' : '#4472C4';
+    const tipText = `中心${e.siteId}: ${(e.rate * 100).toFixed(1)}% (${e.k}/${e.n})  95%CI: ${(e.ci.lower * 100).toFixed(1)}%-${(e.ci.upper * 100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
+    html += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.9" stroke="white" stroke-width="${e.isAnomaly ? 1.5 : 1}"/></g>`;
     if (e.isAnomaly) {
-      html += `<text x="${x}" y="${y - r - 5}" text-anchor="middle" fill="#C7772A" font-size="7.5" font-weight="600" font-family="system-ui">中心${e.siteId}</text>`;
+      html += `<text x="${x}" y="${y - r - 5}" text-anchor="middle" fill="#c0504d" font-size="8" font-weight="600" font-family="Georgia,'Times New Roman','Songti SC',serif">中心${e.siteId}</text>`;
     }
   });
 
-  // NEJM-style legend — top-right corner, outside plot area
+  // Legend — top-right corner（参考漏斗图）
   const legY = 12;
-  let lx = W - pad.right - 200;
-  html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#C7772A"/>`;
-  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">异常</text>`;
-  lx += 26; html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#ADB5BD"/>`;
-  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">正常</text>`;
-  lx += 28; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#4A5568" stroke-width="1.2"/>`;
-  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">95%CI</text>`;
-  lx += 34; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="4,3"/>`;
-  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">整体率</text>`;
+  let lx = W - pad.right - 240;
+  html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#c0504d"/>`;
+  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">异常</text>`;
+  lx += 26; html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#4472C4"/>`;
+  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">正常</text>`;
+  lx += 28; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">95%CI</text>`;
+  lx += 40; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#7F7F7F" stroke-width="1.2" stroke-dasharray="5,4"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">99%CI</text>`;
+  lx += 42; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#c0504d" stroke-width="1.2" stroke-dasharray="6,4"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">整体率</text>`;
 
   svg.innerHTML = html;
 
@@ -2460,17 +2417,47 @@ function renderFunnelTab() {
   const fa = anomalyResults.firstAnom || { results: {}, anomalies: [], overallRate: 0 };
   const config = getRuleConfig();
   const entries = Object.values(fa.results).filter(e => e.n > 0);
-  if (entries.length === 0) { document.getElementById('svgFunnel').innerHTML = '<text x="400" y="260" text-anchor="middle" fill="#8A8D93" font-size="12">暂无数据</text>'; return; }
+  if (entries.length === 0) { document.getElementById('svgFunnel').innerHTML = '<text x="400" y="260" text-anchor="middle" fill="#7F7F7F" font-size="12">暂无数据</text>'; return; }
 
   const svg = document.getElementById('svgFunnel');
-  const W = 800, H = 300;
+  bindSvgResize('svgFunnel', renderFunnelTab);
+  // 补算 99% CI，异常判定对齐事件控制图（超出 99% CI）
+  const ciMethod = config.ciMethod || 'wilson';
+  function calcCI(p0, ni, zz) {
+    let lower, upper;
+    if (ciMethod === 'wald') {
+      const se = Math.sqrt(p0 * (1 - p0) / ni);
+      lower = Math.max(0, p0 - zz * se);
+      upper = Math.min(1, p0 + zz * se);
+    } else {
+      const z2 = zz * zz;
+      const denom = 1 + z2 / ni;
+      const center = (p0 + z2 / (2 * ni)) / denom;
+      const margin = zz * Math.sqrt((p0 * (1 - p0) + z2 / (4 * ni)) / ni) / denom;
+      lower = Math.max(0, center - margin);
+      upper = Math.min(1, center + margin);
+    }
+    return { lower, upper };
+  }
+  entries.forEach(e => {
+    e.ci99 = calcCI(fa.overallRate, e.n, 2.576);
+    e.isAnomaly = e.rate > e.ci99.upper || e.rate < e.ci99.lower;
+  });
+
+  // 动态尺寸铺满模块（参考事件控制图）
+  const rect = svg.getBoundingClientRect();
+  const W = Math.max(400, rect.width || 800);
+  const H = Math.max(240, rect.height || 350);
   const pad = { top: 30, right: 60, bottom: 40, left: 70 };
   const pw = W - pad.left - pad.right;
   const ph = H - pad.top - pad.bottom;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
 
   const maxN = Math.max(...entries.map(e => e.n), 1) * 1.15;
   const maxCI = Math.max(...entries.map(e => e.ci?.upper || 0), 0);
-  const maxRate = Math.max(maxCI, 0.15, fa.overallRate + 0.15) * 1.1;
+  const maxSiteRate = Math.max(...entries.map(e => e.rate), 0);
+  const maxRate = Math.max(maxCI, maxSiteRate, 0.15, fa.overallRate + 0.15) * 1.1;
 
   const xScale = n => pad.left + (n / maxN) * pw;
   const yScale = rate => pad.top + ph - (rate / maxRate) * ph;
@@ -2482,8 +2469,8 @@ function renderFunnelTab() {
   // Grid
   for (let i = 0; i <= 5; i++) {
     const y = yScale(maxRate * i / 5);
-    html += `<line x1="${pad.left}" y1="${y}" x2="${W-pad.right}" y2="${y}" stroke="#EBEEF2" stroke-width="0.5"/>`;
-    html += `<text x="${pad.left-8}" y="${y+4}" text-anchor="end" fill="#4A5568" font-size="10" font-family="system-ui">${(maxRate*i/5*100).toFixed(0)}%</text>`;
+    html += `<line x1="${pad.left}" y1="${y}" x2="${W-pad.right}" y2="${y}" stroke="#e8e8e8" stroke-width="0.5"/>`;
+    html += `<text x="${pad.left-8}" y="${y+4}" text-anchor="end" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">${(maxRate*i/5*100).toFixed(0)}%</text>`;
   }
 
   // X-axis ticks & label
@@ -2491,61 +2478,67 @@ function renderFunnelTab() {
   for (let i = 0; i <= nXTicks; i++) {
     const n = Math.round(maxN * i / nXTicks);
     const x = xScale(n);
-    html += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#4A5568" stroke-width="0.8"/>`;
-    html += `<text x="${x}" y="${pad.top + ph + 16}" text-anchor="middle" fill="#4A5568" font-size="9" font-family="system-ui">${n}</text>`;
+    html += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#5a5a5a" stroke-width="0.8"/>`;
+    html += `<text x="${x}" y="${pad.top + ph + 16}" text-anchor="middle" fill="#5a5a5a" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">${n}</text>`;
   }
-  html += `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#4A5568" font-size="10">中心入组受试者数</text>`;
+  html += `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#5a5a5a" font-size="10">中心入组受试者数</text>`;
   // X-axis line
-  html += `<line x1="${pad.left}" y1="${pad.top + ph}" x2="${W - pad.right}" y2="${pad.top + ph}" stroke="#141C2B" stroke-width="0.8"/>`;
+  html += `<line x1="${pad.left}" y1="${pad.top + ph}" x2="${W - pad.right}" y2="${pad.top + ph}" stroke="#1a1a1a" stroke-width="0.8"/>`;
 
   const eventLabel = config.firstEvents && config.firstEvents.length > 0
     ? config.firstEvents.map(e => e.length > 8 ? e.slice(0,8)+'…' : e).join('/') + '率'
     : '事件率';
   document.getElementById('titleFunnel').innerHTML = chartTitleHTML(
     `首次评估 ${eventLabel} 漏斗图`, 'svgFunnel', 'svgpng', '首次评估_漏斗图');
-  html += `<text x="${pad.left-40}" y="${H/2+4}" text-anchor="middle" fill="#4A5568" font-size="10" transform="rotate(-90,${pad.left-40},${H/2})">首次评估${eventLabel}</text>`;
+  html += `<text x="${pad.left-40}" y="${H/2+4}" text-anchor="middle" fill="#5a5a5a" font-size="10" transform="rotate(-90,${pad.left-40},${H/2})">首次评估${eventLabel}</text>`;
 
-  // CI curves — connect per-site CI limits sorted by N (matching SAS approach)
+  // CI curves — 99% 虚线(外)、95% 点线(内)，参考事件控制图
   const sortedByN = [...entries].sort((a, b) => a.n - b.n);
   if (sortedByN.length > 1) {
-    let upperPath = '', lowerPath = '';
+    let u99 = '', l99 = '', u95 = '', l95 = '';
     sortedByN.forEach((e, i) => {
-      const x = xScale(e.n), yu = yScale(e.ci.upper), yl = yScale(e.ci.lower);
-      upperPath += (i === 0 ? 'M' : 'L') + `${x},${yu} `;
-      lowerPath += (i === 0 ? 'M' : 'L') + `${x},${yl} `;
+      const x = xScale(e.n);
+      u99 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci99.upper)} `;
+      l99 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci99.lower)} `;
+      u95 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci.upper)} `;
+      l95 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci.lower)} `;
     });
-    html += `<path d="${upperPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
-    html += `<path d="${lowerPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
+    html += `<path d="${u99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    html += `<path d="${l99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    html += `<path d="${u95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+    html += `<path d="${l95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
   }
 
-  // Overall rate reference line
+  // Overall rate reference line（红虚线）
   const refY = yScale(fa.overallRate);
-  html += `<line x1="${pad.left}" y1="${refY}" x2="${W-pad.right}" y2="${refY}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="6,4"/>`;
-  html += `<text x="${W-pad.right+4}" y="${refY+4}" fill="#3B3B3B" font-size="9" font-family="system-ui">整体 ${(fa.overallRate*100).toFixed(1)}%</text>`;
+  html += `<line x1="${pad.left}" y1="${refY}" x2="${W-pad.right}" y2="${refY}" stroke="#c0504d" stroke-width="1.3" stroke-dasharray="6,4"/>`;
+  html += `<text x="${W-pad.right+4}" y="${refY+4}" fill="#c0504d" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">整体 ${(fa.overallRate*100).toFixed(1)}%</text>`;
 
-  // Site points
+  // Site points（正常蓝、异常红）
   entries.forEach(e => {
     const x = xScale(e.n), y = yScale(e.rate);
-    const r = Math.max(4, Math.min(8, Math.sqrt(e.n) * 1.2));
-    const color = e.isAnomaly ? '#C7772A' : '#ADB5BD';
-    const tipText = `中心${e.siteId}: ${(e.rate*100).toFixed(1)}% (${e.k}/${e.n})  CI: ${(e.ci.lower*100).toFixed(1)}%-${(e.ci.upper*100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
-    html += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.85" stroke="white" stroke-width="1"/></g>`;
+    const r = e.isAnomaly ? Math.max(6, Math.min(10, Math.sqrt(e.n) * 1.4)) : Math.max(4, Math.min(7, Math.sqrt(e.n) * 1.1));
+    const color = e.isAnomaly ? '#c0504d' : '#4472C4';
+    const tipText = `中心${e.siteId}: ${(e.rate*100).toFixed(1)}% (${e.k}/${e.n})  95%CI: ${(e.ci.lower*100).toFixed(1)}%-${(e.ci.upper*100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
+    html += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.9" stroke="white" stroke-width="${e.isAnomaly ? 1.5 : 1}"/></g>`;
     if (e.isAnomaly) {
-      html += `<text x="${x}" y="${y-r-5}" text-anchor="middle" fill="#C7772A" font-size="7.5" font-weight="600" font-family="system-ui">中心${e.siteId}</text>`;
+      html += `<text x="${x}" y="${y-r-5}" text-anchor="middle" fill="#c0504d" font-size="8" font-weight="600" font-family="Georgia,'Times New Roman','Songti SC',serif">中心${e.siteId}</text>`;
     }
   });
 
-  // NEJM-style legend — top-right corner, outside plot area
+  // Legend — 参考事件控制图
   const legY = 12;
-  let lx = W - pad.right - 200;
-  html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#C7772A"/>`;
-  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">异常</text>`;
-  lx += 26; html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#ADB5BD"/>`;
-  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">正常</text>`;
-  lx += 28; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#4A5568" stroke-width="1.2"/>`;
-  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">95%CI</text>`;
-  lx += 34; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="4,3"/>`;
-  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">整体率</text>`;
+  let lx = W - pad.right - 240;
+  html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#c0504d"/>`;
+  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">异常</text>`;
+  lx += 26; html += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#4472C4"/>`;
+  lx += 12; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">正常</text>`;
+  lx += 28; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">95%CI</text>`;
+  lx += 40; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#7F7F7F" stroke-width="1.2" stroke-dasharray="5,4"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">99%CI</text>`;
+  lx += 42; html += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#c0504d" stroke-width="1.2" stroke-dasharray="6,4"/>`;
+  lx += 20; html += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">整体率</text>`;
 
   svg.innerHTML = html;
 
@@ -2591,7 +2584,7 @@ function renderForestPlot(type) {
   const svg = document.getElementById('svgForest');
 
   if (allEntries.length === 0) {
-    svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#8A8D93" font-size="12">暂无数据</text>';
+    svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#7F7F7F" font-size="12">暂无数据</text>';
     return;
   }
 
@@ -2617,15 +2610,15 @@ function renderForestPlot(type) {
   let html = `<rect width="${W}" height="${H}" fill="white"/>`;
 
   // Title & subtitle
-  html += `<text x="${W/2}" y="22" text-anchor="middle" font-weight="700" font-size="12" fill="#141C2B" font-family="system-ui">各中心 ${label} 率</text>`;
+  html += `<text x="${W/2}" y="22" text-anchor="middle" font-weight="700" font-size="12" fill="#1a1a1a" font-family="Georgia,'Times New Roman','Songti SC',serif">各中心 ${label} 率</text>`;
 
   // X-axis grid & labels
   for (let v = 0; v <= 1; v += 0.2) {
     const x = xS(v);
-    html += `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + plotH}" stroke="${v===0?'#DDE1E7':'#EBEEF2'}" stroke-width="0.5"/>`;
-    html += `<text x="${x}" y="${pad.top + plotH + 16}" text-anchor="middle" fill="#364A5F" font-size="10" font-family="system-ui">${(v*100).toFixed(0)}%</text>`;
+    html += `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + plotH}" stroke="${v===0?'#d0d0d0':'#e8e8e8'}" stroke-width="0.5"/>`;
+    html += `<text x="${x}" y="${pad.top + plotH + 16}" text-anchor="middle" fill="#364A5F" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">${(v*100).toFixed(0)}%</text>`;
   }
-  html += `<text x="${W/2}" y="${pad.top + plotH + 34}" text-anchor="middle" fill="#5C7591" font-size="9" font-family="system-ui">${label} 率</text>`;
+  html += `<text x="${W/2}" y="${pad.top + plotH + 34}" text-anchor="middle" fill="#5C7591" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">${label} 率</text>`;
 
   // X-axis line
   html += `<line x1="${pad.left}" y1="${pad.top + plotH}" x2="${W-pad.right}" y2="${pad.top + plotH}" stroke="#C3C8D0" stroke-width="0.8"/>`;
@@ -2634,14 +2627,14 @@ function renderForestPlot(type) {
   if (anom.overallRate != null) {
     const rx = xS(anom.overallRate);
     html += `<line x1="${rx}" y1="${pad.top - 10}" x2="${rx}" y2="${pad.top + plotH}" stroke="#C62E2E" stroke-width="1.5" stroke-dasharray="4,4"/>`;
-    html += `<text x="${rx}" y="${pad.top - 14}" text-anchor="middle" fill="#C62E2E" font-size="9" font-weight="600" font-family="system-ui">${(anom.overallRate*100).toFixed(1)}%</text>`;
+    html += `<text x="${rx}" y="${pad.top - 14}" text-anchor="middle" fill="#C62E2E" font-size="9" font-weight="600" font-family="Georgia,'Times New Roman','Songti SC',serif">${(anom.overallRate*100).toFixed(1)}%</text>`;
   }
 
   // Flag color map
   const fc = {
     '小样本': '#8A99AA', '全部获取事件': '#C62E2E', '无事件': '#29806B',
     '低于整体率(异常)': '#C62E2E', '最长随访低于时间点': '#E0753A',
-    '正常': '#1F6FB0', '高于整体率': '#1F6FB0',
+    '正常': '#4472C4', '高于整体率': '#4472C4',
   };
 
   // Site rows
@@ -2653,8 +2646,8 @@ function renderForestPlot(type) {
     if (i % 2 === 0) html += `<rect x="${pad.left}" y="${pad.top + i * rowH}" width="${pw}" height="${rowH}" fill="#F9FAFB" opacity="0.5"/>`;
 
     // Label (left side)
-    const labelColor = e.flag === '低于整体率(异常)' || e.flag === '全部获取事件' ? '#C62E2E' : '#141C2B';
-    html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="${labelColor}" font-size="10" font-family="system-ui" cursor="pointer" data-site="${e.siteId}">中心${e.siteId}  <tspan fill="#8A99AA" font-size="9">(N=${e.n})</tspan></text>`;
+    const labelColor = e.flag === '低于整体率(异常)' || e.flag === '全部获取事件' ? '#C62E2E' : '#1a1a1a';
+    html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="${labelColor}" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif" cursor="pointer" data-site="${e.siteId}">中心${e.siteId}  <tspan fill="#8A99AA" font-size="9">(N=${e.n})</tspan></text>`;
 
     // CI line
     if (e.ci.lower != null && e.ci.upper != null) {
@@ -2675,7 +2668,7 @@ function renderForestPlot(type) {
   // NEJM-style legend — below plot, centered, single row
   const legendY = pad.top + plotH + 42;
   const legendItems = [
-    { color: '#1F6FB0', label: '正常' },
+    { color: '#4472C4', label: '正常' },
     { color: '#C62E2E', label: '低于整体率' },
     { color: '#29806B', label: '无事件' },
     { color: '#8A99AA', label: '小样本' },
@@ -2688,11 +2681,11 @@ function renderForestPlot(type) {
   html += `<rect x="${lx - 6}" y="${legendY - 4}" width="${totalW + 12}" height="16" rx="3" fill="#F9FAFB" opacity="0.8"/>`;
   legendItems.forEach(li => {
     html += `<rect x="${lx}" y="${legendY}" width="9" height="9" rx="2" fill="${li.color}" stroke="white" stroke-width="1"/>`;
-    html += `<text x="${lx + 13}" y="${legendY + 8}" fill="#364A5F" font-size="8.5" font-family="system-ui">${li.label}</text>`;
+    html += `<text x="${lx + 13}" y="${legendY + 8}" fill="#364A5F" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">${li.label}</text>`;
     lx += itemGap;
   });
   // Annotation note — below legend row
-  html += `<text x="${W/2}" y="${legendY + 22}" text-anchor="middle" fill="#8A99AA" font-size="7.5" font-family="system-ui">■ 方块大小反映估计精度  |  竖线 — 95% CI  |  竖虚线 — 整体率</text>`;
+  html += `<text x="${W/2}" y="${legendY + 22}" text-anchor="middle" fill="#8A99AA" font-size="7.5" font-family="Georgia,'Times New Roman','Songti SC',serif">■ 方块大小反映估计精度  |  竖线 — 95% CI  |  竖虚线 — 整体率</text>`;
 
   svg.innerHTML = html;
   svg.onclick = function(e) {
@@ -2757,7 +2750,7 @@ function renderKMCurve(type) {
     });
 
     groupNames = Object.keys(groups);
-    const NEJM_BLUE = '#1F6FB0';
+    const NEJM_BLUE = '#4472C4';
     const NEJM_RED  = '#C62E2E';
     const NEJM_GOLD = '#D4842B';
     groupColors = groupNames.length === 1 ? [NEJM_BLUE] : [NEJM_BLUE, NEJM_RED, NEJM_GOLD, '#29806B', '#8A99AA', '#E0753A'];
@@ -2787,7 +2780,7 @@ function renderKMCurve(type) {
   const W = cw, H = ch;
 
   // NEJM-style palette
-  const NEJM_BLUE = '#1F6FB0';
+  const NEJM_BLUE = '#4472C4';
   const NEJM_RED  = '#C62E2E';
   const NEJM_GOLD = '#D4842B';
 
@@ -2796,7 +2789,7 @@ function renderKMCurve(type) {
   const ph = plotH - pad.top;
   const plotBottom = pad.top + ph;
 
-  if (groupNames.length === 0) { ctx.fillStyle = '#8A99AA'; ctx.font = '12px system-ui'; ctx.fillText('暂无数据', W/2-30, H/2); return; }
+  if (groupNames.length === 0) { ctx.fillStyle = '#8A99AA'; ctx.font = '12px Georgia, "Times New Roman", "Songti SC", serif'; ctx.fillText('暂无数据', W/2-30, H/2); return; }
 
   // Time range: round up to nice interval
   const niceStep = rawMax > 700 ? 180 : (rawMax > 400 ? 90 : (rawMax > 200 ? 60 : 30));
@@ -2805,28 +2798,28 @@ function renderKMCurve(type) {
   const yS = s => pad.top + (1 - s) * ph;
 
   // White bg
-  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
   // Horizontal gridlines
-  ctx.strokeStyle = '#EBEEF2'; ctx.lineWidth = 0.5;
+  ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 0.5;
   for (let s = 0; s <= 1; s += 0.2) {
     const y = yS(s);
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
   }
 
   // Axes
-  ctx.strokeStyle = '#141C2B'; ctx.lineWidth = 0.8;
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 0.8;
   ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ph); ctx.lineTo(W - pad.right, pad.top + ph); ctx.stroke();
 
   // Y-axis labels
-  ctx.fillStyle = '#364A5F'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#364A5F'; ctx.font = '10px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'right';
   for (let s = 0; s <= 1; s += 0.2) {
     ctx.fillText((s * 100).toFixed(0) + '%', pad.left - 8, yS(s) + 3);
   }
   ctx.save();
   ctx.translate(14, pad.top + ph/2);
   ctx.rotate(-Math.PI/2);
-  ctx.fillStyle = '#364A5F'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#364A5F'; ctx.font = '10px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'center';
   ctx.fillText(label + ' 生存率', 0, 0);
   ctx.restore();
 
@@ -2835,12 +2828,12 @@ function renderKMCurve(type) {
   for (let i = 0; i <= nTicks; i++) {
     const t = (maxTime * i) / nTicks;
     const x = xS(t);
-    ctx.beginPath(); ctx.moveTo(x, pad.top + ph); ctx.lineTo(x, pad.top + ph + 4); ctx.strokeStyle = '#141C2B'; ctx.lineWidth = 0.8; ctx.stroke();
-    ctx.fillStyle = '#364A5F'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.beginPath(); ctx.moveTo(x, pad.top + ph); ctx.lineTo(x, pad.top + ph + 4); ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = '#364A5F'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'center';
     ctx.fillText(Math.round(t), x, pad.top + ph + 16);
   }
   // X-axis time unit label
-  ctx.fillStyle = '#8A99AA'; ctx.font = '8px system-ui'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#8A99AA'; ctx.font = '8px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'right';
   ctx.fillText('天', W - pad.right, pad.top + ph + 16);
 
   // Draw KM curves
@@ -2896,7 +2889,7 @@ function renderKMCurve(type) {
     // Vertical: curve → x-axis
     ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx, pad.top + ph); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#8A99AA'; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#8A99AA'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'right';
     ctx.fillText('50%', pad.left - 4, my + 3);
     ctx.textAlign = 'center';
     ctx.fillText(Math.round(medPt.time) + '天', mx, plotBottom + 6);
@@ -2930,7 +2923,7 @@ function renderKMCurve(type) {
     ctx.beginPath(); ctx.moveTo(tx, sy); ctx.lineTo(tx, pad.top + ph); ctx.stroke();
     ctx.setLineDash([]);
     // Label on Y-axis (survival %)
-    ctx.fillStyle = '#8A99AA'; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#8A99AA'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'right';
     ctx.fillText((survAtTp.survival * 100).toFixed(0) + '%', pad.left - 4, sy + 3);
     // Label on X-axis (time) — between axis labels and separator
     ctx.textAlign = 'center';
@@ -2946,8 +2939,8 @@ function renderKMCurve(type) {
     ctx.fillStyle = color;
     ctx.fillRect(pad.left + 8, ly, 8, 8);
     // Group label text
-    ctx.fillStyle = '#141C2B';
-    ctx.font = '9px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif';
     ctx.textAlign = 'left';
     ctx.fillText(txt, pad.left + 20, ly + 8);
     ly += 16;
@@ -2957,19 +2950,13 @@ function renderKMCurve(type) {
   const riskY = plotBottom + 30;
 
   // Thin separator between plot and risk table
-  ctx.strokeStyle = '#DDE1E7'; ctx.lineWidth = 0.5;
+  ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 0.5;
   ctx.beginPath();
   ctx.moveTo(pad.left, plotBottom + 22);
   ctx.lineTo(W - pad.right, plotBottom + 22);
   ctx.stroke();
   const riskTimes = [];
   for (let i = 0; i <= nTicks; i++) riskTimes.push((maxTime * i) / nTicks);
-
-  // Table header: time points (天)
-  ctx.fillStyle = '#364A5F'; ctx.font = '600 9px system-ui'; ctx.textAlign = 'center';
-  riskTimes.forEach(t => ctx.fillText(Math.round(t), xS(t), riskY - 6));
-  ctx.fillStyle = '#8A99AA'; ctx.font = '7.5px system-ui';
-  ctx.fillText('(天)', W - pad.right + 4, riskY - 6);
 
   groupNames.forEach((gn, gi) => {
     const km = groupKM[gn];
@@ -2983,13 +2970,13 @@ function renderKMCurve(type) {
     // Group label — colored swatch + name + N (all on one line)
     ctx.fillStyle = color;
     ctx.fillRect(pad.left - 64, ry, 8, 8);
-    ctx.fillStyle = '#141C2B'; ctx.font = '600 8.5px system-ui'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#1a1a1a'; ctx.font = '600 8.5px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'left';
     ctx.fillText(`${gn}  (n=${gPairs.length})`, pad.left - 52, ry + 8);
 
     // Row 1: No. at risk
-    ctx.fillStyle = '#364A5F'; ctx.font = '8px system-ui'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#364A5F'; ctx.font = '8px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'left';
     ctx.fillText('At risk', 6, ry + 24);
-    ctx.fillStyle = '#141C2B'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#1a1a1a'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'center';
     let ptr = 0, cumEvent = 0, cumCensor = 0;
     riskTimes.forEach(t => {
       while (ptr < gPairs.length && gPairs[ptr].time < t) {
@@ -3001,9 +2988,9 @@ function renderKMCurve(type) {
     });
 
     // Row 2: Cumulative events
-    ctx.fillStyle = '#364A5F'; ctx.font = '8px system-ui'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#364A5F'; ctx.font = '8px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'left';
     ctx.fillText('Events', 6, ry + 40);
-    ctx.fillStyle = '#C62E2E'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#C62E2E'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'center';
     ptr = 0; cumEvent = 0;
     riskTimes.forEach(t => {
       while (ptr < gPairs.length && gPairs[ptr].time <= t) {
@@ -3014,9 +3001,9 @@ function renderKMCurve(type) {
     });
 
     // Row 3: Cumulative censored
-    ctx.fillStyle = '#364A5F'; ctx.font = '8px system-ui'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#364A5F'; ctx.font = '8px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'left';
     ctx.fillText('Censored', 6, ry + 54);
-    ctx.fillStyle = '#8A99AA'; ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#8A99AA'; ctx.font = '9px Georgia, "Times New Roman", "Songti SC", serif'; ctx.textAlign = 'center';
     ptr = 0; cumCensor = 0;
     riskTimes.forEach(t => {
       while (ptr < gPairs.length && gPairs[ptr].time <= t) {
@@ -3028,7 +3015,7 @@ function renderKMCurve(type) {
 
     // Separator line between groups
     if (gi < groupNames.length - 1) {
-      ctx.strokeStyle = '#EBEEF2'; ctx.lineWidth = 0.5;
+      ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.moveTo(pad.left - 70, ry + 56);
       ctx.lineTo(W - pad.right, ry + 56);
@@ -3078,9 +3065,9 @@ function renderKMCurve(type) {
     clearOverlay();
     const xL = Math.min(brushState.x1, brushState.x2);
     const xR = Math.max(brushState.x1, brushState.x2);
-    octx.fillStyle = 'rgba(33,102,172,0.10)';
+    octx.fillStyle = 'rgba(68,114,196,0.10)';
     octx.fillRect(xL, pad.top, xR - xL, ph);
-    octx.strokeStyle = 'rgba(33,102,172,0.45)';
+    octx.strokeStyle = 'rgba(68,114,196,0.45)';
     octx.lineWidth = 1;
     octx.setLineDash([4, 3]);
     octx.beginPath(); octx.moveTo(xL, pad.top); octx.lineTo(xL, plotBottom); octx.stroke();
@@ -3092,10 +3079,10 @@ function renderKMCurve(type) {
     const t2 = brushTimeFromX(xR);
     const midX = (xL + xR) / 2;
     const tLabel = `${Math.round(t1)} – ${Math.round(t2)} 天`;
-    octx.fillStyle = 'rgba(20,28,43,0.85)';
+    octx.fillStyle = 'rgba(0,0,0,0.85)';
     const tw = octx.measureText(tLabel).width + 16;
     octx.fillRect(midX - tw/2, pad.top - 22, tw, 18);
-    octx.fillStyle = '#FFFFFF'; octx.font = '10px system-ui'; octx.textAlign = 'left';
+    octx.fillStyle = '#ffffff'; octx.font = '10px Georgia, "Times New Roman", "Songti SC", serif'; octx.textAlign = 'left';
     octx.fillText(tLabel, midX - tw/2 + 8, pad.top - 8);
   };
 
@@ -3343,6 +3330,16 @@ function isUnassessedSubj(p) {
   return desc && UNASSESSED_KEYS.some(k => desc.includes(k));
 }
 
+// 更新自定义事件复选框标签，动态反映 KM 曲线滞后阈值（inpStaleWarn / inpStaleCrit）
+function updateStaleCheckboxLabels() {
+  const staleWarn = parseInt(document.getElementById('inpStaleWarn')?.value) || 270;
+  const staleCrit = parseInt(document.getElementById('inpStaleCrit')?.value) || 365;
+  const stale9mCb = document.querySelector('#chkCustomEvents .checkbox-item input[value="stale9m"]');
+  const stale1yCb = document.querySelector('#chkCustomEvents .checkbox-item input[value="stale1y"]');
+  if (stale9mCb && stale9mCb.parentElement.childNodes[1]) stale9mCb.parentElement.childNodes[1].textContent = ` >${staleWarn}天`;
+  if (stale1yCb && stale1yCb.parentElement.childNodes[1]) stale1yCb.parentElement.childNodes[1].textContent = ` >${staleCrit}天`;
+}
+
 function renderCustomTab() {
   if (patientData.length === 0) return;
   const type = getActiveSubtype('panel-custom');
@@ -3356,11 +3353,8 @@ function renderCustomTab() {
   const staleWarn = parseInt(document.getElementById('inpStaleWarn')?.value) || 270;
   const staleCrit = parseInt(document.getElementById('inpStaleCrit')?.value) || 365;
 
-  // Update checkbox labels to reflect current thresholds
-  const stale9mCb = document.querySelector('#chkCustomEvents .checkbox-item input[value="stale9m"]');
-  const stale1yCb = document.querySelector('#chkCustomEvents .checkbox-item input[value="stale1y"]');
-  if (stale9mCb) stale9mCb.parentElement.childNodes[2] && (stale9mCb.parentElement.childNodes[2].textContent = ` >${staleWarn}天`);
-  if (stale1yCb) stale1yCb.parentElement.childNodes[2] && (stale1yCb.parentElement.childNodes[2].textContent = ` >${staleCrit}天`);
+  // Update checkbox labels to reflect current KM lag thresholds (dynamic)
+  updateStaleCheckboxLabels();
 
   // Selected event types
   const selTypes = [];
@@ -3451,44 +3445,53 @@ function renderCustomTab() {
   })).filter(e => e.n > 0);
 
   if (entries.length === 0) {
-    document.getElementById('svgCustomControl').innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#8A8D93" font-size="12">所选时间范围内无受试者</text>';
+    document.getElementById('svgCustomControl').innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#7F7F7F" font-size="12">所选时间范围内无受试者</text>';
     document.querySelector('#tblCustom thead').innerHTML = '';
     document.querySelector('#tblCustom tbody').innerHTML = '';
     return;
   }
 
-  // ── CI per center ──
-  const z = 1.96;
-  entries.forEach(e => {
-    const p0 = overallRate;
-    const ni = e.n;
+  // ── CI per center ── 95% 与 99% 双线（参考事件控制图）
+  function calcCI(p0, ni, zz) {
     let lower, upper;
     if (ciMethod === 'wald') {
       const se = Math.sqrt(p0 * (1 - p0) / ni);
-      lower = Math.max(0, p0 - z * se);
-      upper = Math.min(1, p0 + z * se);
+      lower = Math.max(0, p0 - zz * se);
+      upper = Math.min(1, p0 + zz * se);
     } else {
-      const z2 = z * z;
+      const z2 = zz * zz;
       const denom = 1 + z2 / ni;
       const center = (p0 + z2 / (2 * ni)) / denom;
-      const margin = z * Math.sqrt((p0 * (1 - p0) + z2 / (4 * ni)) / ni) / denom;
+      const margin = zz * Math.sqrt((p0 * (1 - p0) + z2 / (4 * ni)) / ni) / denom;
       lower = Math.max(0, center - margin);
       upper = Math.min(1, center + margin);
     }
-    e.ci = { lower, upper, p: p0 };
-    e.isAnomaly = e.rate > upper;
+    return { lower, upper };
+  }
+  entries.forEach(e => {
+    const p0 = overallRate;
+    e.ci = calcCI(p0, e.n, 1.96);      // 95%
+    e.ci99 = calcCI(p0, e.n, 2.576);   // 99%
+    e.isAnomaly = e.rate > e.ci99.upper || e.rate < e.ci99.lower;
   });
 
   // ── Render SVG Control Chart ──
   const svg = document.getElementById('svgCustomControl');
-  const W = 800, H = 400;
+  bindSvgResize('svgCustomControl', renderCustomTab);
+  // 动态尺寸铺满模块（参考事件控制图）
+  const rect = svg.getBoundingClientRect();
+  const W = Math.max(400, rect.width || 800);
+  const H = Math.max(240, rect.height || 400);
   const pad = { top: 30, right: 60, bottom: 50, left: 72 };
   const pw = W - pad.left - pad.right;
   const ph = H - pad.top - pad.bottom;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
 
   const maxN = Math.max(...entries.map(e => e.n), 1) * 1.12;
   const maxCI = Math.max(...entries.map(e => e.ci?.upper || 0), 0);
-  const maxRate = Math.max(maxCI, 0.12, overallRate + 0.15) * 1.1;
+  const maxSiteRate = Math.max(...entries.map(e => e.rate), 0);
+  const maxRate = Math.max(maxCI, maxSiteRate, 0.12, overallRate + 0.15) * 1.1;
 
   const xScale = n => pad.left + (n / maxN) * pw;
   const yScale = rate => pad.top + ph - (rate / maxRate) * ph;
@@ -3499,62 +3502,68 @@ function renderCustomTab() {
   for (let i = 0; i <= 5; i++) {
     const rate = maxRate * i / 5;
     const y = yScale(rate);
-    svgHtml += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#EBEEF2" stroke-width="0.5"/>`;
-    svgHtml += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#4A5568" font-size="10" font-family="system-ui">${(rate * 100).toFixed(0)}%</text>`;
+    svgHtml += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#e8e8e8" stroke-width="0.5"/>`;
+    svgHtml += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">${(rate * 100).toFixed(0)}%</text>`;
   }
   // X-axis
   for (let i = 0; i <= 6; i++) {
     const nv = Math.round(maxN * i / 6);
     const x = xScale(nv);
-    svgHtml += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#4A5568" stroke-width="0.8"/>`;
-    svgHtml += `<text x="${x}" y="${pad.top + ph + 18}" text-anchor="middle" fill="#4A5568" font-size="9" font-family="system-ui">${nv}</text>`;
+    svgHtml += `<line x1="${x}" y1="${pad.top + ph}" x2="${x}" y2="${pad.top + ph + 5}" stroke="#5a5a5a" stroke-width="0.8"/>`;
+    svgHtml += `<text x="${x}" y="${pad.top + ph + 18}" text-anchor="middle" fill="#5a5a5a" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">${nv}</text>`;
   }
-  svgHtml += `<line x1="${pad.left}" y1="${pad.top + ph}" x2="${W - pad.right}" y2="${pad.top + ph}" stroke="#141C2B" stroke-width="0.8"/>`;
-  svgHtml += `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + ph}" stroke="#141C2B" stroke-width="0.8"/>`;
-  svgHtml += `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#4A5568" font-size="10" font-family="system-ui">中心入组受试者数 (分母)</text>`;
-  svgHtml += `<text x="${pad.left - 48}" y="${H/2 + 4}" text-anchor="middle" fill="#4A5568" font-size="10" font-family="system-ui" transform="rotate(-90,${pad.left - 48},${H/2})">自定义事件率</text>`;
+  svgHtml += `<line x1="${pad.left}" y1="${pad.top + ph}" x2="${W - pad.right}" y2="${pad.top + ph}" stroke="#1a1a1a" stroke-width="0.8"/>`;
+  svgHtml += `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + ph}" stroke="#1a1a1a" stroke-width="0.8"/>`;
+  svgHtml += `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif">中心入组受试者数 (分母)</text>`;
+  svgHtml += `<text x="${pad.left - 48}" y="${H/2 + 4}" text-anchor="middle" fill="#5a5a5a" font-size="10" font-family="Georgia,'Times New Roman','Songti SC',serif" transform="rotate(-90,${pad.left - 48},${H/2})">自定义事件率</text>`;
 
-  // CI curves
+  // CI curves — 99% 虚线(外)、95% 点线(内)，参考事件控制图
   const sortedByN = [...entries].sort((a, b) => a.n - b.n);
   if (sortedByN.length > 1) {
-    let upperPath = '', lowerPath = '';
+    let u99 = '', l99 = '', u95 = '', l95 = '';
     sortedByN.forEach((e, i) => {
-      const x = xScale(e.n), yu = yScale(e.ci.upper), yl = yScale(e.ci.lower);
-      upperPath += (i === 0 ? 'M' : 'L') + `${x},${yu} `;
-      lowerPath += (i === 0 ? 'M' : 'L') + `${x},${yl} `;
+      const x = xScale(e.n);
+      u99 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci99.upper)} `;
+      l99 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci99.lower)} `;
+      u95 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci.upper)} `;
+      l95 += (i === 0 ? 'M' : 'L') + `${x},${yScale(e.ci.lower)} `;
     });
-    svgHtml += `<path d="${upperPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
-    svgHtml += `<path d="${lowerPath}" fill="none" stroke="#4A5568" stroke-width="1.2"/>`;
+    svgHtml += `<path d="${u99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    svgHtml += `<path d="${l99}" fill="none" stroke="#7F7F7F" stroke-width="1.3" stroke-dasharray="5,4"/>`;
+    svgHtml += `<path d="${u95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+    svgHtml += `<path d="${l95}" fill="none" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
   }
 
-  // Overall rate reference
+  // Overall rate reference（红虚线）
   const refY = yScale(overallRate);
-  svgHtml += `<line x1="${pad.left}" y1="${refY}" x2="${W - pad.right}" y2="${refY}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="6,4"/>`;
-  svgHtml += `<text x="${W - pad.right + 4}" y="${refY + 4}" fill="#3B3B3B" font-size="9" font-family="system-ui">整体 ${(overallRate * 100).toFixed(1)}%</text>`;
+  svgHtml += `<line x1="${pad.left}" y1="${refY}" x2="${W - pad.right}" y2="${refY}" stroke="#c0504d" stroke-width="1.3" stroke-dasharray="6,4"/>`;
+  svgHtml += `<text x="${W - pad.right + 4}" y="${refY + 4}" fill="#c0504d" font-size="9" font-family="Georgia,'Times New Roman','Songti SC',serif">整体 ${(overallRate * 100).toFixed(1)}%</text>`;
 
-  // Site points
+  // Site points（正常蓝、异常红）
   entries.forEach(e => {
     const x = xScale(e.n), y = yScale(e.rate);
-    const r = Math.max(4, Math.min(8, Math.sqrt(e.n) * 1.2));
-    const color = e.isAnomaly ? '#C7772A' : '#ADB5BD';
-    const tipText = `中心${e.siteId}: ${(e.rate * 100).toFixed(1)}% (${e.k}/${e.n})  CI: ${(e.ci.lower * 100).toFixed(1)}%-${(e.ci.upper * 100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
-    svgHtml += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.85" stroke="white" stroke-width="1"/></g>`;
+    const r = e.isAnomaly ? Math.max(6, Math.min(10, Math.sqrt(e.n) * 1.4)) : Math.max(4, Math.min(7, Math.sqrt(e.n) * 1.1));
+    const color = e.isAnomaly ? '#c0504d' : '#4472C4';
+    const tipText = `中心${e.siteId}: ${(e.rate * 100).toFixed(1)}% (${e.k}/${e.n})  95%CI: ${(e.ci.lower * 100).toFixed(1)}%-${(e.ci.upper * 100).toFixed(1)}%${e.isAnomaly ? ' <i data-lucide="alert-triangle"></i>异常' : ''}`;
+    svgHtml += `<g data-site="${e.siteId}" style="cursor:pointer"><title>${tipText}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.9" stroke="white" stroke-width="${e.isAnomaly ? 1.5 : 1}"/></g>`;
     if (e.isAnomaly) {
-      svgHtml += `<text x="${x}" y="${y - r - 4}" text-anchor="middle" fill="#C7772A" font-size="7.5" font-weight="600" font-family="system-ui">中心${e.siteId}</text>`;
+      svgHtml += `<text x="${x}" y="${y - r - 5}" text-anchor="middle" fill="#c0504d" font-size="8" font-weight="600" font-family="Georgia,'Times New Roman','Songti SC',serif">中心${e.siteId}</text>`;
     }
   });
 
-  // NEJM-style legend — top-right corner, outside plot area
+  // Legend — 参考事件控制图
   const legY = 12;
-  let lx = W - pad.right - 200;
-  svgHtml += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#C7772A"/>`;
-  lx += 12; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">异常</text>`;
-  lx += 26; svgHtml += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#ADB5BD"/>`;
-  lx += 12; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">正常</text>`;
-  lx += 28; svgHtml += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#4A5568" stroke-width="1.2"/>`;
-  lx += 20; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">95%CI</text>`;
-  lx += 34; svgHtml += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#3B3B3B" stroke-width="1.2" stroke-dasharray="4,3"/>`;
-  lx += 20; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#4A5568" font-size="8.5" font-family="system-ui">整体率</text>`;
+  let lx = W - pad.right - 240;
+  svgHtml += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#c0504d"/>`;
+  lx += 12; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">异常</text>`;
+  lx += 26; svgHtml += `<rect x="${lx}" y="${legY}" width="8" height="8" rx="1.5" fill="#4472C4"/>`;
+  lx += 12; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">正常</text>`;
+  lx += 28; svgHtml += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#BFBFBF" stroke-width="1.1" stroke-dasharray="2,3"/>`;
+  lx += 20; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">95%CI</text>`;
+  lx += 40; svgHtml += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#7F7F7F" stroke-width="1.2" stroke-dasharray="5,4"/>`;
+  lx += 20; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">99%CI</text>`;
+  lx += 42; svgHtml += `<line x1="${lx}" y1="${legY + 4}" x2="${lx + 16}" y2="${legY + 4}" stroke="#c0504d" stroke-width="1.2" stroke-dasharray="6,4"/>`;
+  lx += 20; svgHtml += `<text x="${lx}" y="${legY + 7}" fill="#5a5a5a" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">整体率</text>`;
 
   svg.innerHTML = svgHtml;
   // Event delegation: single listener on SVG, catches clicks on any [data-site] child
@@ -3657,6 +3666,19 @@ function openCustomDrill(siteId) {
 // ============================================================
 // RENDER CURRENT TAB
 // ============================================================
+
+// 切换到指定 tab（更新 activeTab、侧边栏高亮、面板显示、滚动方式）
+function activateTab(tabName) {
+  activeTab = tabName;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(`panel-${tabName}`);
+  if (panel) panel.classList.add('active');
+  const contentArea = document.getElementById('tabContentArea');
+  contentArea.style.overflowY = tabName === 'events' ? 'hidden' : 'auto';
+}
 
 function renderCurrentTab() {
   if (patientData.length === 0) return;
@@ -3779,14 +3801,14 @@ function renderForecastChart(labels, current, predicted) {
       datasets: [
         {
           label: '当前累积事件', data: current,
-          borderColor: '#2166AC', backgroundColor: '#2166AC',
-          pointRadius: 2.5, pointBackgroundColor: '#2166AC', pointBorderColor: '#FFFFFF', pointBorderWidth: 1.5,
+          borderColor: '#4472C4', backgroundColor: '#4472C4',
+          pointRadius: 2.5, pointBackgroundColor: '#4472C4', pointBorderColor: '#ffffff', pointBorderWidth: 1.5,
           borderWidth: 1.8, tension: 0, spanGaps: false,
         },
         {
           label: '预测累积事件', data: predicted,
-          borderColor: '#B71C1C', backgroundColor: '#B71C1C', borderDash: [5, 3],
-          pointRadius: 2.5, pointBackgroundColor: '#B71C1C', pointBorderColor: '#FFFFFF', pointBorderWidth: 1.5,
+          borderColor: '#c0504d', backgroundColor: '#c0504d', borderDash: [5, 3],
+          pointRadius: 2.5, pointBackgroundColor: '#c0504d', pointBorderColor: '#ffffff', pointBorderWidth: 1.5,
           borderWidth: 1.8, tension: 0, spanGaps: false,
         },
       ],
@@ -3794,12 +3816,12 @@ function renderForecastChart(labels, current, predicted) {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: {
-        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'system-ui, -apple-system, sans-serif' }, color: '#4A5568' } },
+        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'Georgia, "Times New Roman", "Songti SC", serif' }, color: '#5a5a5a' } },
         tooltip: { mode: 'index', intersect: false },
       },
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'system-ui' }, color: '#4A5568' }, grid: { color: '#EBEEF2', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#4A5568' } },
-        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#4A5568', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
+        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'Georgia, "Times New Roman", "Songti SC", serif' }, color: '#5a5a5a' }, grid: { color: '#e8e8e8', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#5a5a5a' } },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#5a5a5a', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
       },
     },
   });
@@ -3871,11 +3893,11 @@ function renderForecastTimelineChart(labels, data) {
       datasets: [{
         label: '预测累积事件',
         data,
-        borderColor: '#B71C1C',
-        backgroundColor: '#B71C1C',
+        borderColor: '#c0504d',
+        backgroundColor: '#c0504d',
         pointRadius: 2.5,
-        pointBackgroundColor: '#B71C1C',
-        pointBorderColor: '#FFFFFF',
+        pointBackgroundColor: '#c0504d',
+        pointBorderColor: '#ffffff',
         pointBorderWidth: 1.5,
         borderWidth: 1.8,
         tension: 0,
@@ -3885,12 +3907,12 @@ function renderForecastTimelineChart(labels, data) {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: {
-        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'system-ui, -apple-system, sans-serif' }, color: '#4A5568' } },
+        legend: { position: 'top', align: 'center', labels: { boxWidth: 8, boxHeight: 8, padding: 6, usePointStyle: true, pointStyleWidth: 8, font: { size: 9, family: 'Georgia, "Times New Roman", "Songti SC", serif' }, color: '#5a5a5a' } },
         tooltip: { mode: 'index', intersect: false },
       },
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'system-ui' }, color: '#4A5568' }, grid: { color: '#EBEEF2', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#4A5568' } },
-        x: { type: 'category', grid: { display: false }, ticks: { font: { size: 9 }, color: '#4A5568', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
+        y: { beginAtZero: true, title: { display: true, text: '累积事件数', font: { size: 10, family: 'Georgia, "Times New Roman", "Songti SC", serif' }, color: '#5a5a5a' }, grid: { color: '#e8e8e8', lineWidth: 0.5 }, ticks: { font: { size: 9 }, color: '#5a5a5a' } },
+        x: { type: 'category', grid: { display: false }, ticks: { font: { size: 9 }, color: '#5a5a5a', maxRotation: 0, autoSkip: true, maxTicksLimit: 20 } },
       },
     },
   });
@@ -4533,6 +4555,7 @@ function loadData(data) {
   updateSummary();
 
   requestAnimationFrame(() => {
+    activateTab('events');   // 解析数据后自动跳转至事件增长
     renderCurrentTab();
     populateFilterFields();
     updateFilterUI();
@@ -4743,7 +4766,7 @@ function processDataArray(dataArray) {
   });
   if (errors.length > 0) {
     document.getElementById('importStatus').innerHTML =
-      `<span class="status-badge error"><i data-lucide="x"></i> ${errors.slice(0,2).join('; ')}${errors.length > 2 ? '<br>...等'+errors.length+'个错误' : ''}<br><span style="font-size:0.7rem;">提示：检查字段映射，或点击"<i data-lucide=\"scan-search\"></i> 自动检测"</span></span>`;
+      `<span class="status-badge error"><i data-lucide="x"></i> ${errors.slice(0,2).join('; ')}${errors.length > 2 ? '<br>...等'+errors.length+'个错误' : ''}<br><span>提示：检查字段映射，或点击"<i data-lucide=\"scan-search\"></i> 自动检测"</span></span>`;
     return;
   }
 
@@ -4926,6 +4949,14 @@ document.getElementById('btnApplyCustom').addEventListener('click', () => {
   if (patientData.length > 0) renderCustomTab();
 });
 
+// KM 曲线滞后阈值变化 → 动态更新自定义事件复选框标签，并重渲染自定义事件控制图
+['inpStaleWarn', 'inpStaleCrit'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    updateStaleCheckboxLabels();
+    if (activeTab === 'custom' && patientData.length > 0) renderCustomTab();
+  });
+});
+
 // KM brush — manual time range input query
 document.getElementById('btnQueryBrush').addEventListener('click', () => {
   if (patientData.length === 0) return;
@@ -5006,7 +5037,8 @@ document.getElementById('inpForecastInterval').addEventListener('change', functi
 });
 
 
-document.getElementById('btnToggleImport').addEventListener('click', () => {
+// 侧边栏「事件增长」上方的数据导入入口 — 展开/收起导入面板
+document.getElementById('btnToggleImportSide').addEventListener('click', () => {
   document.getElementById('importPanel').classList.toggle('collapsed');
 });
 
