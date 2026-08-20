@@ -4601,6 +4601,9 @@ function handleFiles(fileList) {
   }
   if (jsonFiles.length === 0) return;
 
+  // 导入新数据时清空旧文件，避免新旧数据叠加
+  loadedFiles = {};
+
   document.getElementById('importStatus').innerHTML = '<span class="status-badge success">⏳ 正在读取 ' + jsonFiles.length + ' 个文件...</span>';
 
   let loaded = 0;
