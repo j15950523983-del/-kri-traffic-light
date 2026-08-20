@@ -2684,8 +2684,6 @@ function renderForestPlot(type) {
     html += `<text x="${lx + 13}" y="${legendY + 8}" fill="#364A5F" font-size="8.5" font-family="Georgia,'Times New Roman','Songti SC',serif">${li.label}</text>`;
     lx += itemGap;
   });
-  // Annotation note — below legend row
-  html += `<text x="${W/2}" y="${legendY + 22}" text-anchor="middle" fill="#8A99AA" font-size="7.5" font-family="Georgia,'Times New Roman','Songti SC',serif">■ 方块大小反映估计精度  |  竖线 — 95% CI  |  竖虚线 — 整体率</text>`;
 
   svg.innerHTML = html;
   svg.onclick = function(e) {
