@@ -1886,7 +1886,13 @@ function renderControlChart(ccData, varName, levelName, divId) {
       })()
     })
   });
+  layout.autosize = true;
   Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+  // 渲染后 resize，让图形贴合 flex 拉伸后的容器高度，避免被 overflow:hidden 裁切
+  setTimeout(() => {
+    const el = document.getElementById(divId);
+    if (el && el._fullLayout) Plotly.Plots.resize(el);
+  }, 50);
 }
 
 // ======================================================================
