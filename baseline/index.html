@@ -4704,8 +4704,8 @@ document.addEventListener('DOMContentLoaded', () => {
 (function autoLoad(){
   var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
   Promise.all([
-    fetch('../data/' + project + '/adsl.json?_t=' + Date.now()).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
-    fetch('../data/' + project + '/bct__scheme.json?_t=' + Date.now())
+    fetch('../data/' + project + '/adsl.json', { cache: 'no-store' }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
+    fetch('../data/' + project + '/bct__scheme.json', { cache: 'no-store' })
       .then(function(r){ if(!r.ok) throw new Error('no scheme'); return r.json(); })
       .catch(function(){ return null; })   // 设计文件不存在则回退 localStorage
   ]).then(function(results){
