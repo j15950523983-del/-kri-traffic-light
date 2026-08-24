@@ -3334,14 +3334,30 @@ function renderEnrollmentCharts() {
   const dateVar = dateVarSel.value;
 
   // 从记录中解析日期（所有受试者，按月统计）
+  // 支持三种格式：标准日期字符串("2024-11-20")、8位数字("20241120")、Excel序列号(46023)
+  function parseDate(val) {
+    if (val == null || val === '') return null;
+    // Excel 序列号：纯数字，范围 30000~100000（对应 1982~2173 年）
+    var num = Number(val);
+    if (!isNaN(num) && num > 30000 && num < 100000) {
+      var d = new Date((num - 25569) * 86400000);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    // 标准日期字符串 / 8位数字
+    var digits = String(val).replace(/[^0-9]/g, '');
+    if (digits.length >= 8) {
+      var y = digits.slice(0,4), m = digits.slice(4,6), dd = digits.slice(6,8);
+      if (!isNaN(parseInt(y)) && parseInt(m)>=1 && parseInt(m)<=12 && parseInt(dd)>=1 && parseInt(dd)<=31) {
+        return y + '-' + m + '-' + dd;
+      }
+    }
+    return null;
+  }
   const allDates = [];
   if (dateVar) {
     subjectFlows.forEach(s => {
-      const raw = String(s.record[dateVar] || '');
-      const d = raw.replace(/[^0-9]/g, '').slice(0, 8);
-      if (d.length === 8 && !isNaN(parseInt(d))) {
-        allDates.push(d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8));
-      }
+      var d = parseDate(s.record[dateVar]);
+      if (d) allDates.push(d);
     });
     allDates.sort();
   }
