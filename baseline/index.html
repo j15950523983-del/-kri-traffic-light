@@ -695,7 +695,6 @@ body {
 
       <!-- 入组分析 -->
       <div id="panelEnrollment" style="display:none;">
-        <div id="enrollDebug" style="background:#fff3cd;border:1px solid #ffc107;padding:6px 12px;margin-bottom:8px;font-size:0.75rem;font-family:monospace;display:none;"></div>
         <div class="card-clinical">
           <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;cursor:pointer;" id="nodeConfigHeader">
             <span><i class="bi bi-diagram-3"></i> 节点配置 <small style="color:var(--ink-muted);font-weight:400;" id="nodeConfigToggle">（点击收起）</small></span>
@@ -2628,23 +2627,12 @@ window.addEventListener('beforeunload', function() {
 var sankeyPollInterval = null;
 
 function renderEnrollmentCharts() {
-  var project = state.active;
+  const project = state.active;
   if (!project) return;
-  var nodes = project.enrollmentNodes || [];
+  const nodes = project.enrollmentNodes || [];
   if (nodes.length < 2) { showToast('至少需要2个节点', 'warning'); return; }
-
-  try {
-  // 先清空三个入组图表，避免字段匹配失败时残留旧数据
-  ['chartStudyEnroll','chartScreenEnroll','chartSiteEnroll'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.innerHTML = '';
-  });
-
-  var filtered = getFilteredRecords(project);
-  var siteCol = detectSiteCol(filtered) || 'Unknown';
-
-  // 调试面板：显示关键变量值
-  var dbg = document.getElementById('enrollDebug');
-  if (dbg) { dbg.style.display = 'block'; dbg.textContent = 'filtered=' + filtered.length + ' | nodes=' + nodes.length; }
+  const filtered = getFilteredRecords(project);
+  const siteCol = detectSiteCol(filtered) || 'Unknown';
 
   // 计算每个受试者到达哪个节点（基于 parentId 层级）
   const subjectFlows = filtered.map(r => {
@@ -2891,7 +2879,6 @@ function renderEnrollmentCharts() {
   const finalColors = aggLinks.map((l, i) => colorPalette[i % colorPalette.length] + '40');
 
   if (finalSource.length === 0) {
-    if (dbg) dbg.textContent += ' | finalSource=0(提前返回!)';
     document.getElementById('chartSankey').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">暂无流向数据<br><small>请为子节点配置判定变量</small></div>';
     return;
   }
@@ -3326,7 +3313,6 @@ function renderEnrollmentCharts() {
   }
   // 初始绑定点击事件
   attachSankeyClick();
-  if (dbg) dbg.textContent += ' | sankeyDone';
   // 研究入组进度 — 使用用户选择的日期变量
   const dateVarSel = document.getElementById('enrollDateVar');
   // 填充日期下拉框（自动检测默认值）
@@ -3342,35 +3328,17 @@ function renderEnrollmentCharts() {
   const dateVar = dateVarSel.value;
 
   // 从记录中解析日期（所有受试者，按月统计）
-  // 支持：标准日期字符串("2024-11-20")、8位数字("20241120")、SAS数值日期(23692=1960-01-01起天数)
-  function parseDate(val) {
-    if (val == null || val === '') return null;
-    // 先尝试标准日期字符串 / 8位数字
-    var digits = String(val).replace(/[^0-9]/g, '');
-    if (digits.length >= 8) {
-      var y = digits.slice(0,4), m = digits.slice(4,6), dd = digits.slice(6,8);
-      if (!isNaN(parseInt(y)) && parseInt(m)>=1 && parseInt(m)<=12 && parseInt(dd)>=1 && parseInt(dd)<=31) {
-        return y + '-' + m + '-' + dd;
-      }
-    }
-    // SAS 数值日期：1960-01-01 + N 天（临床数据范围约 10000~50000）
-    var num = Number(val);
-    if (!isNaN(num) && num > 10000 && num < 50000) {
-      // SAS epoch(1960-01-01) → Unix epoch(1970-01-01) = 3653 天
-      var d = new Date((num + 3653) * 86400000);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-    return null;
-  }
   const allDates = [];
   if (dateVar) {
     subjectFlows.forEach(s => {
-      var d = parseDate(s.record[dateVar]);
-      if (d) allDates.push(d);
+      const raw = String(s.record[dateVar] || '');
+      const d = raw.replace(/[^0-9]/g, '').slice(0, 8);
+      if (d.length === 8 && !isNaN(parseInt(d))) {
+        allDates.push(d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8));
+      }
     });
     allDates.sort();
   }
-  if (dbg) dbg.textContent += ' | dateVar=' + (dateVar||'(空)') + ' | allDates=' + allDates.length;
 
   // 按月汇总：每月入组 + 累计入组
   function monthlyStats(dates) {
@@ -3549,8 +3517,6 @@ function renderEnrollmentCharts() {
       paper_bgcolor: '#fff', plot_bgcolor: '#fff',
       height: 340
     }, { responsive: true, displayModeBar: false });
-  } else {
-    document.getElementById('chartSiteEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">无入组数据，请检查变量选择</div>';
   }
 
   // 三个入组图表渲染后同步 resize，修正 automargin 导致的微小 X 轴偏移
@@ -3563,12 +3529,6 @@ function renderEnrollmentCharts() {
 
   // 渲染完成后，若有手动位置则持久化到 localStorage
   autoSaveSankeyPositions(false);
-  } catch(e) {
-    console.error('[入组分析] 渲染异常:', e.message, e.stack);
-    document.getElementById('chartStudyEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:#c0504d;"><b>渲染出错</b><br><small>' + e.message + '</small></div>';
-    document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">-</div>';
-    document.getElementById('chartSiteEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">-</div>';
-  }
 }
 
 // ======================================================================
@@ -4738,20 +4698,12 @@ document.addEventListener('DOMContentLoaded', () => {
   Promise.all([
     fetch('../data/' + project + '/adsl.json').then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
     fetch('../data/' + project + '/bct__scheme.json')
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+' (bct__scheme.json)'); return r.json(); })
-      .catch(function(err){
-        console.warn('bct__scheme.json 加载失败，使用默认方案：', err.message);
-        showToast('桑基图方案文件加载失败，使用默认节点配置', 'warning');
-        return null;
-      })
+      .then(function(r){ if(!r.ok) throw new Error('no scheme'); return r.json(); })
+      .catch(function(){ return null; })   // 设计文件不存在则回退 localStorage
   ]).then(function(results){
     var file = new File([results[0]], 'adsl.json', {type:'application/json'});
     loadProject(file, results[1]);
-  }).catch(function(err){
-    console.warn('自动加载失败，可手动导入：', err);
-    document.getElementById('emptyState').innerHTML = '<i class="bi bi-cloud-slash" style="color:#c0504d;"></i><h5>自动加载失败</h5><p>' + err.message + '</p><p style="font-size:0.8rem;color:var(--ink-muted);">请手动上传 JSON 数据文件</p>';
-    document.getElementById('emptyState').style.display = 'flex';
-  });
+  }).catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
 })();
 </script>
 </body>
