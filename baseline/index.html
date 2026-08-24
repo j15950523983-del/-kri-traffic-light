@@ -4739,8 +4739,12 @@ document.addEventListener('DOMContentLoaded', () => {
   Promise.all([
     fetch('../data/' + project + '/adsl.json?t=' + ts).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
     fetch('../data/' + project + '/bct__scheme.json?t=' + ts)
-      .then(function(r){ if(!r.ok) throw new Error('no scheme'); return r.json(); })
-      .catch(function(){ return null; })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+' (bct__scheme.json)'); return r.json(); })
+      .catch(function(err){
+        console.warn('bct__scheme.json 加载失败，使用默认方案：', err.message);
+        showToast('桑基图方案文件加载失败，使用默认节点配置', 'warning');
+        return null;
+      })
   ]).then(function(results){
     var file = new File([results[0]], 'adsl.json', {type:'application/json'});
     loadProject(file, results[1]);
