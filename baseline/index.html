@@ -2631,6 +2631,12 @@ function renderEnrollmentCharts() {
   if (!project) return;
   const nodes = project.enrollmentNodes || [];
   if (nodes.length < 2) { showToast('至少需要2个节点', 'warning'); return; }
+
+  // 先清空三个入组图表，避免字段匹配失败时残留旧数据
+  ['chartStudyEnroll','chartScreenEnroll','chartSiteEnroll'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+
   const filtered = getFilteredRecords(project);
   const siteCol = detectSiteCol(filtered) || 'Unknown';
 
@@ -3517,6 +3523,8 @@ function renderEnrollmentCharts() {
       paper_bgcolor: '#fff', plot_bgcolor: '#fff',
       height: 340
     }, { responsive: true, displayModeBar: false });
+  } else {
+    document.getElementById('chartSiteEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">无入组数据，请检查变量选择</div>';
   }
 
   // 三个入组图表渲染后同步 resize，修正 automargin 导致的微小 X 轴偏移
