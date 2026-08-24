@@ -4720,15 +4720,20 @@ document.addEventListener('DOMContentLoaded', () => {
 /* 自动加载项目数据（支持 ?project=A 参数），并自动读取桑基图设计文件 bct__scheme.json */
 (function autoLoad(){
   var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
+  var ts = Date.now();
   Promise.all([
-    fetch('../data/' + project + '/adsl.json', { cache: 'no-store' }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
-    fetch('../data/' + project + '/bct__scheme.json', { cache: 'no-store' })
+    fetch('../data/' + project + '/adsl.json?t=' + ts).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
+    fetch('../data/' + project + '/bct__scheme.json?t=' + ts)
       .then(function(r){ if(!r.ok) throw new Error('no scheme'); return r.json(); })
-      .catch(function(){ return null; })   // 设计文件不存在则回退 localStorage
+      .catch(function(){ return null; })
   ]).then(function(results){
     var file = new File([results[0]], 'adsl.json', {type:'application/json'});
     loadProject(file, results[1]);
-  }).catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
+  }).catch(function(err){
+    console.warn('自动加载失败，可手动导入：', err);
+    document.getElementById('emptyState').innerHTML = '<i class="bi bi-cloud-slash" style="color:#c0504d;"></i><h5>自动加载失败</h5><p>' + err.message + '</p><p style="font-size:0.8rem;color:var(--ink-muted);">请手动上传 JSON 数据文件</p>';
+    document.getElementById('emptyState').style.display = 'flex';
+  });
 })();
 </script>
 </body>
