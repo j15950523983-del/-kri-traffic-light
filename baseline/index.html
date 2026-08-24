@@ -695,6 +695,7 @@ body {
 
       <!-- 入组分析 -->
       <div id="panelEnrollment" style="display:none;">
+        <div id="enrollDebug" style="background:#fff3cd;border:1px solid #ffc107;padding:6px 12px;margin-bottom:8px;font-size:0.75rem;font-family:monospace;display:none;"></div>
         <div class="card-clinical">
           <div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;cursor:pointer;" id="nodeConfigHeader">
             <span><i class="bi bi-diagram-3"></i> 节点配置 <small style="color:var(--ink-muted);font-weight:400;" id="nodeConfigToggle">（点击收起）</small></span>
@@ -2641,6 +2642,10 @@ function renderEnrollmentCharts() {
   var filtered = getFilteredRecords(project);
   var siteCol = detectSiteCol(filtered) || 'Unknown';
 
+  // 调试面板：显示关键变量值
+  var dbg = document.getElementById('enrollDebug');
+  if (dbg) { dbg.style.display = 'block'; dbg.textContent = 'filtered=' + filtered.length + ' | nodes=' + nodes.length; }
+
   // 计算每个受试者到达哪个节点（基于 parentId 层级）
   const subjectFlows = filtered.map(r => {
     const reached = new Set();
@@ -3363,6 +3368,7 @@ function renderEnrollmentCharts() {
     });
     allDates.sort();
   }
+  if (dbg) dbg.textContent += ' | dateVar=' + (dateVar||'(空)') + ' | allDates=' + allDates.length;
 
   // 按月汇总：每月入组 + 累计入组
   function monthlyStats(dates) {
