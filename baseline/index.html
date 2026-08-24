@@ -2627,18 +2627,19 @@ window.addEventListener('beforeunload', function() {
 var sankeyPollInterval = null;
 
 function renderEnrollmentCharts() {
-  const project = state.active;
+  var project = state.active;
   if (!project) return;
-  const nodes = project.enrollmentNodes || [];
+  var nodes = project.enrollmentNodes || [];
   if (nodes.length < 2) { showToast('至少需要2个节点', 'warning'); return; }
 
+  try {
   // 先清空三个入组图表，避免字段匹配失败时残留旧数据
   ['chartStudyEnroll','chartScreenEnroll','chartSiteEnroll'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.innerHTML = '';
   });
 
-  const filtered = getFilteredRecords(project);
-  const siteCol = detectSiteCol(filtered) || 'Unknown';
+  var filtered = getFilteredRecords(project);
+  var siteCol = detectSiteCol(filtered) || 'Unknown';
 
   // 计算每个受试者到达哪个节点（基于 parentId 层级）
   const subjectFlows = filtered.map(r => {
@@ -3554,6 +3555,12 @@ function renderEnrollmentCharts() {
 
   // 渲染完成后，若有手动位置则持久化到 localStorage
   autoSaveSankeyPositions(false);
+  } catch(e) {
+    console.error('[入组分析] 渲染异常:', e.message, e.stack);
+    document.getElementById('chartStudyEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:#c0504d;"><b>渲染出错</b><br><small>' + e.message + '</small></div>';
+    document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">-</div>';
+    document.getElementById('chartSiteEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">-</div>';
+  }
 }
 
 // ======================================================================
