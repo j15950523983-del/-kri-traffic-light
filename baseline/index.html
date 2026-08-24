@@ -706,6 +706,9 @@ body {
             <div style="padding:0.25rem 0;display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;">
               <button class="btn btn-sm btn-primary" id="btnEnrollUpdate">更新图表</button>
               <button class="btn btn-sm btn-outline-secondary" id="btnEnrollSave"><i class="bi bi-save"></i> 保存方案</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnEnrollExport" title="导出方案为 JSON 文件（可跨本地/GitHub 环境迁移）"><i class="bi bi-download"></i> 导出方案</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btnEnrollImport" title="从 JSON 文件导入方案"><i class="bi bi-upload"></i> 导入方案</button>
+              <input type="file" id="schemeFileInput" accept=".json,application/json" style="display:none;">
               <button class="btn btn-sm btn-outline-secondary" id="btnSankeyAdjust" title="锁定当前自动布局位置，允许拖拽微调"><i class="bi bi-arrows-move"></i> 调整位置</button>
               <button class="btn btn-sm btn-outline-secondary" id="btnSankeyReset" title="清除手动位置，恢复自动布局" disabled><i class="bi bi-arrow-counterclockwise"></i> 重置位置</button>
               <span id="sankeyPosStatus" style="font-size:0.65rem;display:none;"></span>
@@ -1199,8 +1202,12 @@ function generateTable1(meta, records, groupVar, selectedVars, refGroup, refLeve
       });
     } else {
       // categorical / binary / ordinal
-      const levels = meta[key].levels || [];
+      const levels = (meta[key].levels || []).slice();
       const overall = computeCategoricalCounts(allVals, levels);
+      // 分类变量（含二分类）按总体例数从大到小排列；有序变量保持自然顺序
+      if (colType === 'categorical' || colType === 'binary') {
+        levels.sort((a, b) => (overall.counts[String(b)] || 0) - (overall.counts[String(a)] || 0));
+      }
       const groupCounts = groups.map(g => computeCategoricalCounts(g.records.map(r => r[key]), levels));
 
       // p-value: use non-missing values contingency table
@@ -1879,7 +1886,13 @@ function renderControlChart(ccData, varName, levelName, divId) {
       })()
     })
   });
+  layout.autosize = true;
   Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
+  // 渲染后 resize，让图形贴合 flex 拉伸后的容器高度，避免被 overflow:hidden 裁切
+  setTimeout(() => {
+    const el = document.getElementById(divId);
+    if (el && el._fullLayout) Plotly.Plots.resize(el);
+  }, 50);
 }
 
 // ======================================================================
@@ -3374,7 +3387,13 @@ function renderEnrollmentCharts() {
         var sel = (k === prevVal) ? ' selected' : '';
         screenVarSel.innerHTML += '<option value="' + escapeHtml(k) + '"' + sel + '>' + escapeHtml(k) + '</option>';
       });
-      screenVarSel.value = prevVal; // 恢复选择
+      // 默认自动选择"筛选状态"类字段；没有匹配字段才留空让用户自选
+      var autoScreen = !prevVal ? Object.keys(meta).find(function(k) {
+        return meta[k].type !== 'empty' && ['筛选期状态','筛选状态','筛选','screen','enrl'].some(function(p) {
+          return k.toLowerCase().indexOf(p.toLowerCase()) !== -1;
+        });
+      }) : null;
+      screenVarSel.value = autoScreen || prevVal;
       const screenVar = screenVarSel.value;
       if (!screenVar) {
         document.getElementById('chartScreenEnroll').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink-muted);">请选择筛选状态变量</div>';
@@ -4001,7 +4020,7 @@ function refreshAll() {
   }
 }
 
-function loadProject(file) {
+function loadProject(file, schemeData) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -4013,7 +4032,7 @@ function loadProject(file) {
       const projName = studyIdCol ? String(records[0][studyIdCol] ?? file.name.replace(/\.json$/i, '')) : file.name.replace(/\.json$/i, '');
       const nSubjects = records.length;
 
-      state.projects.set(id, {
+      const project = {
         id, name: projName, fileName: file.name,
         records, metadata, groupVar: '', refGroup: false, refLevels: [], filters: [],
         selectedVars: new Set(),
@@ -4022,10 +4041,11 @@ function loadProject(file) {
                           {id:2,name:'筛选失败',variable:'',condition:'equals',value:'',isTerminal:true,parentId:1,mergeParentId:1},
                           {id:3,name:'随机',variable:'',condition:'notnull',value:'',isTerminal:false,parentId:1,mergeParentId:null},
                           {id:4,name:'用药',variable:'',condition:'notnull',value:'',isTerminal:false,parentId:3,mergeParentId:null}]
-      });
+      };
+      state.projects.set(id, project);
       state.activeId = id;
-      // 先尝试恢复已保存的方案（含桑基图位置），再渲染界面 —— 顺序不可调换
-      const restored = loadEnrollmentScheme();
+      // 恢复方案：优先用自动读取的 bct__scheme.json，否则 localStorage —— 顺序不可调换
+      const restored = schemeData ? applySchemeData(project, schemeData) : loadEnrollmentScheme();
       refreshAll();
       // 如果当前在入组分析 tab 且恢复了方案/位置，重新渲染桑基图以应用保存的位置
       const activeTab = document.querySelector('.content-tab.active')?.dataset?.tab;
@@ -4157,6 +4177,21 @@ function exportRTF(tableEl, title) {
 // ======================================================================
 //  Event Bindings
 // ======================================================================
+// 检测随机化日期字段（用于数据指纹，判断方案是否仍匹配当前数据）
+function detectDateField(records) {
+  if (!records || !records.length) return '';
+  var patterns = ['随机化日期','随机日期','入组日期','RANDDAT','RDDAT','RANDDT','RDDT','RNDDT'];
+  var keys = Object.keys(records[0]);
+  return keys.find(function(k){ return patterns.some(function(p){ return k.toLowerCase().indexOf(p.toLowerCase()) !== -1; }); }) || '';
+}
+// 数据指纹：受试者数 + 日期字段名 + 随机化日期非空数。任一变化即视为"换了数据"
+function dataFingerprint(project) {
+  var dateVar = detectDateField(project.records);
+  var n = project.records.length;
+  var randCount = dateVar ? project.records.filter(function(r){ return !isMissing(r[dateVar]); }).length : 0;
+  return n + '|' + dateVar + '|' + randCount;
+}
+
 // 保存方案到 localStorage（全局作用域，供按钮事件和 loadProject 调用）
 function saveEnrollmentScheme() {
   const project = state.active;
@@ -4168,7 +4203,8 @@ function saveEnrollmentScheme() {
   const data = JSON.stringify({
     enrollmentNodes: project.enrollmentNodes,
     sankeyPositions: project.sankeyPositions || {},
-    savedAt: Date.now()
+    savedAt: Date.now(),
+    fingerprint: dataFingerprint(project)
   });
   const hasPositions = project.sankeyPositions && Object.keys(project.sankeyPositions).length > 0;
   try {
@@ -4189,6 +4225,21 @@ function saveEnrollmentScheme() {
   } catch(e) { showToast('保存失败: ' + e.message, 'error'); }
 }
 
+// 将方案数据（enrollmentNodes + sankeyPositions）应用到项目，返回是否恢复
+function applySchemeData(project, data) {
+  if (!project || !data || typeof data !== 'object') return false;
+  let restored = false;
+  if (Array.isArray(data.enrollmentNodes) && data.enrollmentNodes.length > 0) {
+    project.enrollmentNodes = data.enrollmentNodes;
+    restored = true;
+  }
+  if (data.sankeyPositions && Object.keys(data.sankeyPositions).length > 0) {
+    project.sankeyPositions = data.sankeyPositions;
+    restored = true;
+  }
+  return restored;
+}
+
 function loadEnrollmentScheme() {
   const project = state.active;
   if (!project) return false;
@@ -4199,21 +4250,60 @@ function loadEnrollmentScheme() {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return false;
-    const data = JSON.parse(raw);
-    let restored = false;
-    // 恢复节点配置
-    if (data && data.enrollmentNodes && data.enrollmentNodes.length > 0) {
-      project.enrollmentNodes = data.enrollmentNodes;
-      restored = true;
+    const saved = JSON.parse(raw);
+    // 防呆：数据指纹不一致（换了数据）时忽略旧方案并清除，改用默认节点
+    if (saved.fingerprint && saved.fingerprint !== dataFingerprint(project)) {
+      localStorage.removeItem(key);
+      showToast('检测到数据已变化，入组方案已重置', 'warning');
+      return false;
     }
-    // 恢复桑基图位置（即使节点配置未保存也能单独恢复位置）
-    if (data && data.sankeyPositions && Object.keys(data.sankeyPositions).length > 0) {
-      project.sankeyPositions = data.sankeyPositions;
-      restored = true;
-    }
-    return restored;
+    return applySchemeData(project, saved);
   } catch(e) { /* 静默失败 */ }
   return false;
+}
+
+// 导出入组方案为 JSON 文件（含节点配置 + 桑基图位置），可跨本地/GitHub 环境迁移
+function exportEnrollmentScheme() {
+  const project = state.active;
+  if (!project) return;
+  const studyIdCol = detectStudyId(project.records);
+  const studyId = studyIdCol ? String(project.records[0][studyIdCol] ?? '').trim() : (project.name || 'default');
+  if (!studyId) { showToast('无法识别 STUDYID', 'warning'); return; }
+  const data = {
+    enrollmentNodes: project.enrollmentNodes,
+    sankeyPositions: project.sankeyPositions || {},
+    savedAt: Date.now()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bct_' + studyId + '_scheme.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('方案已导出: ' + studyId);
+}
+
+// 从 JSON 文件导入入组方案（恢复节点配置 + 桑基图位置，并同步写回 localStorage）
+function importEnrollmentScheme(file) {
+  const project = state.active;
+  if (!project) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object') { showToast('方案文件格式无效', 'error'); return; }
+      if (!applySchemeData(project, data)) { showToast('方案文件中无节点配置或位置数据', 'warning'); return; }
+      // 同步写回 localStorage（当前 origin 内后续自动恢复），再刷新界面
+      saveEnrollmentScheme();
+      renderNodeConfig();
+      renderEnrollmentCharts();
+      showToast('方案已导入（含节点与桑基图位置）');
+    } catch (err) {
+      showToast('导入失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -4510,6 +4600,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // 保存/加载入组方案（按 STUDYID）—— 复用全局函数
   document.getElementById('btnEnrollSave').addEventListener('click', saveEnrollmentScheme);
   document.getElementById('btnEnrollUpdate').addEventListener('click', renderEnrollmentCharts);
+  // 导出/导入入组方案（跨本地/GitHub 环境迁移）
+  document.getElementById('btnEnrollExport').addEventListener('click', exportEnrollmentScheme);
+  document.getElementById('btnEnrollImport').addEventListener('click', () => {
+    document.getElementById('schemeFileInput').click();
+  });
+  document.getElementById('schemeFileInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      importEnrollmentScheme(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
 
   // Control chart controls
   document.getElementById('ccVar').addEventListener('change', () => {
@@ -4614,16 +4715,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* 自动加载项目数据（支持 ?project=A 参数） */
+/* 自动加载项目数据（支持 ?project=A 参数），并自动读取桑基图设计文件 bct__scheme.json */
 (function autoLoad(){
   var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
-  fetch('../data/' + project + '/adsl.json')
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-    .then(function(text){
-      var file = new File([text], 'adsl.json', {type:'application/json'});
-      loadProject(file);
-    })
-    .catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
+  Promise.all([
+    fetch('../data/' + project + '/adsl.json').then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }),
+    fetch('../data/' + project + '/bct__scheme.json')
+      .then(function(r){ if(!r.ok) throw new Error('no scheme'); return r.json(); })
+      .catch(function(){ return null; })   // 设计文件不存在则回退 localStorage
+  ]).then(function(results){
+    var file = new File([results[0]], 'adsl.json', {type:'application/json'});
+    loadProject(file, results[1]);
+  }).catch(function(err){ console.warn('自动加载失败，可手动导入：', err); });
 })();
 </script>
 </body>
