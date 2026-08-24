@@ -3334,22 +3334,23 @@ function renderEnrollmentCharts() {
   const dateVar = dateVarSel.value;
 
   // 从记录中解析日期（所有受试者，按月统计）
-  // 支持三种格式：标准日期字符串("2024-11-20")、8位数字("20241120")、Excel序列号(46023)
+  // 支持：标准日期字符串("2024-11-20")、8位数字("20241120")、SAS数值日期(23692=1960-01-01起天数)
   function parseDate(val) {
     if (val == null || val === '') return null;
-    // Excel 序列号：纯数字，范围 30000~100000（对应 1982~2173 年）
-    var num = Number(val);
-    if (!isNaN(num) && num > 30000 && num < 100000) {
-      var d = new Date((num - 25569) * 86400000);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-    // 标准日期字符串 / 8位数字
+    // 先尝试标准日期字符串 / 8位数字
     var digits = String(val).replace(/[^0-9]/g, '');
     if (digits.length >= 8) {
       var y = digits.slice(0,4), m = digits.slice(4,6), dd = digits.slice(6,8);
       if (!isNaN(parseInt(y)) && parseInt(m)>=1 && parseInt(m)<=12 && parseInt(dd)>=1 && parseInt(dd)<=31) {
         return y + '-' + m + '-' + dd;
       }
+    }
+    // SAS 数值日期：1960-01-01 + N 天（临床数据范围约 10000~50000）
+    var num = Number(val);
+    if (!isNaN(num) && num > 10000 && num < 50000) {
+      // SAS epoch(1960-01-01) → Unix epoch(1970-01-01) = 3653 天
+      var d = new Date((num + 3653) * 86400000);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
     return null;
   }
