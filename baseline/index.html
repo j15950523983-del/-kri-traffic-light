@@ -1401,10 +1401,17 @@ function renderBoxPlot(records, varName, groupVar, divId, refGroup, refLevels) {
   const config = { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d', 'autoScale2d'] };
   Plotly.newPlot(divId, traces, layout, config);
 
-  // 受试者层级明细表（先渲染，再绑事件）
+  // 受试者层级明细表（先渲染，再绑事件）— 基础变量 + 分析变量 + 分组变量
   const subjCols = getSubjectColumns(records);
+  // 补充其他基础变量（排除已出现的列）
+  const boxMeta = state.active.metadata;
+  const extraBasic = Object.keys(records[0] || {}).filter(k => {
+    const t = boxMeta[k] ? boxMeta[k].type : null;
+    return t === 'id' && !subjCols.includes(k);
+  });
+  const allCols = [...subjCols, ...extraBasic];
   let detailHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击图表元素筛选）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
-  detailHtml += '<table><thead><tr><th>#</th>' + subjCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+  detailHtml += '<table><thead><tr><th>#</th>' + allCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
   if (groupVar) detailHtml += '<th>' + escapeHtml(groupVar) + '</th>';
   detailHtml += '</tr></thead><tbody>';
   const isRef = refGroup && refLevels && refLevels.length > 0;
@@ -1417,7 +1424,7 @@ function renderBoxPlot(records, varName, groupVar, divId, refGroup, refLevels) {
     const val = r[varName];
     detailHtml += '<tr data-group="' + escapeHtml(gName) + '" data-val="' + escapeHtml(String(val ?? '')) + '">';
     detailHtml += '<td>' + ridx + '</td>';
-    for (const c of subjCols) detailHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+    for (const c of allCols) detailHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
     detailHtml += '<td>' + escapeHtml(String(val ?? '')) + '</td>';
     if (groupVar) detailHtml += '<td>' + escapeHtml(gDisplay) + '</td>';
     detailHtml += '</tr>';
