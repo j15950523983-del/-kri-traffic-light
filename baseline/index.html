@@ -1588,10 +1588,17 @@ function renderHistogram(records, varName, groupVar, nBins, divId, refGroup, ref
     });
     Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
 
-    // 受试者明细 — data-cat 映射类别
+    // 受试者明细 — data-cat 映射类别（基础变量 + 分析变量 + 分组变量）
     const subjColsH1 = getSubjectColumns(records);
+    // 补充其他基础变量（排除已出现的列）
+    const basicMetaH1 = state.active.metadata;
+    const extraBasicH1 = Object.keys(records[0] || {}).filter(k => {
+      const t = basicMetaH1[k] ? basicMetaH1[k].type : null;
+      return t === 'id' && !subjColsH1.includes(k);
+    });
+    const allColsH1 = [...subjColsH1, ...extraBasicH1];
     let dtHtml = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击柱子筛选类别）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
-    dtHtml += '<table><thead><tr><th>#</th>' + subjColsH1.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+    dtHtml += '<table><thead><tr><th>#</th>' + allColsH1.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
     const isRefH1 = refGroup && refLevels && refLevels.length > 0;
     if (groupVar) dtHtml += '<th>' + escapeHtml(groupVar) + '</th>';
     dtHtml += '</tr></thead><tbody>';
@@ -1601,7 +1608,7 @@ function renderHistogram(records, varName, groupVar, nBins, divId, refGroup, ref
       const catVal = String(r[varName] ?? '');
       const gDisplay1 = isRefH1 ? (refLevels.includes(String(r[groupVar] ?? '')) ? refGroupLabel(refLevels) : '其他中心') : String(r[groupVar] ?? '');
       dtHtml += '<tr data-cat="' + escapeHtml(catVal) + '"><td>' + ridx1 + '</td>';
-      for (const c of subjColsH1) dtHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+      for (const c of allColsH1) dtHtml += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
       dtHtml += '<td>' + escapeHtml(catVal) + '</td>';
       if (groupVar) dtHtml += '<td>' + escapeHtml(gDisplay1) + '</td>';
       dtHtml += '</tr>';
@@ -1671,10 +1678,17 @@ function renderHistogram(records, varName, groupVar, nBins, divId, refGroup, ref
     traces.forEach(t => { t.xbins = { start: binStart, end: binEnd, size: binSize }; });
     Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: true });
 
-    // 受试者明细 — data-bin 映射分箱区间
+    // 受试者明细 — data-bin 映射分箱区间（基础变量 + 分析变量 + 分组变量）
     const subjColsH2 = getSubjectColumns(records);
+    // 补充其他基础变量（排除已出现的列）
+    const basicMetaH2 = state.active.metadata;
+    const extraBasicH2 = Object.keys(records[0] || {}).filter(k => {
+      const t = basicMetaH2[k] ? basicMetaH2[k].type : null;
+      return t === 'id' && !subjColsH2.includes(k);
+    });
+    const allColsH2 = [...subjColsH2, ...extraBasicH2];
     let dtHtml2 = '<div class="card-clinical"><div class="card-header" style="font-family:var(--font-serif);display:flex;justify-content:space-between;align-items:center;"><span><i class="bi bi-people"></i> 受试者明细 <small style="color:var(--ink-muted);font-weight:400;">（点击柱子筛选区间）</small></span><span style="font-size:0.7rem;color:var(--ink-muted);">N=' + records.length + '</span></div>';
-    dtHtml2 += '<table><thead><tr><th>#</th>' + subjColsH2.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
+    dtHtml2 += '<table><thead><tr><th>#</th>' + allColsH2.map(c => '<th>' + escapeHtml(c) + '</th>').join('') + '<th>' + escapeHtml(varName) + '</th>';
     const isRefH2 = refGroup && refLevels && refLevels.length > 0;
     if (groupVar) dtHtml2 += '<th>' + escapeHtml(groupVar) + '</th>';
     dtHtml2 += '</tr></thead><tbody>';
@@ -1689,7 +1703,7 @@ function renderHistogram(records, varName, groupVar, nBins, divId, refGroup, ref
       }
       const gDisplay2 = isRefH2 ? (refLevels.includes(String(r[groupVar] ?? '')) ? refGroupLabel(refLevels) : '其他中心') : String(r[groupVar] ?? '');
       dtHtml2 += '<tr data-bin="' + escapeHtml(binKey) + '"><td>' + ridx2 + '</td>';
-      for (const c of subjColsH2) dtHtml2 += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
+      for (const c of allColsH2) dtHtml2 += '<td>' + escapeHtml(String(r[c] ?? '')) + '</td>';
       dtHtml2 += '<td>' + escapeHtml(String(val ?? '')) + '</td>';
       if (groupVar) dtHtml2 += '<td>' + escapeHtml(gDisplay2) + '</td>';
       dtHtml2 += '</tr>';
