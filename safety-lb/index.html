@@ -848,9 +848,14 @@
 
             const pALT = document.getElementById('map-alt').value, pAST = document.getElementById('map-ast').value, pBILI = document.getElementById('map-bili').value;
             const logs = globalADLB.filter(d => d.USUBJID === id);
+            const noADY = logs.length > 0 && logs.every(d => d.ADY === null || d.ADY === '' || isNaN(parseFloat(d.ADY)));
+            // ADY 缺失时用递增序号占位，避免时序图因 x=NaN 而空白
+            let seq = 0;
             const getTrend = pCode => logs.filter(d => d.PARAMCD === pCode).sort((a,b)=>a.ADY-b.ADY).map(d => {
                 let raw = parseFloat(d.AVAL), uln = parseFloat(d.ANRHI);
-                return { value: [parseFloat(d.ADY), (!isNaN(raw) && !isNaN(uln) && uln > 0) ? raw/uln : null, raw, d.AVALU || ''] };
+                let day = parseFloat(d.ADY);
+                if (isNaN(day)) day = ++seq;
+                return { value: [day, (!isNaN(raw) && !isNaN(uln) && uln > 0) ? raw/uln : null, raw, d.AVALU || ''] };
             });
 
             document.getElementById('title-liver-timeline').innerText = `受试者 ${id} 时序下钻图`;
@@ -858,7 +863,7 @@
                 toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
                 dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
                 tooltip: {trigger: 'axis', formatter: function(params) {
-                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    let html = `<b>${id}</b><br>ADY: ${noADY ? '未知' : params[0].axisValue}`;
                     params.forEach(p => {
                         let fold = p.value[1], raw = p.value[2], unit = p.value[3] || '';
                         let foldStr = (fold !== null && fold !== undefined) ? fold.toFixed(2) + 'x' : '-';
@@ -1018,19 +1023,20 @@
 
             const pCREAT = document.getElementById('map-creat').value;
             const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === pCREAT).sort((a,b)=>a.ADY-b.ADY);
+            const noADY = logs.length > 0 && logs.every(d => d.ADY === null || d.ADY === '' || isNaN(parseFloat(d.ADY)));
 
             document.getElementById('title-renal-timeline').innerText = `受试者 ${id} 时序下钻图`;
             charts.renalTimeline.setOption({
                 toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
                 dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
                 tooltip: {trigger: 'axis', formatter: function(params) {
-                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    let html = `<b>${id}</b><br>ADY: ${noADY ? '未知' : params[0].axisValue}`;
                     params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(1) : '-'}</b>`; });
                     return html;
                 }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
                 xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
                 yAxis: {type: 'value', name: pCREAT, nameGap: 40},
-                series:[{name:pCREAT, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]), itemStyle:{color:'#1e4a7a'}, markLine:{silent:true, data:[{yAxis:pt.base*1.5, lineStyle:{color:'#eab308'}}]}}]
+                series:[{name:pCREAT, type:'line', data:logs.map((d, i) => { const day = parseFloat(d.ADY); return [isNaN(day) ? i+1 : day, parseFloat(d.AVAL)]; }), itemStyle:{color:'#1e4a7a'}, markLine:{silent:true, data:[{yAxis:pt.base*1.5, lineStyle:{color:'#eab308'}}]}}]
             }, true);
         }
 
@@ -1201,20 +1207,21 @@
 
             const pQTC = document.getElementById('map-qtc').value;
             const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === pQTC).sort((a,b)=>a.ADY-b.ADY);
+            const noADY = logs.length > 0 && logs.every(d => d.ADY === null || d.ADY === '' || isNaN(parseFloat(d.ADY)));
 
             document.getElementById('title-qtc-timeline').innerText = `受试者 ${id} 时序下钻图`;
             charts.qtcTimeline.setOption({
                 toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
                 dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
                 tooltip: {trigger: 'axis', formatter: function(params) {
-                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    let html = `<b>${id}</b><br>ADY: ${noADY ? '未知' : params[0].axisValue}`;
                     params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(0) : '-'} ms</b>`; });
                     return html;
                 }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
                 xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
                 yAxis: {type: 'value', name: 'QTc (ms)', nameGap: 40, min: 'dataMin'},
                 series:[{
-                    name:pQTC, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]),
+                    name:pQTC, type:'line', data:logs.map((d, i) => { const day = parseFloat(d.ADY); return [isNaN(day) ? i+1 : day, parseFloat(d.AVAL)]; }),
                     itemStyle:{color:'#8F1D14'}, areaStyle:{color:'rgba(143, 29, 20, 0.05)'},
                     markLine:{ silent:true, data:[ {yAxis: 480, lineStyle:{color:'#eab308'}}, {yAxis: 500, lineStyle:{color:'#8F1D14'}} ] }
                 }]
@@ -1333,18 +1340,19 @@
             aiBox.innerHTML = `<b>智能诊断：${diagText}</b>`;
 
             const logs = globalADLB.filter(d => d.USUBJID === id && d.PARAMCD === param).sort((a,b)=>a.ADY-b.ADY);
+            const noADY = logs.length > 0 && logs.every(d => d.ADY === null || d.ADY === '' || isNaN(parseFloat(d.ADY)));
             document.getElementById('title-heatmap-timeline').innerText = `受试者 ${id} 时序下钻图`;
             charts.heatmapTimeline.setOption({
                 toolbox: { feature: { dataZoom: {}, restore: {} }, right: 15, top: 0 },
                 dataZoom: [{ type: 'inside', xAxisIndex: 0 }, { type: 'inside', yAxisIndex: 0 }],
                 tooltip: {trigger: 'axis', formatter: function(params) {
-                    let html = `<b>${id}</b><br>ADY: ${params[0].axisValue}`;
+                    let html = `<b>${id}</b><br>ADY: ${noADY ? '未知' : params[0].axisValue}`;
                     params.forEach(p => { html += `<br>${p.marker} ${p.seriesName}: <b>${p.value[1] !== undefined ? p.value[1].toFixed(2) : '-'}</b>`; });
                     return html;
                 }}, grid: {top: 30, right: 30, bottom: 50, left: 60},
                 xAxis: {type: 'value', name: 'ADY', nameLocation: 'middle', nameGap: 25},
                 yAxis: {type: 'value', name: `Value`, nameGap: 40},
-                series:[{name:param, type:'line', data:logs.map(d =>[parseFloat(d.ADY), parseFloat(d.AVAL)]), symbolSize:6, itemStyle:{color:'#5c6978'}}]
+                series:[{name:param, type:'line', data:logs.map((d, i) => { const day = parseFloat(d.ADY); return [isNaN(day) ? i+1 : day, parseFloat(d.AVAL)]; }), symbolSize:6, itemStyle:{color:'#5c6978'}}]
             }, true);
         }
 
