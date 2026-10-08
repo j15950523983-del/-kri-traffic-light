@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="lib/echarts.min.js"></script>
-<script src="lib/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --paper:#F4F7FB; --paper-2:#ECF1F8; --panel:#FFFFFF; --panel-edge:#FFFFFF;
@@ -54,10 +54,21 @@ body{
 .dossier .d-lab{font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:#AFC8E2; margin-top:3px; font-family:"IBM Plex Mono",monospace;}
 
 /* ===== 主体布局 ===== */
-.app{flex:1; display:flex; min-height:0;}
+.app{flex:1; display:flex; min-height:0; position:relative;}
 .rail{width:252px; flex-shrink:0; background:var(--paper-2); border-right:1px solid var(--line-2);
-  display:flex; flex-direction:column; overflow-y:auto;}
+  display:flex; flex-direction:column; overflow-y:auto; transition:width .22s ease,border-color .22s ease;}
 .rail::-webkit-scrollbar{width:8px;} .rail::-webkit-scrollbar-thumb{background:var(--line-2); border-radius:4px;}
+.rail-toggle{position:absolute;left:210px;top:8px;z-index:30;width:26px;height:28px;padding:0;border:1px solid rgba(33,89,140,.24);border-radius:2px;
+  background:rgba(255,255,255,.55);color:var(--brand);box-shadow:none;cursor:pointer;transition:left .22s ease,background .15s,border-color .15s,box-shadow .15s;}
+.rail-toggle::before{content:"";position:absolute;right:6px;top:6px;bottom:6px;width:1px;background:currentColor;opacity:.55;}
+.rail-toggle::after{content:"‹";position:absolute;left:5px;top:50%;transform:translateY(-53%);font:18px/1 "IBM Plex Mono",monospace;color:currentColor;}
+.rail-toggle:hover{background:var(--brand-soft);border-color:var(--brand-2);box-shadow:0 1px 4px rgba(33,89,140,.12);}
+.rail-toggle:focus-visible{outline:2px solid rgba(33,89,140,.28);outline-offset:2px;}
+.app.rail-collapsed .rail{width:0;border-right:0;overflow:hidden;}
+.app.rail-collapsed .rail-toggle{left:8px;background:var(--panel);box-shadow:var(--shadow);}
+.app.rail-collapsed .rail-toggle::before{left:6px;right:auto;}
+.app.rail-collapsed .rail-toggle::after{content:"›";left:auto;right:5px;}
+.app.rail-collapsed .nav{padding-left:50px;}
 .rail-sec{padding:15px 16px; border-bottom:1px solid var(--line);}
 .rail-sec h4{margin:0 0 11px; font-size:10px; letter-spacing:.2em; text-transform:uppercase;
   color:var(--ink-3); font-family:"IBM Plex Mono",monospace; display:flex; align-items:center; gap:7px;}
@@ -121,6 +132,26 @@ select:focus,input:focus{outline:none; border-color:var(--brand-2); box-shadow:0
 .sw::after{content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:#fff; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.2);}
 .toggle.on .sw{background:var(--brand-2);} .toggle.on .sw::after{left:17px;}
 
+/* 分类多选：ARM 为受试者人群过滤；AEOUT / AEACN 为事件原始值过滤 */
+.mfilter{margin-top:10px;border:1px solid var(--line-2);border-radius:var(--radius);background:var(--panel);}
+.mfilter summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;cursor:pointer;color:var(--ink-2);font-size:11.5px;user-select:none;}
+.mfilter summary::-webkit-details-marker{display:none;}
+.mfilter summary::after{content:"⌄";font:600 13px "IBM Plex Mono",monospace;color:var(--brand-2);transition:transform .15s;}
+.mfilter[open] summary::after{transform:rotate(180deg);}
+.mfilter .mf-name{font-weight:500;color:var(--ink-2);}
+.mfilter .mf-summary{margin-left:auto;max-width:102px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand);font-size:10.5px;}
+.mfilter-panel{border-top:1px solid var(--line);padding:6px;background:#FBFCFE;}
+.mfilter-tools{display:flex;justify-content:flex-end;gap:10px;padding:1px 3px 5px;border-bottom:1px solid var(--line);}
+.mfilter-tools button{border:0;background:none;padding:1px;color:var(--brand-2);font:500 10.5px "Noto Sans SC",sans-serif;cursor:pointer;}
+.mfilter-tools button:hover{text-decoration:underline;color:var(--brand-d);}
+.mfilter-list{max-height:190px;overflow-y:auto;padding-top:3px;}
+.mfilter-list::-webkit-scrollbar{width:6px}.mfilter-list::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px;}
+.mf-opt{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:6px;padding:5px 4px;border-radius:2px;cursor:pointer;}
+.mf-opt:hover{background:rgba(33,89,140,.06);}
+.mf-opt input{width:14px;height:14px;margin:0;accent-color:var(--brand-2);}
+.mf-opt .mf-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--ink-2);}
+.mf-opt .mf-n{font:10px "IBM Plex Mono",monospace;color:var(--ink-3);white-space:nowrap;}
+
 .legend-row{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ink-2); margin:6px 0;}
 .chip{width:13px; height:13px; border-radius:2px; flex-shrink:0;}
 
@@ -158,6 +189,19 @@ select:focus,input:focus{outline:none; border-color:var(--brand-2); box-shadow:0
 .chart-export{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;height:26px;padding:0 9px;border:1px solid var(--line-2);border-radius:var(--radius);background:var(--panel);color:var(--brand-d);font:500 10px "IBM Plex Mono",monospace;cursor:pointer;white-space:nowrap;transition:.15s;}
 .chart-export:hover{border-color:var(--brand-2);background:rgba(44,110,104,.07);color:var(--brand);}
 .chart-export:active{transform:translateY(1px);}
+.overview-actions{display:flex;justify-content:flex-end;align-items:center;margin:-6px 0 8px;}
+.summary-entry{height:30px;padding:0 12px;font-size:10.5px;letter-spacing:.02em;}
+.summary-card{max-width:1040px;}
+.summary-card .mh{gap:16px;}
+.summary-head-actions{display:flex;align-items:center;gap:8px;}
+.summary-ref{font-size:11px;color:var(--ink-2);line-height:1.55;margin:0 0 12px;}
+.summary-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);}
+.summary-table{margin:0;min-width:620px;}
+.summary-table th{position:sticky;top:0;z-index:1;background:var(--paper-2);}
+.summary-table th:not(:first-child),.summary-table td:not(:first-child){text-align:center;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;}
+.summary-table th:first-child,.summary-table td:first-child{min-width:310px;}
+.summary-table .arm-n{display:block;margin-top:2px;font-size:9.5px;color:var(--ink-3);font-weight:400;}
+.summary-foot{margin-top:9px;font-size:10.5px;color:var(--ink-3);line-height:1.55;}
 .grid{display:grid; gap:14px;}
 
 /* KPI */
@@ -207,6 +251,13 @@ table.dt tbody tr.sel{background:rgba(44,110,104,.09); box-shadow:inset 3px 0 0 
 .note{font-size:11.5px; color:var(--ink-2); background:var(--warn-soft); border:1px solid rgba(181,101,29,.3); border-radius:var(--radius); padding:10px 13px; line-height:1.5;}
 .note b{color:var(--warn);}
 .note.info{background:rgba(23,58,65,.05); border-color:rgba(23,58,65,.18);} .note.info b{color:var(--brand);}
+.focus-note{padding:0;overflow:hidden;}
+.focus-summary-head{width:100%;border:0;background:transparent;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  color:var(--ink-2);font:inherit;text-align:left;cursor:pointer;}
+.focus-summary-head:hover{background:rgba(255,255,255,.34);}
+.focus-summary-action{flex-shrink:0;color:var(--brand-2);font-size:10.5px;font-weight:600;}
+.focus-summary-body{padding:0 12px 10px;}
+.focus-note.collapsed .focus-summary-head{padding-top:7px;padding-bottom:7px;}
 
 .chart{width:100%;}
 .flex{display:flex;} .between{justify-content:space-between;} .center{align-items:center;}
@@ -265,7 +316,7 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
   </div>
 </header>
 
-<div class="app">
+<div class="app" id="app">
   <aside class="rail">
     <div class="rail-sec">
       <h4>数据接入</h4>
@@ -304,6 +355,19 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
       <div class="toggle" id="t-rel"><span>仅药物相关</span><div class="sw"></div></div>
       <div class="toggle" id="t-ser"><span>仅严重事件 (SAE)</span><div class="sw"></div></div>
       <div class="toggle" id="t-aesi"><span>仅特殊关注事件 (AESI)</span><div class="sw"></div></div>
+
+      <details class="mfilter" id="f-arm" style="display:none">
+        <summary><span class="mf-name">治疗组别 (ARM)</span><span class="mf-summary" id="f-arm-summary">全部</span></summary>
+        <div class="mfilter-panel"><div class="mfilter-tools"><button type="button" data-act="all">全选</button><button type="button" data-act="none">清空</button></div><div class="mfilter-list" id="f-arm-list"></div></div>
+      </details>
+      <details class="mfilter" id="f-outcome">
+        <summary><span class="mf-name">原始转归 (AEOUT)</span><span class="mf-summary" id="f-outcome-summary">全部</span></summary>
+        <div class="mfilter-panel"><div class="mfilter-tools"><button type="button" data-act="all">全选</button><button type="button" data-act="none">清空</button></div><div class="mfilter-list" id="f-outcome-list"></div></div>
+      </details>
+      <details class="mfilter" id="f-action">
+        <summary><span class="mf-name">原始处置 (AEACN)</span><span class="mf-summary" id="f-action-summary">全部</span></summary>
+        <div class="mfilter-panel"><div class="mfilter-tools"><button type="button" data-act="all">全选</button><button type="button" data-act="none">清空</button></div><div class="mfilter-list" id="f-action-list"></div></div>
+      </details>
     </div>
 
     <div class="rail-sec" id="legend" style="display:none;">
@@ -317,6 +381,8 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
       <div id="mode-note" style="font-size:11px; color:var(--ink-2); line-height:1.5;"></div>
     </div>
   </aside>
+
+  <button type="button" class="rail-toggle" id="rail-toggle" aria-label="收起筛选侧栏" aria-expanded="true" title="收起筛选侧栏"></button>
 
   <main class="stage">
     <nav class="nav" id="nav" style="display:none;">
@@ -334,6 +400,7 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
 
       <!-- 01 安全总览 -->
       <div class="view on" id="v-overview">
+        <div class="overview-actions"><button type="button" class="chart-export summary-entry" id="btn-ae-summary">Summary of AEs</button></div>
         <div class="grid kpis" id="kpis" style="grid-template-columns:repeat(4,1fr)"></div>
         <div id="exp-strip" style="margin-bottom:14px;"></div>
         <div class="grid time-row" style="grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);align-items:start">
@@ -419,6 +486,24 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
   </main>
 </div>
 
+<!-- Summary of AEs：固定安全集参考，不消费左侧探索性过滤 -->
+<div class="modal-mask" id="summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+  <div class="modal-card summary-card">
+    <div class="mh">
+      <span class="t" id="summary-title">Summary of AEs</span>
+      <div class="summary-head-actions">
+        <button type="button" class="chart-export" id="summary-export">导出 XLSX</button>
+        <button type="button" class="mx" id="summary-close" aria-label="关闭 Summary of AEs">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <p class="summary-ref"><b>固定安全性参考：</b>基于全体安全集及当前数据切点，不受左侧探索性过滤影响。每项按受试者去重，显示 n (%)。</p>
+      <div class="summary-table-wrap"><table class="dict-tbl summary-table" id="summary-table"></table></div>
+      <div class="summary-foot" id="summary-foot"></div>
+    </div>
+  </div>
+</div>
+
 <!-- 数据字典 / 说明文档 模态 -->
 <div class="modal-mask" id="doc-modal">
   <div class="modal-card">
@@ -429,13 +514,14 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
       <h5>① 快速上手</h5>
       <ol>
         <li>左栏「<b>数据接入</b>」拖入 <span class="mono">AE_analysis.xlsx</span> / <span class="mono">.json</span>；或点「<b>载入模拟数据</b>」体验功能。</li>
-        <li><b>01 总览</b>（默认）：看整体参照基线 —— KPI、暴露概况、AE 时序分布、各维度构成快照、SOC/PT 发生率。点 SOC/PT 条 = 设全局过滤；图表右上角可导出当前 SOC/PT 发生率图为 PNG。</li>
+        <li><b>01 总览</b>（默认）：看整体参照基线 —— KPI、暴露概况、AE 时序分布、各维度构成快照、SOC/PT 发生率。顶部 <b>Summary of AEs</b> 提供固定安全集汇总并支持 XLSX 导出；点 SOC/PT 条 = 设全局过滤；图表右上角可导出当前 SOC/PT 发生率图为 PNG。</li>
         <li><b>02 中心偏离与下钻</b>：顶部选<b>分析维度</b>（8 项），中间「中心信号脊柱表」按偏离 z 排序，<b>|z|&gt;2 标红</b>；点某中心 → 右侧「本中心 ◄► 其余」蝴蝶/发散图 + 受试者驱动清单 → 点受试者 → 就地 AE 甘特。证据链页面内闭合。</li>
-        <li>左栏过滤（中心 / SOC / PT 均<b>可键入检索</b>、毒性等级、TEAE、仅相关、仅 SAE、仅 AESI）对所有模块统一生效。</li>
+        <li>左栏过滤（中心 / SOC / PT 均<b>可键入检索</b>、毒性等级、TEAE、仅相关、仅 SAE、仅 AESI、<b>治疗组别 / 原始转归 / 原始处置多选</b>）对探索性监查模块统一生效；同一多选字段内为“或”，不同过滤条件之间为“且”。治疗组别按 ADSL 受试者限定人群，并同步收缩安全集 N 与总人时。<b>Summary of AEs 不响应这些左侧过滤</b>，始终作为全研究稳定参考。</li>
       </ol>
 
       <h5>② 术语铁律（务必区分）</h5>
-      <div class="note-box"><b>例数</b> = 阳性<b>受试者</b>个数（一人多次 AE 只计 1 例数，主指标）；<b>例次</b> = <b>事件</b>计数（每条 AE 计 1 次）。例次必配<b>暴露校正率（每 100 人年 EAIR = 100 × 发生受试者数 / 总人年）</b>，消除滚动入组造成的在组时长不齐污染。发生率维度可在 dimbar 右侧切换「<b>例数 ⇄ 校正例次/100人年</b>」。</div>
+      <div class="note-box"><b>例数</b> = 阳性<b>受试者</b>个数（一人多次 AE 只计 1 例数，主指标）；<b>例次</b> = <b>事件</b>计数（每条 AE 计 1 次）。例次必配<b>暴露校正事件率（每 100 人年 EAER = 100 × AE 例次 / 总人年）</b>，消除滚动入组造成的在组时长不齐污染。发生率维度可在 dimbar 右侧切换「<b>例数 ⇄ 校正例次/100人年</b>」。</div>
+      <div class="note-box"><b>Summary of AEs 口径：</b>仅纳入 <span class="mono">SAFFL='Y'</span> 的安全集受试者，按各行定义筛选 TEAE 后以 <span class="mono">SUBJID</span> 去重；有至少两个有效 ARM 时按治疗组及 Total 展示。Summary 直接基于完整 AE/ADSL 分析数据计算，<b>不随左侧 ARM、SITE、SOC、PT、等级、相关性、SAE、AESI、AEOUT、AEACN 等探索性过滤变化</b>。</div>
 
       <h5>③ 八个分析维度</h5>
       <table class="dict-tbl">
@@ -465,16 +551,16 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
         <tr><td class="k">AEENDTC</td><td>AE 结束日期</td><td>持续中可为空</td></tr>
         <tr><td class="k">ASTDY</td><td>研究日</td><td>= 开始日 − 首药日 + 1（无 Day 0）</td></tr>
         <tr><td class="k">AEONGO</td><td>是否持续</td><td>「是」/ 空（或 Y/N）</td></tr>
-        <tr><td class="k">AEOUT</td><td>转归</td><td>恢复 / 未恢复 / 死亡 …</td></tr>
+        <tr><td class="k">AEOUT</td><td>原始转归</td><td>按导入原值生成多选项；持续状态另结合 AEONGO / AEENDTC 归纳</td></tr>
         <tr><td class="k">AEREL</td><td>相关性（5 分类原始）</td><td>肯定/很可能/可能有关、可能无关、无关</td></tr>
         <tr><td class="k">RELFL</td><td>相关性二分</td><td>Y（有关）/ N（无关）/ U（缺失）</td></tr>
-        <tr><td class="k">AEACN</td><td>采取措施</td><td>剂量不变 / 暂停用药 / 剂量减少 / 停用药物 / 不适用</td></tr>
+        <tr><td class="k">AEACN</td><td>原始采取措施</td><td>按导入原值生成多选项；分析时再归纳为进行处置 / 维持·不适用 / 未填写</td></tr>
         <tr><td class="k">AECONTRT</td><td>是否合并用药/干预</td><td>是 / 否</td></tr>
         <tr><td class="k">AESERFL <span class="req">*</span></td><td>是否严重（SAE）</td><td>Y / N</td></tr>
         <tr><td class="k">AESDTH…AESMIE</td><td>严重性标准 6 项</td><td>死亡/危及生命/住院/致残/先天异常/重要事件</td></tr>
         <tr><td class="k">AESIFL</td><td>特别关注事件</td><td>Y / N</td></tr>
-        <tr><td class="k">TEAEFL</td><td>治疗期 AE 标记</td><td>Y / N</td></tr>
-        <tr><td class="k">ARM</td><td>组别</td><td>检测到 ≥2 组 → 总览启用蝴蝶</td></tr>
+        <tr><td class="k">TEAEFL</td><td>治疗期 AE 标记</td><td>Y / N；当前通用定义为首次给药当日及以后开始的 AE，不保证与具体项目最终 SAP 定义完全一致</td></tr>
+        <tr><td class="k">ARM</td><td>组别</td><td>来自 ADSL；检测到 ≥2 个有效组别时显示全局多选，选中两组时总览启用蝴蝶（试验组左、对照组右）</td></tr>
         <tr><td class="k">INPOPFL</td><td>在分析集</td><td>Y / N</td></tr>
       </table>
 
@@ -501,18 +587,99 @@ table.dt tr.site-sel{background:rgba(33,89,140,.10); box-shadow:inset 3px 0 0 va
 /* ===================== 状态 ===================== */
 const S = {
   ae:[], adsl:[], loaded:false, importQC:null,
-  groupMode:false, groupVar:'SITE',     // SITE 或 ARM
-  filt:{ scope:'ALL', gradeMin:0, popOnly:true, teae:false, rel:false, ser:false, aesi:false, soc:'ALL', pt:'ALL' },
+  groupMode:false, groupVar:'SITEID',   // 中心化监查主体恒为 SITEID；ARM 仅作人群过滤与总览组间展示
+  filt:{ scope:'ALL', armVals:null, gradeMin:0, popOnly:true, teae:false, rel:false, ser:false, aesi:false, soc:'ALL', pt:'ALL', outVals:null, acnVals:null },
   view:'overview', dim:'under', metric:'subj', selectedSite:null, subjSel:null,
   timeAxis:'astdy', win:null, winSel:null, ovTopN:15, siteSortN:0,
+  focusCollapsed:false, focusExpand:false, focusSmall:false, railCollapsed:false,
 };
 const charts={};
 const GCOL={1:'var(--g1)',2:'var(--g2)',3:'var(--g3)',4:'var(--g4)',5:'var(--g5)'};
 const GHEX={1:'#BBD3E8',2:'#F0C46A',3:'#E08A3C',4:'#C44536',5:'#7A1726',0:'#BBD3E8'};
+const GRADE_ORDER=[5,4,3,2,1];   /* 堆叠图从重到轻：高等级贴近中心轴/Y轴 */
 const AXIS_CAT='#26384A';
 const $=id=>document.getElementById(id);
 const pct=(n,d)=>d>0?(100*n/d):0;
 const fmtPct=v=>v.toFixed(1)+'%';
+const rawValue=v=>String(v??'').trim();
+function armSelected(arm,selected){ return !Array.isArray(selected)||selected.includes(String(arm??'').trim()); }
+function orderButterflyArms(arms){
+  const role=v=>{ const s=String(v??'');
+    if(/(对照|安慰剂|control|placebo|comparator)/i.test(s))return 2;
+    if(/(试验|实验|研究|治疗|experimental|treatment|investigational)/i.test(s))return 0;
+    return 1;
+  };
+  return [...arms].sort((a,b)=>role(a)-role(b)||String(a).localeCompare(String(b),'zh'));
+}
+
+/* Summary of AEs：直接消费完整 AE/ADSL 分析数据，不读取 S.filt。 */
+function buildAeSummary(ae=S.ae,adsl=S.adsl){
+  const safetyById=new Map();
+  (adsl||[]).forEach(a=>{
+    const id=String(a.SUBJID??'').trim();
+    if(id && String(a.SAFFL||'').toUpperCase()==='Y' && !safetyById.has(id)) safetyById.set(id,a);
+  });
+  const safety=[...safetyById.values()], safetyIds=new Set(safetyById.keys());
+  const armById=new Map(safety.map(a=>[String(a.SUBJID).trim(),String(a.ARM||'').trim()]));
+  const arms=[...new Set(safety.map(a=>String(a.ARM||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh'));
+  const grouped=arms.length>=2;
+  const columns=grouped
+    ? arms.map((arm,i)=>({key:'ARM_'+i,label:arm,arm,N:safety.filter(a=>String(a.ARM||'').trim()===arm).length}))
+      .concat([{key:'TOTAL',label:'Total',arm:null,N:safety.length}])
+    : [{key:'TOTAL',label:'n (%)',arm:null,N:safety.length}];
+  const armKey=new Map(columns.filter(c=>c.arm!=null).map(c=>[c.arm,c.key]));
+  const definitions=[
+    {key:'any',label:'Any TEAE',match:r=>r.TEAEFL==='Y'},
+    {key:'serious',label:'Serious TEAE',match:r=>r.TEAEFL==='Y'&&r.AESERFL==='Y'},
+    {key:'related',label:'Treatment-related TEAE',match:r=>r.TEAEFL==='Y'&&r.RELFL==='Y'},
+    {key:'grade3',label:'Grade ≥3 TEAE',match:r=>r.TEAEFL==='Y'&&Number(r.TOXGRN)>=3},
+    {key:'stop',label:'TEAE leading to treatment discontinuation',match:r=>r.TEAEFL==='Y'&&r.ACN_STOP==='Y'},
+    {key:'death',label:'Deaths',match:r=>r.TEAEFL==='Y'&&r.AESDTH==='Y'},
+  ];
+  const rows=definitions.map(def=>{
+    const sets={TOTAL:new Set()};
+    columns.forEach(c=>{ if(c.key!=='TOTAL')sets[c.key]=new Set(); });
+    (ae||[]).forEach(r=>{
+      const id=String(r.SUBJID??'').trim();
+      if(!safetyIds.has(id)||!def.match(r))return;
+      sets.TOTAL.add(id);
+      if(grouped){ const k=armKey.get(armById.get(id)); if(k)sets[k].add(id); }
+    });
+    const values={};
+    columns.forEach(c=>{ const n=sets[c.key].size, p=c.N?100*n/c.N:0; values[c.key]={n,pct:p,text:`${n} (${p.toFixed(1)}%)`}; });
+    return {key:def.key,label:def.label,values};
+  });
+  return {grouped,columns,rows,totalN:safety.length,unassignedN:safety.filter(a=>!String(a.ARM||'').trim()).length};
+}
+function summaryExportAOA(summary){
+  return [
+    ['Summary of AEs'],
+    ['Summary category',...summary.columns.map(c=>`${c.label} (Safety Set N=${c.N})`)],
+    ['Safety Set N',...summary.columns.map(c=>c.N)],
+    ...summary.rows.map(r=>[r.label,...summary.columns.map(c=>r.values[c.key].text)]),
+  ];
+}
+function renderAeSummary(summary){
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  $('summary-table').innerHTML=`<thead><tr><th>Summary category</th>${summary.columns.map(c=>`<th>${esc(c.label)}<span class="arm-n">Safety Set N=${c.N}</span></th>`).join('')}</tr></thead>
+    <tbody>${summary.rows.map(r=>`<tr><td>${esc(r.label)}</td>${summary.columns.map(c=>`<td>${r.values[c.key].text}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  const notes=['TEAE：首次给药当日及以后开始的 AE；当前为通用动态监测定义，不保证与具体项目最终 SAP 定义完全一致。'];
+  if(summary.grouped&&summary.unassignedN)notes.push(`安全集中 ARM 缺失 ${summary.unassignedN} 人：计入 Total，不计入具体治疗组。`);
+  $('summary-foot').textContent=notes.join(' ');
+}
+function openAeSummary(){
+  if(!S.loaded)return;
+  renderAeSummary(buildAeSummary());
+  $('summary-modal').classList.add('show');
+}
+function exportAeSummary(){
+  if(!S.loaded||typeof XLSX==='undefined')return alert('XLSX 导出组件未加载');
+  const summary=buildAeSummary(), ws=XLSX.utils.aoa_to_sheet(summaryExportAOA(summary));
+  ws['!cols']=[{wch:44},...summary.columns.map(()=>({wch:28}))];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Summary of AEs');
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  XLSX.writeFile(wb,`Summary_of_AEs_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`);
+}
 
 /* ===================== 导入 ===================== */
 const drop=$('drop'), file=$('file');
@@ -525,9 +692,22 @@ file.onchange=e=>{ if(e.target.files[0]) readFile(e.target.files[0]); };
 /* 载入模拟数据 / 说明文档（在数据加载前即可用，故在此顶层绑定） */
 $('btn-demo').onclick=()=>{ ingest(genMockData()); };
 $('btn-doc').onclick=()=>$('doc-modal').classList.add('show');
+$('btn-ae-summary').onclick=openAeSummary;
+$('summary-export').onclick=exportAeSummary;
+$('summary-close').onclick=()=>$('summary-modal').classList.remove('show');
+$('summary-modal').addEventListener('click',e=>{ if(e.target===$('summary-modal'))$('summary-modal').classList.remove('show'); });
+$('rail-toggle').onclick=()=>{ S.railCollapsed=!S.railCollapsed; syncRailState(); };
 $('doc-close').onclick=()=>$('doc-modal').classList.remove('show');
 $('doc-modal').addEventListener('click',e=>{ if(e.target===$('doc-modal')) $('doc-modal').classList.remove('show'); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('doc-modal').classList.remove('show'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('doc-modal').classList.remove('show'); $('summary-modal').classList.remove('show'); document.querySelectorAll('.mfilter[open]').forEach(x=>x.open=false); } });
+
+function syncRailState(){
+  $('app').classList.toggle('rail-collapsed',S.railCollapsed);
+  const b=$('rail-toggle');
+  b.title=S.railCollapsed?'展开筛选侧栏':'收起筛选侧栏';
+  b.setAttribute('aria-label',b.title); b.setAttribute('aria-expanded',String(!S.railCollapsed));
+  setTimeout(()=>Object.values(charts).forEach(c=>c&&c.resize()),240);
+}
 
 function readFile(f){
   const r=new FileReader();
@@ -562,7 +742,7 @@ function ingest(obj){
     AESERFL:yn(r.AESERFL), AESDTH:yn(r.AESDTH), AESLIFE:yn(r.AESLIFE), AESHOSP:yn(r.AESHOSP),
     AESDISAB:yn(r.AESDISAB), AESCONG:yn(r.AESCONG), AESMIE:yn(r.AESMIE),
     AEREL:r.AEREL||'', RELFL:String(r.RELFL||'').toUpperCase(),
-    AEOUT:r.AEOUT||'', AEACN:r.AEACN||'', ACN_STOP:yn(r.ACN_STOP), ACN_INT:yn(r.ACN_INT), AECONTRT:r.AECONTRT||'',
+    AEOUT:rawValue(r.AEOUT), AEACN:rawValue(r.AEACN), ACN_STOP:yn(r.ACN_STOP), ACN_INT:yn(r.ACN_INT), AECONTRT:r.AECONTRT||'',
     AESIFL:yn(r.AESIFL), ARM:String(r.ARM||'').trim(), INPOPFL:yn(r.INPOPFL)
   }));
   S.adsl=adsl.map(r=>({
@@ -702,7 +882,11 @@ function genMockData(){
 }
 
 /* ===================== 派生 / 过滤 ===================== */
-function safPop(){ const f=S.filt; return S.adsl.filter(a=> (f.popOnly? a.SAFFL==='Y':true) && (f.scope==='ALL'||a[S.groupVar]===f.scope) ); }
+function safPop({skipArm=false}={}){ const f=S.filt; return S.adsl.filter(a=>
+  (f.popOnly? a.SAFFL==='Y':true) &&
+  (f.scope==='ALL'||a[S.groupVar]===f.scope) &&
+  (skipArm||armSelected(a.ARM,f.armVals))
+); }
 function denomBy(key){ const m={}; safPop().forEach(a=>{ const k=a[key]||'—'; m[k]=(m[k]||0)+1; }); return m; }
 function denomTotal(){ return safPop().length || new Set(S.ae.map(r=>r.SUBJID)).size; }
 
@@ -712,24 +896,27 @@ function expDaysArr(){ return safPop().filter(a=>a.EXPDAYS>0).map(a=>a.EXPDAYS);
 function pyPop(){ return expDaysArr().reduce((s,d)=>s+d/365.25,0); }   /* 过滤后安全集总人年 */
 function median(a){ if(!a.length)return null; const b=[...a].sort((x,y)=>x-y),m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
 function quantile(a,q){ if(!a.length)return null; const b=[...a].sort((x,y)=>x-y),pos=(b.length-1)*q,base=Math.floor(pos),rest=pos-base; return b[base+1]!==undefined?b[base]+rest*(b[base+1]-b[base]):b[base]; }
-function eair(n){ const py=pyPop(); return py>0? 100*n/py : null; }   /* 每100人年(受试者口径) */
+function eair(n){ const py=pyPop(); return py>0? 100*n/py : null; }   /* 历史函数名；当前事件口径术语为 EAER */
 
-function fae(skipFocus){ // 总览过滤AE：消费全部左栏过滤；skipFocus=true 时跳过 SOC/PT(给SOC导航图用)
-  const f=S.filt;
-  const safSet = new Set(safPop().map(a=>a.SUBJID));
+/* 单一全局过滤链：同一原始字段内多选为 OR，不同字段/其他条件之间为 AND。 */
+function filterAE({skipFocus=false,skipOut=false,skipAcn=false}={}){
+  const f=S.filt, safSet=new Set(safPop().map(a=>a.SUBJID));
   return S.ae.filter(r=>{
     if(f.scope!=='ALL' && r[S.groupVar]!==f.scope) return false;
-    if(f.popOnly && !safSet.has(r.SUBJID)) return false;
+    if((f.popOnly||Array.isArray(f.armVals)) && !safSet.has(r.SUBJID)) return false;
     if(f.gradeMin && !(r.TOXGRN>=f.gradeMin)) return false;
     if(f.teae && r.TEAEFL!=='Y') return false;
     if(f.rel && r.RELFL!=='Y') return false;
     if(f.ser && r.AESERFL!=='Y') return false;
     if(f.aesi && r.AESIFL!=='Y') return false;
+    if(!skipOut && Array.isArray(f.outVals) && !f.outVals.includes(rawValue(r.AEOUT))) return false;
+    if(!skipAcn && Array.isArray(f.acnVals) && !f.acnVals.includes(rawValue(r.AEACN))) return false;
     if(!skipFocus && f.soc!=='ALL' && (r.SOC||'未编码')!==f.soc) return false;
     if(!skipFocus && f.pt!=='ALL' && (r.PT||r.AETERM)!==f.pt) return false;
     return true;
   });
 }
+function fae(skipFocus){ return filterAE({skipFocus:!!skipFocus}); }
 const uniqSubj=arr=>new Set(arr.map(r=>r.SUBJID)).size;
 
 /* ===================== UI 初始化 ===================== */
@@ -754,9 +941,9 @@ function initUI(){
   $('grp-lab').textContent = '研究中心 (SITE)';
   const detectedArms=[...new Set(S.adsl.map(a=>a.ARM).filter(Boolean))];
   $('mode-note').innerHTML = detectedArms.length===2
-    ? '检测到 <b style="color:var(--brand)">2 个 ARM 组别</b>：总览 SOC/PT 启用<b>组间蝴蝶</b>；中心偏离仍<b>按中心</b>（监查主体）。'
+    ? '检测到 <b style="color:var(--brand)">2 个 ARM 组别</b>：可用左侧组别多选；总览 SOC/PT 可启用<b>组间蝴蝶</b>（试验组在左、对照组在右）；中心偏离仍<b>按中心</b>。'
     : detectedArms.length>2
-      ? '检测到 <b style="color:var(--brand)">'+detectedArms.length+' 个 ARM 组别</b>：蝴蝶图仅用于两组比较，当前总览按<b>整体单边图</b>展示；中心偏离仍按中心。'
+      ? '检测到 <b style="color:var(--brand)">'+detectedArms.length+' 个 ARM 组别</b>：可用左侧组别多选；选中恰好两组时启用蝴蝶，否则按<b>整体单边图</b>展示；中心偏离仍按中心。'
       : '未检测到组别（盲态）：按中心运行，总览 SOC/PT 为单边发生率。';
   // 中心下拉(恒按中心)
   const opts=[...new Set(S.ae.map(r=>r.SITEID).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh'));
@@ -766,7 +953,7 @@ function initUI(){
   const socs=[...new Set(S.ae.filter(r=>r.PT||r.AETERM).map(r=>r.SOC||'未编码'))].sort((a,b)=>a.localeCompare(b,'zh'));
   $('dl-soc').innerHTML=socs.map(s=>`<option value="${s}"></option>`).join('');
   comboSet('f-soc','ALL');
-  S.filt.soc='ALL'; S.filt.pt='ALL'; fillPT('ALL');
+  S.filt.soc='ALL'; S.filt.pt='ALL'; S.filt.armVals=null; S.filt.outVals=null; S.filt.acnVals=null; fillPT('ALL');
   bindControls();
   refreshDossier();
   switchView(S.view);          /* 激活初始视图(默认总览) + 渲染 + resize */
@@ -778,6 +965,87 @@ function fillPT(soc){
 }
 /* 可键入检索过滤器：input+datalist 组合；ALL ↔ 空串 */
 function comboSet(id,val){ const el=$(id); if(el)el.value=(val==null||val==='ALL')?'':val; }
+
+/* ARM 多选：选项来自 ADSL，按受试者 N 计数；ARM 缺失保留为“未分组”。 */
+function armFilterValues(){
+  const vals=[...new Set(S.adsl.map(a=>rawValue(a.ARM)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh'));
+  if(S.adsl.some(a=>!rawValue(a.ARM)))vals.push('');
+  return vals;
+}
+function armDisplay(v){ return v===''?'未分组':v; }
+function armTagText(){
+  const vals=S.filt.armVals; if(vals===null)return '';
+  if(!vals.length)return '未选择';
+  const labels=vals.map(armDisplay); return labels.length<=2?labels.join('、'):labels.slice(0,2).join('、')+' +'+(labels.length-2);
+}
+function renderArmMultiFilter(){
+  const wrap=$('f-arm'), validArms=[...new Set(S.adsl.map(a=>rawValue(a.ARM)).filter(Boolean))];
+  if(validArms.length<2){ wrap.style.display='none'; S.filt.armVals=null; return; }
+  wrap.style.display='';
+  const vals=armFilterValues(), selected=S.filt.armVals, counts={};
+  safPop({skipArm:true}).forEach(a=>{ const v=rawValue(a.ARM); counts[v]=(counts[v]||0)+1; });
+  const sum=$('f-arm-summary');
+  sum.textContent=selected===null?'全部 '+vals.length:(!selected.length?'未选择':selected.length===1?armDisplay(selected[0]):'已选 '+selected.length+'/'+vals.length);
+  sum.title=selected===null?'全部':armTagText();
+  const list=$('f-arm-list'); list.innerHTML='';
+  vals.forEach(v=>{
+    const lab=document.createElement('label'); lab.className='mf-opt';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=selected===null||selected.includes(v);
+    const txt=document.createElement('span'); txt.className='mf-val'; txt.textContent=armDisplay(v); txt.title=armDisplay(v);
+    const n=document.createElement('span'); n.className='mf-n'; n.textContent='N='+(counts[v]||0);
+    cb.onchange=()=>{
+      let next=Array.isArray(S.filt.armVals)?[...S.filt.armVals]:[...vals];
+      if(cb.checked){ if(!next.includes(v))next.push(v); } else next=next.filter(x=>x!==v);
+      S.filt.armVals=next.length===vals.length?null:next;
+      S.selectedSite=null; S.subjSel=null; render();
+    };
+    lab.append(cb,txt,n); list.appendChild(lab);
+  });
+  wrap.querySelector('[data-act=all]').onclick=e=>{ e.preventDefault(); S.filt.armVals=null; S.selectedSite=null; S.subjSel=null; render(); };
+  wrap.querySelector('[data-act=none]').onclick=e=>{ e.preventDefault(); S.filt.armVals=[]; S.selectedSite=null; S.subjSel=null; render(); };
+}
+
+/* 原始 AEOUT / AEACN 多选：选项来自导入数据；计数应用其他全局条件但跳过自身。 */
+const RAW_FILTERS={
+  outVals:{field:'AEOUT',wrap:'f-outcome',list:'f-outcome-list',summary:'f-outcome-summary'},
+  acnVals:{field:'AEACN',wrap:'f-action',list:'f-action-list',summary:'f-action-summary'}
+};
+function rawFilterValues(field){
+  return [...new Set(S.ae.map(r=>rawValue(r[field])))].sort((a,b)=>a===''?1:b===''?-1:a.localeCompare(b,'zh'));
+}
+function rawDisplay(v){ return v===''?'未填写':v; }
+function rawTagText(key){
+  const vals=S.filt[key]; if(vals===null)return '';
+  if(!vals.length)return '未选择';
+  const labels=vals.map(rawDisplay); return labels.length<=2?labels.join('、'):labels.slice(0,2).join('、')+' +'+(labels.length-2);
+}
+function renderRawMultiFilters(){
+  Object.entries(RAW_FILTERS).forEach(([key,cfg])=>{
+    const vals=rawFilterValues(cfg.field), selected=S.filt[key];
+    const facet=filterAE({skipOut:key==='outVals',skipAcn:key==='acnVals'}), counts={};
+    facet.forEach(r=>{ const v=rawValue(r[cfg.field]); counts[v]=(counts[v]||0)+1; });
+    const sum=$(cfg.summary);
+    sum.textContent=selected===null?'全部 '+vals.length:(!selected.length?'未选择':selected.length===1?rawDisplay(selected[0]):'已选 '+selected.length+'/'+vals.length);
+    sum.title=selected===null?'全部':rawTagText(key);
+    const list=$(cfg.list); list.innerHTML='';
+    vals.forEach(v=>{
+      const lab=document.createElement('label'); lab.className='mf-opt';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=selected===null||selected.includes(v);
+      const txt=document.createElement('span'); txt.className='mf-val'; txt.textContent=rawDisplay(v); txt.title=rawDisplay(v);
+      const n=document.createElement('span'); n.className='mf-n'; n.textContent=(counts[v]||0)+' 次';
+      cb.onchange=()=>{
+        let next=Array.isArray(S.filt[key])?[...S.filt[key]]:[...vals];
+        if(cb.checked){ if(!next.includes(v))next.push(v); } else next=next.filter(x=>x!==v);
+        S.filt[key]=next.length===vals.length?null:next;
+        render();
+      };
+      lab.append(cb,txt,n); list.appendChild(lab);
+    });
+    const wrap=$(cfg.wrap);
+    wrap.querySelector('[data-act=all]').onclick=e=>{ e.preventDefault(); S.filt[key]=null; render(); };
+    wrap.querySelector('[data-act=none]').onclick=e=>{ e.preventDefault(); S.filt[key]=[]; render(); };
+  });
+}
 
 function bindControls(){
   $('f-site').onchange=e=>{ const t=e.target.value.trim();
@@ -822,12 +1090,12 @@ function switchView(v){
 }
 
 function refreshDossier(){
-  const sp=safPop();
-  $('d-pop').textContent=sp.length;
-  $('d-subj').textContent=uniqSubj(S.ae.filter(r=>r.INPOPFL==='Y'||!S.filt.popOnly));
-  $('d-ae').textContent=S.ae.length;
-  $('d-site').textContent=new Set(S.ae.map(r=>r.SITEID)).size;
-  const ds=S.ae.map(r=>r.AESTDTC).filter(Boolean).sort();
+  const sp=safPop(), d=fae();
+  $('d-pop').textContent=sp.length;                         /* 人群分母不随事件过滤改变 */
+  $('d-subj').textContent=uniqSubj(d);
+  $('d-ae').textContent=d.length;
+  $('d-site').textContent=new Set(d.map(r=>r.SITEID)).size;
+  const ds=d.map(r=>r.AESTDTC).filter(Boolean).sort();
   $('d-win').textContent= ds.length? ds[0].slice(2)+' → '+ds[ds.length-1].slice(2):'—';
 }
 
@@ -838,6 +1106,8 @@ function getChart(id){ const el=$(id);
 function render(){
   if(!S.loaded) return;
   refreshDossier();
+  renderArmMultiFilter();
+  renderRawMultiFilters();
   renderFilterTags();
   if(S.view==='main') renderMain();
   else if(S.view==='overview') renderOverview();
@@ -854,6 +1124,9 @@ function renderFilterTags(){
   if(f.rel) tags.push(['rel','','仅药物相关']);
   if(f.ser) tags.push(['ser','','仅严重(SAE)']);
   if(f.aesi) tags.push(['aesi','','仅特殊关注(AESI)']);
+  if(f.armVals!==null) tags.push(['armVals','组别',armTagText()]);
+  if(f.outVals!==null) tags.push(['outVals','转归',rawTagText('outVals')]);
+  if(f.acnVals!==null) tags.push(['acnVals','处置',rawTagText('acnVals')]);
   if(!f.popOnly) tags.push(['popOnly','','含非安全集']);
   const el=$('filter-tags');
   if(!tags.length){ el.style.display='none'; el.innerHTML=''; return; }
@@ -871,11 +1144,15 @@ function clearFilt(key){
   else if(key==='rel'){ f.rel=false; $('t-rel').classList.remove('on'); }
   else if(key==='ser'){ f.ser=false; $('t-ser').classList.remove('on'); }
   else if(key==='aesi'){ f.aesi=false; $('t-aesi').classList.remove('on'); }
+  else if(key==='armVals'){ f.armVals=null; S.selectedSite=null; S.subjSel=null; }
+  else if(key==='outVals'){ f.outVals=null; }
+  else if(key==='acnVals'){ f.acnVals=null; }
   else if(key==='popOnly'){ f.popOnly=true; $('t-pop').classList.add('on'); }
   render();
 }
 function clearAllFilt(){
-  const f=S.filt; Object.assign(f,{scope:'ALL',soc:'ALL',pt:'ALL',gradeMin:0,teae:false,rel:false,ser:false,aesi:false,popOnly:true});
+  const f=S.filt; Object.assign(f,{scope:'ALL',armVals:null,soc:'ALL',pt:'ALL',gradeMin:0,teae:false,rel:false,ser:false,aesi:false,popOnly:true,outVals:null,acnVals:null});
+  S.selectedSite=null; S.subjSel=null;
   comboSet('f-site','ALL'); comboSet('f-soc','ALL'); fillPT('ALL'); comboSet('f-pt','ALL');
   $('f-grade').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.g===0));
   ['t-teae','t-rel','t-ser','t-aesi'].forEach(id=>$(id).classList.remove('on')); $('t-pop').classList.add('on');
@@ -1054,11 +1331,12 @@ function syncMetricBtns(){ document.querySelectorAll('#ov-metric button,#f-metri
 /* 总览发生率条；有2组别→蝴蝶图。口径: 例数=受试者率% / 校正例次=例次每100人年。点击设 SOC/PT 全局过滤 */
 function ovBars(chartId, keyOf, base, isSOC){
   const eair=(S.metric==='eair');
-  const arms = S.groupMode? [...new Set(safPop().map(a=>a.ARM).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))) : [];
+  const arms = S.groupMode? orderButterflyArms([...new Set(safPop().map(a=>a.ARM).filter(Boolean))]) : [];
   const grouped = arms.length===2, useArms = grouped? arms : [null];
   const denom={}; useArms.forEach(ar=>{ const pop=safPop().filter(a=>ar==null||a.ARM===ar); denom[ar]= eair? pop.reduce((s,a)=>s+(a.EXPDAYS>0?a.EXPDAYS/365.25:0),0) : pop.length; });
+  const armBySubj=new Map(S.adsl.map(a=>[a.SUBJID,a.ARM]));
   const m={};
-  base.forEach(r=>{ const k=keyOf(r); if(!k)return; const ar=grouped?(r.ARM||useArms[0]):null;
+  base.forEach(r=>{ const k=keyOf(r); if(!k)return; const ar=grouped?(armBySubj.get(r.SUBJID)||r.ARM||''):null; if(grouped&&!arms.includes(ar))return;
     const o=((m[k]=m[k]||{})[ar]=m[k][ar]||{sub:new Set(),ev:0,evG:{1:0,2:0,3:0,4:0,5:0},peak:{}});
     o.sub.add(r.SUBJID); o.ev++;
     const g=Math.min(5,Math.max(1,Math.round(r.TOXGRN||1))); o.evG[g]++;
@@ -1069,7 +1347,7 @@ function ovBars(chartId, keyOf, base, isSOC){
   const rateG=(k,ar,g)=>{ const o=m[k]&&m[k][ar]; if(!o)return 0; const d=denom[ar]||0; if(d<=0)return 0; return (eair?o.evG[g]:subG(o)[g])/d*100; };
   const keys=Object.keys(m).map(k=>({k,tot:useArms.reduce((s,ar)=>s+rateOf(k,ar),0)})).sort((a,b)=>b.tot-a.tot).slice(0,S.ovTopN||15).reverse().map(x=>x.k);
   const unit=eair?'例次/100人年':'受试者率%', sel=isSOC?S.filt.soc:S.filt.pt, c=getChart(chartId);
-  const GLEG=['1级','2级','3级','4级','5级'];
+  const GLEG=GRADE_ORDER.map(g=>g+'级');
   const emptyObj=()=>({sub:new Set(),ev:0,evG:{1:0,2:0,3:0,4:0,5:0},peak:{}});
   const objOf=(k,ar)=>(m[k]&&m[k][ar])||emptyObj();
   const gradeCount=(o,g)=>eair?(o.evG[g]||0):(subG(o)[g]||0);
@@ -1077,7 +1355,7 @@ function ovBars(chartId, keyOf, base, isSOC){
   const totalLabel=(k,ar)=>{ const o=objOf(k,ar), n=eair?o.ev:o.sub.size; return n?(eair?'例次 ':'例数 ')+n:''; };
   const gradeHtml=(k,ar)=>{
     const o=objOf(k,ar), countU=eair?'例次':'例数', rateU=eair?'例次/100人年':'%';
-    return '<div style="max-width:360px;white-space:normal;line-height:1.75;margin-top:4px">'+[1,2,3,4,5].map(g=>
+    return '<div style="max-width:360px;white-space:normal;line-height:1.75;margin-top:4px">'+GRADE_ORDER.map(g=>
       '<span style="display:inline-block;min-width:116px;white-space:nowrap"><i style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:'+GHEX[g]+'"></i>'+g+'级 '+countU+' '+gradeCount(o,g)+' · '+rateG(k,ar,g).toFixed(1)+' '+rateU+'</span>'
     ).join('')+'</div>';
   };
@@ -1090,7 +1368,7 @@ function ovBars(chartId, keyOf, base, isSOC){
   if(grouped){
     const [a1,a2]=arms, series=[];
     /* 左右两翼共用同一 stack；显示标签使用静默散点，不参与数值计算 */
-    [1,2,3,4,5].forEach(g=>{
+    GRADE_ORDER.forEach(g=>{
       series.push({name:g+'级',type:'bar',stack:'fly',data:keys.map(k=>-(+rateG(k,a1,g).toFixed(2))),itemStyle:{color:GHEX[g]},barWidth:'66%'});
       series.push({name:g+'级',type:'bar',stack:'fly',data:keys.map(k=>+rateG(k,a2,g).toFixed(2)),itemStyle:{color:GHEX[g]},barWidth:'66%'});
     });
@@ -1106,7 +1384,7 @@ function ovBars(chartId, keyOf, base, isSOC){
       yAxis:{type:'category',data:keys.map(k=>(sel===k?'▸ ':'')+k),axisLabel:{fontSize:10.5,width:120,overflow:'truncate',color:AXIS_CAT,fontWeight:500},axisLine:{lineStyle:{color:'#CFD9E6'}}},
       series},true);
   } else {
-    const series=[1,2,3,4,5].map(g=>({name:g+'级',type:'bar',stack:'x',data:keys.map(k=>+rateG(k,null,g).toFixed(2)),itemStyle:{color:GHEX[g]},barWidth:'66%'}));
+    const series=GRADE_ORDER.map(g=>({name:g+'级',type:'bar',stack:'x',data:keys.map(k=>+rateG(k,null,g).toFixed(2)),itemStyle:{color:GHEX[g]},barWidth:'66%'}));
     series.push({name:'_tot',type:'bar',stack:'x',silent:true,data:keys.map(()=>0),itemStyle:{color:'transparent'},
       label:{show:true,position:'right',formatter:p=>totalLabel(keys[p.dataIndex],null),fontSize:9,fontFamily:'IBM Plex Mono',color:'#5B6B7B'}});
     c.setOption({grid:{top:8,left:6,right:50,bottom:48,containLabel:true},
@@ -1145,6 +1423,15 @@ function hasInterv(r){ const v=(r.AECONTRT||'').trim(); return v!=='' && v!=='�
 function acnActed(r){ const x=(r.AEACN||'').trim(); return x!=='' && x!=='剂量不变' && x!=='不适用'; }
 /* 相关性：字眼含"无关"→不相关；含"有关"→相关；否则未填写(原始 AEREL 为空) */
 function relCat(r){ const x=(r.AEREL||'').trim(); if(/无关/.test(x))return '不相关'; if(/有关/.test(x))return '相关'; return '未填写'; }
+/* 转归归纳同时消费持续标记和结束日期；原始 AEOUT 仍完整保留给多选过滤与明细。 */
+function outCat(r){
+  if(r.AEONGO==='Y'||!r.AEENDTC)return '持续中';
+  const o=rawValue(r.AEOUT);
+  if(/死亡|致死/.test(o))return '死亡';
+  if(/未/.test(o))return '未恢复';
+  if(/恢复|缓解|消失/.test(o))return '已恢复';
+  return '不详';
+}
 
 /* 每个维度：kind(subj按受试者/event按例次) · 分布类别 cats · 中心信号(分子num/分母den/方向dir/最小分母) */
 const DIMS={
@@ -1163,8 +1450,8 @@ const DIMS={
     sig:'不相关 占比', desc:'判定偏向不相关 → 因果低判', verb:'因果低判'},
   out:{lab:'转归/持续', kind:'event', dir:'high', minD:10,
     cats:[{n:'持续中',c:'#C8881C'},{n:'已恢复',c:'#2E8B6B'},{n:'未恢复',c:'#C44536'},{n:'死亡',c:'#7A1726'},{n:'不详',c:'#E3E9F0'}],
-    catOf:r=>{ if(r.AEONGO==='Y')return '持续中'; const o=r.AEOUT||''; if(/死亡/.test(o))return '死亡'; if(/未/.test(o))return '未恢复'; if(/恢复|缓解|消失/.test(o))return '已恢复'; return '不详'; },
-    den:r=>true, num:r=> r.AEONGO==='Y' || /未/.test(r.AEOUT||''),
+    catOf:r=>outCat(r),
+    den:r=>true, num:r=> ['持续中','未恢复'].includes(outCat(r)),
     sig:'未恢复/持续 占比', desc:'转归/随访记录可能异常', verb:'未恢复偏高'},
   acn:{lab:'采取措施', kind:'event', dir:'high', minD:3,
     cats:[{n:'进行处置',c:'#21598C'},{n:'维持·不适用',c:'#9DB4C8'},{n:'未填写',c:'#E3E9F0'}],
@@ -1184,22 +1471,8 @@ const DIMS={
     sig:'受试者发生率', sigE:'暴露校正发生率', desc:'SAE 报得异常少 → 疑漏报SAE', verb:'SAE 偏少'},
 };
 
-/* 统一过滤基础集（消费全部左栏过滤；rel/ser/grade/soc/pt 在此生效） */
-function baseAE(){
-  const f=S.filt, safSet=new Set(safPop().map(a=>a.SUBJID));
-  return S.ae.filter(r=>{
-    if(f.scope!=='ALL' && r[S.groupVar]!==f.scope) return false;
-    if(f.popOnly && !safSet.has(r.SUBJID)) return false;
-    if(f.teae && r.TEAEFL!=='Y') return false;
-    if(f.gradeMin && !(r.TOXGRN>=f.gradeMin)) return false;
-    if(f.rel && r.RELFL!=='Y') return false;
-    if(f.ser && r.AESERFL!=='Y') return false;
-    if(f.aesi && r.AESIFL!=='Y') return false;
-    if(f.soc!=='ALL' && (r.SOC||'未编码')!==f.soc) return false;
-    if(f.pt!=='ALL' && (r.PT||r.AETERM)!==f.pt) return false;
-    return true;
-  });
-}
+/* 中心偏离与下钻与总览共用同一全局过滤链。 */
+function baseAE(){ return filterAE(); }
 const zf=(x,n,p)=> (n>0&&p>0&&p<1)?(x-p)/Math.sqrt(p*(1-p)/n):0;
 function fmtRate(p){ return p==null?'—':(p*100).toFixed(1)+'%'; }
 
@@ -1208,6 +1481,7 @@ function fmtRate(p){ return p==null?'—':(p*100).toFixed(1)+'%'; }
 function dimStats(dimKey){
   const D=DIMS[dimKey], base=baseAE(), pop=safPop();
   const eair = !!(D.rate && S.metric==='eair');
+  const signalBlocked=(dimKey==='out'&&S.filt.outVals!==null)||(dimKey==='acn'&&S.filt.acnVals!==null);
   const S0={}; pop.forEach(a=>{ const s=a.SITEID; (S0[s]=S0[s]||{N:0,PY:0,hit:new Set(),ev:0,num:0,den:0,cat:{}}); S0[s].N++; if(a.EXPDAYS>0)S0[s].PY+=a.EXPDAYS/365.25; });
   base.forEach(r=>{ const o=S0[r.SITEID]; if(!o)return;
     if(D.kind==='subj'){ if(D.has(r)){ o.hit.add(r.SUBJID); o.ev++; } }
@@ -1223,11 +1497,12 @@ function dimStats(dimKey){
       if(eair){ den=o.PY; rate=o.PY>0?o.ev/o.PY:null; stable=o.PY>=D.minPY; z=(stable&&pBar>0)?(rate-pBar)/Math.sqrt(pBar/o.PY):0; }
       else { den=o.N; rate=o.N?o.hit.size/o.N:0; stable=o.N>=D.minN; z=stable?zf(rate,o.N,pBar):0; }
     } else { den=o.den; rate=o.den?o.num/o.den:null; stable=o.den>=D.minD; z=(stable&&rate!=null)?zf(rate,o.den,pBar):0; }
+    if(signalBlocked){ stable=false; z=0; }
     const dirZ = D.dir==='low'? -z : D.dir==='two'? Math.abs(z) : z;
     const cat = D.kind==='subj'? {[D.cats[0].n]:o.hit.size,[D.cats[1].n]:Math.max(0,o.N-o.hit.size)} : o.cat;
     return {s,N:o.N,PY:o.PY,ev:o.ev,hit:o.hit.size,den,rate,z,dirZ,flagged:stable&&dirZ>2,stable,cat};
   }).sort((a,b)=> b.dirZ-a.dirZ);
-  return {D,rows,pBar,eair,TN,TPY,Thit,Tev,Tnum,Tden,base,pop};
+  return {D,rows,pBar,eair,TN,TPY,Thit,Tev,Tnum,Tden,base,pop,signalBlocked};
 }
 /* 发生率显示：校正例次→每100人年数值；否则→百分比 */
 function rdisp(st,rate){ if(rate==null)return '—'; return st.eair? (rate*100).toFixed(1):(rate*100).toFixed(0)+'%'; }
@@ -1248,13 +1523,22 @@ function renderDimBar(){
 /* 关注概览：凝练点名中心(必要时受试者) + AE发生率追加 SOC×中心异常 */
 function renderFocus(st){
   const D=st.D, fl=st.rows.filter(r=>r.flagged), el=$('dim-focus');
+  const collapsed=!!S.focusCollapsed;
+  const header='<button type="button" class="focus-summary-head" onclick="toggleFocusSummary()" aria-expanded="'+String(!collapsed)+'" title="'+(collapsed?'展开风险总结':'收起风险总结')+'"><span><b>'+D.lab+'</b> · 风险总结</span><span class="focus-summary-action">'+(collapsed?'展开 ▼':'收起 ▲')+'</span></button>';
+  if(collapsed){ el.className='note focus-note'+(!fl.length?' info':'')+' collapsed'; el.innerHTML=header; return; }
+  if(st.signalBlocked){
+    const attr=S.dim==='out'?'原始转归':'原始处置';
+    el.className='note focus-note info';
+    el.innerHTML=header+'<div class="focus-summary-body"><b>当前已限定'+attr+'</b>：下方构成及明细仍按筛选结果展示，但该属性自身的中心偏离 z 值不评价。清除对应过滤后恢复风险总结。</div>';
+    return;
+  }
   const sigLab=st.eair?D.sigE:D.sig, U=st.eair?' /100人年':'';
   const anom = D.socScan? socSiteAnom(st) : [];
   let html;
-  if(!fl.length){ el.className='note info';
+  if(!fl.length){ el.className='note focus-note info';
     html=`<b>${D.lab}</b> · 关注：本期未见显著偏离中心（全研究 ${sigLab} ${rdisp(st,st.pBar)}${U}）。`;
   } else {
-    el.className='note';
+    el.className='note focus-note';
     const exp=!!S.focusExpand, CAP=6;
     const flShow = exp? fl : fl.slice(0,CAP);
     const seg=flShow.map(r=>{
@@ -1285,7 +1569,7 @@ function renderFocus(st){
     const exp=!!S.focusExpand;
     html+=`<div style="margin-top:4px"><span class="focus-toggle" onclick="toggleFocus()">${exp?'▴ 收起':'▾ 展开全部中心'}</span></div>`;
   }
-  el.innerHTML=html;
+  el.innerHTML=header+'<div class="focus-summary-body">'+html+'</div>';
 }
 /* 渲染一组"中心→SOC/PT异常"块；exp=展开则不截断 */
 function focusBlocks(list, exp){
@@ -1304,6 +1588,7 @@ function focusBlocks(list, exp){
 }
 window.toggleFocus=function(){ S.focusExpand=!S.focusExpand; renderFocus(dimStats(S.dim)); };
 window.toggleFocusSmall=function(){ S.focusSmall=!S.focusSmall; renderFocus(dimStats(S.dim)); };
+window.toggleFocusSummary=function(){ S.focusCollapsed=!S.focusCollapsed; renderFocus(dimStats(S.dim)); };
 /* AE发生率：扫 SOC 与 PT 两级离群，按中心分组；SOC 异常标注由哪个 PT 驱动。随口径(例数二项z / 校正例次泊松z) */
 function socSiteAnom(st){
   const base=st.base, pop=st.pop, eair=st.eair;
@@ -1367,19 +1652,20 @@ function renderSiteSignal(st){
   const D=st.D, rateHdr = st.eair?'例次/100PY':(D.kind==='subj'?'发生率':'占比');
   const rows=S.siteSortN?[...st.rows].sort((a,b)=>S.siteSortN*(a.N-b.N)||b.dirZ-a.dirZ):st.rows;
   $('site-ttl').textContent='中心 · '+(st.eair?D.sigE:D.sig);
-  $('site-sub').textContent=(D.dir==='low'?'偏低=异常':D.dir==='two'?'偏离=异常':'偏高=异常')+' · |z|>2 标红'+(st.eair?' · 泊松校正':'');
+  $('site-sub').textContent=st.signalBlocked?'当前已限定本属性 · 展示筛选后构成，不评价中心偏离'
+    :(D.dir==='low'?'偏低=异常':D.dir==='two'?'偏离=异常':'偏高=异常')+' · |z|>2 标红'+(st.eair?' · 泊松校正':'');
   const miniBar=cat=>{ const tot=Object.values(cat).reduce((a,b)=>a+b,0)||1;
     return '<div style="display:flex;height:11px;border-radius:2px;overflow:hidden;min-width:54px">'+
       D.cats.map(c=>{ const v=cat[c.n]||0; return v?`<i style="width:${(v/tot*100).toFixed(1)}%;background:${c.c}" title="${c.n}:${v}"></i>`:''; }).join('')+'</div>'; };
   const sortMark=S.siteSortN<0?'▼':S.siteSortN>0?'▲':'↕';
   $('t-signal').innerHTML=`<thead><tr><th>中心</th><th class="num sortable" onclick="sortSiteN(event)" title="按 N 排序">N<span class="sort-mark">${sortMark}</span></th><th>构成</th><th class="num" title="${st.eair?D.sigE:D.sig}">${rateHdr}</th><th class="num">z</th></tr></thead>
    <tbody>${rows.map(r=>{
-     const rateTxt = r.rate==null?'—':(rdisp(st,r.rate)+(r.stable?'':'<sup>*</sup>'));
+     const rateTxt = r.rate==null?'—':(rdisp(st,r.rate)+(st.signalBlocked||r.stable?'':'<sup>*</sup>'));
      const cls = (r.stable&&r.dirZ>2)?'sig-red':(r.stable&&r.dirZ>1)?'sig-amber':'';
      return `<tr class="${r.s===S.selectedSite?'site-sel':''}" onclick="pickSite('${r.s}')">
        <td class="subj" title="${siteName(r.s)||''}">${r.s}${r.flagged?' <span class="flag">⚑</span>':''}</td>
        <td class="num">${r.N}</td><td>${miniBar(r.cat)}</td>
-       <td class="num ${cls}" title="${r.stable?'z='+r.z.toFixed(1):'样本不足(分母'+(typeof r.den==='number'?r.den.toFixed(D.kind==='subj'&&st.eair?1:0):r.den)+')'}">${rateTxt}</td>
+       <td class="num ${cls}" title="${st.signalBlocked?'当前属性过滤下不评价中心偏离':r.stable?'z='+r.z.toFixed(1):'样本不足(分母'+(typeof r.den==='number'?r.den.toFixed(D.kind==='subj'&&st.eair?1:0):r.den)+')'}">${rateTxt}</td>
        <td class="num" style="color:${r.flagged?'var(--danger)':'var(--ink-3)'}">${r.stable?r.z.toFixed(1):'—'}</td></tr>`;
    }).join('')}</tbody>`;
 }
@@ -1510,15 +1796,6 @@ function countUp(){
   });
 }
 window.pickSite=pickSite; window.openSubj3=openSubj3;
-
-/* 自动加载项目数据（支持 ?project=A 参数） */
-(function autoLoad(){
-  var project = (location.search.match(/[?&]project=([^&]+)/)||[])[1] || 'A';
-  fetch('../data/' + project + '/AE_analysis.json')
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(data){ ingest(data); })
-    .catch(function(err){ console.warn('自动加载失败，可手动导入数据：', err); });
-})();
 </script>
 </body>
 </html>
