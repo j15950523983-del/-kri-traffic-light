@@ -3150,11 +3150,9 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
   // ── Single-pass pre-classification: compute all flags + dates + counts once ──
   let dropouts = 0, unassessed = 0, staleWarnCount = 0, staleCritCount = 0;
   censoredPatients.forEach(p => {
-    // Pre-compute flags once
-    const reason = (getExitReason(p) || '').trim().toLowerCase();
+    // Pre-compute flags once（OS 仅失访算脱落）
     const desc = (p.evntdesc || '').trim().toLowerCase();
-    p._dropped = reason && !ADMIN_CENSOR_KEYS.some(k => reason.includes(k));
-    if (!p._dropped) p._dropped = desc && DROPOUT_EVNT_KEYS.some(k => desc.includes(k));
+    p._dropped = isDropoutSubj(p, type) || isDropoutByEvnt(p, type);
     p._unassessed = desc && UNASSESSED_KEYS.some(k => desc.includes(k));
 
     // Pre-compute gap from reference date
@@ -3320,6 +3318,7 @@ function renderKMTab() {
 // ── Shared classification helpers ──
 const ADMIN_CENSOR_KEYS = ['completed', 'completion', '完成', '研究结束', 'end of study', 'study completion', 'complete', '正常完成', 'planned completion'];
 const DROPOUT_EVNT_KEYS = ['lost to follow', '失访', 'withdrew consent', 'withdrawal', '撤回', '退出', 'adverse event', '不良事件', 'physician decision', '研究者决定', 'protocol deviation', '方案违背'];
+const LOST_TO_FOLLOWUP_KEYS = ['失访', 'lost to follow', 'loss to follow'];
 const UNASSESSED_KEYS = ['未评估', '未评价', '未检查', 'not assessed', 'no assessment', '未完成评估', '评估未完成', '数据截止时未评估'];
 
 // 退出原因：优先 退出原因字段，缺失时回退到 治疗结束原因（DCSREAS/TREAT_DSDECOD 等）
@@ -3331,13 +3330,20 @@ function getExitReason(p) {
   return null;
 }
 
-function isDropoutSubj(p) {
+// 脱落判定：OS 仅「失访」算脱落；其他端点保持原逻辑
+function isDropoutSubj(p, type) {
   const reason = (getExitReason(p) || '').trim().toLowerCase();
-  return reason && !ADMIN_CENSOR_KEYS.some(k => reason.includes(k));
+  if (type === 'os') {
+    return !!reason && LOST_TO_FOLLOWUP_KEYS.some(k => reason.includes(k));
+  }
+  return !!reason && !ADMIN_CENSOR_KEYS.some(k => reason.includes(k));
 }
-function isDropoutByEvnt(p) {
+function isDropoutByEvnt(p, type) {
   const desc = (p.evntdesc || '').trim().toLowerCase();
-  return desc && DROPOUT_EVNT_KEYS.some(k => desc.includes(k));
+  if (type === 'os') {
+    return !!desc && LOST_TO_FOLLOWUP_KEYS.some(k => desc.includes(k));
+  }
+  return !!desc && DROPOUT_EVNT_KEYS.some(k => desc.includes(k));
 }
 function isUnassessedSubj(p) {
   const desc = (p.evntdesc || '').trim().toLowerCase();
@@ -3410,7 +3416,7 @@ function renderCustomTab() {
     // ── Determine if this patient is a "custom event" ──
     // 脱落/未评估/随访滞后 仅适用于删失受试者(censor=1); 实际事件(censor=0)不应被计为脱落
     const isCensored = censor === 1;
-    const dropped = isCensored && (isDropoutSubj(p) || isDropoutByEvnt(p));
+    const dropped = isCensored && (isDropoutSubj(p, type) || isDropoutByEvnt(p, type));
     const unassessed = isCensored && isUnassessedSubj(p);
 
     // Compute gap from reference date (only for censored subjects)
