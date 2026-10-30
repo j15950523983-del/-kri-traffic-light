@@ -3157,8 +3157,10 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
     if (!p._dropped) p._dropped = desc && DROPOUT_EVNT_KEYS.some(k => desc.includes(k));
     p._unassessed = desc && UNASSESSED_KEYS.some(k => desc.includes(k));
 
-    // Pre-compute gap from reference date (only for non-dropouts)
-    if (refDate && p.randDate && !p._dropped) {
+    // Pre-compute gap from reference date
+    // 非OS：仅非脱落者计算（保持原逻辑）；OS：脱落者也计算，便于判断存活随访是否滞后
+    const needGap = !p._dropped || type === 'os';
+    if (refDate && p.randDate && needGap) {
       const rd = parseDate(p.randDate);
       p._censorDate = rd ? new Date(rd.getTime() + (p.days - 1) * 86400000) : null;
       p._gapFromRef = p._censorDate ? Math.round((refDate - p._censorDate) / (1000 * 60 * 60 * 24)) : null;
@@ -3209,9 +3211,9 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
     let tbodyHtml = '';
     censoredPatients.forEach(p => {
       const censorDateStr = p._censorDate ? fmtDate(p._censorDate) : (p.randDate ? fmtDate(new Date(parseDate(p.randDate).getTime() + (p.days - 1) * 86400000)) : '-');
-      const gapText = (!p._dropped && p._gapFromRef != null) ? (p._gapFromRef + '天') : '-';
-      const gapCls  = (!p._dropped && p._gapFromRef != null && p._gapFromRef > staleCrit) ? ' style="color:var(--crimson);font-weight:600;"'
-                    : (!p._dropped && p._gapFromRef != null && p._gapFromRef > staleWarn) ? ' style="color:var(--amber);font-weight:600;"'
+      const gapText = (p._gapFromRef != null) ? (p._gapFromRef + '天') : '-';
+      const gapCls  = (p._gapFromRef != null && p._gapFromRef > staleCrit) ? ' style="color:var(--crimson);font-weight:600;"'
+                    : (p._gapFromRef != null && p._gapFromRef > staleWarn) ? ' style="color:var(--amber);font-weight:600;"'
                     : '';
       const rowCls = p._dropped ? 'row-anomaly' : p._unassessed ? 'row-warning' : (p._gapFromRef != null && p._gapFromRef > staleCrit ? 'row-warning' : '');
       const badge = p._dropped ? '<span class="badge badge-red">脱落</span>'
