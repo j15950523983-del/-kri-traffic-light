@@ -971,7 +971,7 @@ const FIELD_MAP_DEF = [
   { key: 'treatmentEndDate', label: '治疗结束日期', alternates: ['TRTENDT', 'trtendt', 'EOSDAT', 'eosdat', 'TREAT_END_DATE', 'treatment_end_date', 'DSSTDAT', 'dsstdat', 'EOTDAT'], required: false, category: '基础' },
   { key: 'treatmentEndReason', label: '治疗结束原因', alternates: ['DCSREAS', 'dcsreas', 'TREAT_DSDECOD', 'treatmentEndReason'], required: false, category: '基础' },
   { key: 'evntdesc',        label: '删失原因',      alternates: ['EVNTDESC', 'evntdesc', 'CNSR_REASON', 'cnsr_reason', 'CENSOR_REASON', 'censor_reason', 'EVENTDESC', 'eventdesc', 'CNSR_DESC', 'cnsr_desc'], required: false, category: 'PFS/OS' },
-  { key: 'dstreat_dsdecod', label: '退出原因',      alternates: ['DSTREAT_DSDECOD', 'dstreat_dsdecod', 'DSDECOD', 'dsdecod', 'DISCON_REASON', 'discon_reason', 'EOSREAS', 'eosreas', 'WITHDRAWAL_REASON'], required: false, category: '基础' },
+  { key: 'dstreat_dsdecod', label: '退出原因',      alternates: ['DSTREAT_DSDECOD', 'dstreat_dsdecod', 'DSDECOD', 'dsdecod', 'DISCON_REASON', 'discon_reason', 'EOSREAS', 'eosreas', 'WITHDRAWAL_REASON', 'TREAT_DSDECOD', 'treat_dsdecod', 'DCSREAS', 'dcsreas'], required: false, category: '基础' },
   { key: 'tumorAssessments', label: '肿瘤评估数组', alternates: ['TR', 'tr', 'TUMOR', 'tumor', 'ASSESSMENTS', 'assessments', 'TUMOR_ASSESSMENTS', 'tumor_assessment', 'RESPONSE', 'response_data'], required: false, category: '评估' },
   { key: 'events',        label: '事件列表',      alternates: ['EVENTS', 'AES', 'aes', 'ADVERSE', 'adverse', 'SAE_LIST', 'sae_list', 'EVENT_LIST'], required: false, category: '事件' },
   // ADTTE first-assessment fields embedded in each row
@@ -1285,7 +1285,7 @@ function pivotADTTE(rawData) {
   const trdatField = findKey(['TRDAT', 'trdat', 'ADT', 'adt']);
   const respField = findKey(['OVRLRESP_RT_RSORRES', 'OVRLRESP', 'ovrlresp', 'RSORRES', 'rsorres', 'AVALC']);
   const evntdescField = findKey(['EVNTDESC', 'evntdesc', 'CNSR_DESC', 'cnsr_desc', 'CENSOR_REASON', 'censor_reason', 'EVENTDESC', 'eventdesc']);
-  const dstreField = findKey(['DSTREAT_DSDECOD', 'dstreat_dsdecod', 'DSDECOD', 'dsdecod', 'DISCON_REASON', 'discon_reason', 'EOSREAS', 'eosreas', 'WITHDRAWAL_REASON', 'DCSREAS', 'dcsreas']);
+  const dstreField = findKey(['DSTREAT_DSDECOD', 'dstreat_dsdecod', 'TREAT_DSDECOD', 'treat_dsdecod', 'DSDECOD', 'dsdecod', 'DISCON_REASON', 'discon_reason', 'EOSREAS', 'eosreas', 'WITHDRAWAL_REASON', 'DCSREAS', 'dcsreas']);
   const armField = findKey(['ARM', 'arm', 'ARMCD', 'armcd', 'TRT01P', 'trt01p', 'TRT', 'trt', 'TREATMENT', 'treatment', 'GROUP', 'group', 'COHORT', 'cohort']);
 
   if (!subjField || !paramField) return null;
@@ -1337,9 +1337,14 @@ function pivotADTTE(rawData) {
         patient.osCensor = censorField && row[censorField] != null ? Number(row[censorField]) : null;
         if (!capturedLabels.os) capturedLabels.os = pv;
       }
-      // Extract dstreat_dsdecod from any row (take first non-null)
-      if (dstreField && row[dstreField] != null && patient.dstreat_dsdecod == null) {
-        patient.dstreat_dsdecod = String(row[dstreField]);
+      // Extract dstreat_dsdecod from any row (take first non-empty)
+      // 注意：空字符串也算“有值”会挡住后续有效行，必须按 trim 后非空判断
+      if (dstreField) {
+        const dstreVal = row[dstreField];
+        if (dstreVal != null && String(dstreVal).trim() !== '' &&
+            (patient.dstreat_dsdecod == null || String(patient.dstreat_dsdecod).trim() === '')) {
+          patient.dstreat_dsdecod = String(dstreVal);
+        }
       }
       // Preserve each raw endpoint (PARAMCD) for data-driven forecasting
       patient.endpoints.push({
@@ -3112,7 +3117,7 @@ function renderKMCurve(type) {
           siteId: p.siteId, subjectId: p.subjectId,
           randDate: p.randomizationDate, days: Math.round(days),
           evntdesc: p.evntdesc != null ? p.evntdesc : null,
-          dstreat_dsdecod: p.dstreat_dsdecod != null ? p.dstreat_dsdecod : null,
+          dstreat_dsdecod: getExitReason(p),
         };
         if (censor === 1) censoredPatients.push(pat);
         else eventPatients.push(pat);
@@ -3146,7 +3151,7 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
   let dropouts = 0, unassessed = 0, staleWarnCount = 0, staleCritCount = 0;
   censoredPatients.forEach(p => {
     // Pre-compute flags once
-    const reason = (p.dstreat_dsdecod || '').trim().toLowerCase();
+    const reason = (getExitReason(p) || '').trim().toLowerCase();
     const desc = (p.evntdesc || '').trim().toLowerCase();
     p._dropped = reason && !ADMIN_CENSOR_KEYS.some(k => reason.includes(k));
     if (!p._dropped) p._dropped = desc && DROPOUT_EVNT_KEYS.some(k => desc.includes(k));
@@ -3218,7 +3223,7 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
         <td>中心${p.siteId}</td><td>${p.subjectId}</td><td>${fmtDate(p.randDate)}</td>
         <td>${p.days}天</td><td>${censorDateStr}</td>
         <td${gapCls}>${gapText}</td>
-        <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${p.dstreat_dsdecod != null ? p.dstreat_dsdecod : '-'}</td>
+        <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${getExitReason(p) != null ? getExitReason(p) : '-'}</td>
         <td>${badge}</td></tr>`;
     });
     html += tbodyHtml + '</tbody></table></div>';
@@ -3242,7 +3247,7 @@ function showKMBrushDetail(type, tMin, tMax, censoredPatients, eventPatients) {
       evHtml += `<tr>
         <td>中心${p.siteId}</td><td>${p.subjectId}</td><td>${fmtDate(p.randDate)}</td>
         <td>${p.days}天</td><td>${eventDate}</td>
-        <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${p.dstreat_dsdecod != null ? p.dstreat_dsdecod : '-'}</td></tr>`;
+        <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${getExitReason(p) != null ? getExitReason(p) : '-'}</td></tr>`;
     });
     html += evHtml + '</tbody></table></div>';
     html += '</div></div>';
@@ -3315,8 +3320,17 @@ const ADMIN_CENSOR_KEYS = ['completed', 'completion', '完成', '研究结束', 
 const DROPOUT_EVNT_KEYS = ['lost to follow', '失访', 'withdrew consent', 'withdrawal', '撤回', '退出', 'adverse event', '不良事件', 'physician decision', '研究者决定', 'protocol deviation', '方案违背'];
 const UNASSESSED_KEYS = ['未评估', '未评价', '未检查', 'not assessed', 'no assessment', '未完成评估', '评估未完成', '数据截止时未评估'];
 
+// 退出原因：优先 退出原因字段，缺失时回退到 治疗结束原因（DCSREAS/TREAT_DSDECOD 等）
+function getExitReason(p) {
+  if (!p) return null;
+  for (const v of [p.dstreat_dsdecod, p.treatmentEndReason]) {
+    if (v != null && String(v).trim() !== '') return v;
+  }
+  return null;
+}
+
 function isDropoutSubj(p) {
-  const reason = (p.dstreat_dsdecod || '').trim().toLowerCase();
+  const reason = (getExitReason(p) || '').trim().toLowerCase();
   return reason && !ADMIN_CENSOR_KEYS.some(k => reason.includes(k));
 }
 function isDropoutByEvnt(p) {
@@ -3426,7 +3440,7 @@ function renderCustomTab() {
       randomizationDate: p.randomizationDate,
       days, censor,
       evntdesc: p.evntdesc != null ? p.evntdesc : null,
-      dstreat_dsdecod: p.dstreat_dsdecod != null ? p.dstreat_dsdecod : null,
+      dstreat_dsdecod: getExitReason(p),
       inWindow, matchTypes, isCustomEvent,
       gapFromRef,
     });
@@ -3648,7 +3662,7 @@ function openCustomDrill(siteId) {
     html += `<tr class="${rowCls}">
       <td>${s.subjectId}</td><td>${fmtDate(s.randomizationDate)}</td>
       <td>${s.days != null ? s.days : '-'}</td><td>${statusBadge}</td>
-      <td>${s.evntdesc != null ? s.evntdesc : '-'}</td><td>${s.dstreat_dsdecod != null ? s.dstreat_dsdecod : '-'}</td>
+      <td>${s.evntdesc != null ? s.evntdesc : '-'}</td><td>${getExitReason(s) != null ? getExitReason(s) : '-'}</td>
       <td>${matchText}</td><td>${gapText}</td>
       <td>${verdict}</td></tr>`;
   });
@@ -4021,7 +4035,7 @@ function showEventPatients(type, monthData, idx, label, mode) {
     html += `<tr>
       <td>${p.subjectId}</td><td>中心${p.siteId}</td><td>${fmtDate(p.randomizationDate)}</td>
       <td>${p[`${type}Days`]}</td><td>${eventDate}</td><td>${firstResp}</td>
-      <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${p.dstreat_dsdecod != null ? p.dstreat_dsdecod : '-'}</td></tr>`;
+      <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${getExitReason(p) != null ? getExitReason(p) : '-'}</td></tr>`;
   });
   html += '</tbody></table></div>';
   html += '</div></div>'; // close drill-table-wrapper + drill-section
@@ -4088,7 +4102,7 @@ function openDrill(siteId) {
       <td>${firstResp}</td><td>${firstDate}</td>
       <td>${p.pfsDays != null ? p.pfsDays : '-'}</td><td>${pfsStatus}</td><td>${pfsEventDate}</td>
       <td>${p.osDays != null ? p.osDays : '-'}</td><td>${osStatus}</td><td>${osEventDate}</td>
-      <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${p.dstreat_dsdecod != null ? p.dstreat_dsdecod : '-'}</td></tr>`;
+      <td>${p.evntdesc != null ? p.evntdesc : '-'}</td><td>${getExitReason(p) != null ? getExitReason(p) : '-'}</td></tr>`;
   });
   html += '</tbody></table></div>';
   html += '</div></div>'; // close drill-table-wrapper + drill-section
@@ -4978,7 +4992,7 @@ document.getElementById('btnQueryBrush').addEventListener('click', () => {
         randDate: p.randomizationDate,
         days: Math.round(days),
         evntdesc: p.evntdesc != null ? p.evntdesc : null,
-        dstreat_dsdecod: p.dstreat_dsdecod != null ? p.dstreat_dsdecod : null,
+        dstreat_dsdecod: getExitReason(p),
       };
       if (censor === 1) censoredPatients.push(patient);
       if (censor === 0) eventPatients.push(patient);
